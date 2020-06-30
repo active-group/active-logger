@@ -1,12 +1,38 @@
 (ns active.clojure.logger.state-change
-  "Logging state changes."
-  (:require [active.clojure.logger.config.riemann :as riemann-config]
+  "Facilities for logging state changes."
+  (:require [riemann.client :as riemann]
+            [taoensso.timbre :as timbre]
+
+            [active.clojure.logger.config.riemann :as riemann-config]
             [active.clojure.logger.internal :as internal]
             [active.clojure.monad :as monad]
-            [active.clojure.record :refer [define-record-type]]
-            [active.clojure.logger.config.riemann :as riemann-config]
-            [riemann.client :as riemann]
-            [taoensso.timbre :as timbre]))
+            [active.clojure.record :refer [define-record-type]]))
+
+
+;;;; Configuration
+
+(def state-changes-config-default :events)
+(defonce state-changes-config (atom state-changes-config-default))
+
+(defn set-global-log-state-changes-config!
+  [scc]
+  (reset! state-changes-config scc))
+
+(defn reset-global-log-state-changes-config!
+  "Reset to back to default, if the config equals `compare`."
+  [compare]
+  (swap! state-changes-config #(if (= % compare) state-changes-config-default %)))
+
+(defn configure-state-changes-logging
+  "Returns an object that can be fed to
+  [[set-global-log-state-changes-config!]]."
+  [riemann-config desc]
+  (case desc
+    :events :events
+    :riemann (riemann-config/make-riemann-config riemann-config)))
+
+
+;;;; Data definition and DSL
 
 (define-record-type LogStateChange
   (make-log-state-change namespace state ttl map)
@@ -21,19 +47,7 @@
    ^{:doc "Map with more data or `nil`, see [[log-context-keys]]."}
     map log-state-change-map])
 
-(defmacro log-state-change
-  "Log a state change asynchronously (monadic version), constructed from the arguments.
-
-  `?ttl`, if present, is the time-to-live in seconds."
-  ([?state]
-   `(make-log-state-change ~(str *ns*) ~?state nil nil))
-  ([?state ?ttl]
-   `(make-log-state-change ~(str *ns*) ~?state ~?ttl nil))
-  ([?state ?ttl ?mp]
-   `(make-log-state-change ~(str *ns*) ~?state ~?ttl ~?mp)))
-
-(def state-changes-config-default :events)
-(defonce state-changes-config (atom state-changes-config-default))
+;;; Actions
 
 ; helper to avoid having to construct a merged map
 (defmacro log-context-access
@@ -61,6 +75,31 @@
       :events (log-state-change-to-events! namespace state mp)
       (riemann-config/log-state-change-to-riemann! scconf state ttl mp))))
 
+(defmacro log-state-change!
+  "Log a state change asynchronously (imperative version).
+
+  `?more`, if present, is a map with more properties."
+  ([?context ?state]
+   `(internal/log-state-change!-internal ~(str *ns*) ~?state nil ~?context))
+  ([?context ?state ?ttl]
+   `(internal/log-state-change!-internal ~(str *ns*) ~?state ~?ttl ~?context))
+  ([?context ?state ?ttl ?mp]
+   `(internal/log-state-change!-internal ~(str *ns*) ~?state ~?ttl (merge ~?context ~?mp))))
+
+(defmacro log-state-change
+  "Log a state change asynchronously (monadic version), constructed from the arguments.
+
+  `?ttl`, if present, is the time-to-live in seconds."
+  ([?state]
+   `(make-log-state-change ~(str *ns*) ~?state nil nil))
+  ([?state ?ttl]
+   `(make-log-state-change ~(str *ns*) ~?state ~?ttl nil))
+  ([?state ?ttl ?mp]
+   `(make-log-state-change ~(str *ns*) ~?state ~?ttl ~?mp)))
+
+
+;;;; Interpreter
+
 (defn run-log-state-change
   [run-any env mstate m]
   (cond
@@ -76,20 +115,3 @@
 
 (def log-state-changes-command-config
   (monad/make-monad-command-config run-log-state-change {} {}))
-
-(defn set-global-log-state-changes-config!
-  [scc]
-  (reset! state-changes-config scc))
-
-(defn reset-global-log-state-changes-config!
-  "Reset to back to default, if the config equals `compare`."
-  [compare]
-  (swap! state-changes-config #(if (= % compare) state-changes-config-default %)))
-
-(defn configure-state-changes-logging
-  "Returns an object that can be fed to
-  [[set-global-log-state-changes-config!]]."
-  [riemann-config desc]
-  (case desc
-    :events :events
-    :riemann (riemann-config/make-riemann-config riemann-config)))

@@ -1,11 +1,12 @@
 (ns active.clojure.logger.timed-metric
   "Common functionality to ease logging of timed metrics."
-  (:require [active.clojure.config :as config]
-            [active.clojure.record :refer :all]
-            [active.clojure.monad :as monad]
+  (:require [taoensso.encore :as encore]
+
+            [active.clojure.config :as config]
             [active.clojure.logger.event :as event]
             [active.clojure.logger.metric :as metric]
-            [taoensso.encore :as encore]))
+            [active.clojure.monad :as monad]
+            [active.clojure.record :refer :all]))
 
 ;; Simple timing
 
@@ -48,34 +49,12 @@
                                     (assoc timers name time)))
    (monad/return name)))
 
-(defmacro start-metric-timer
-  "Starts a metric timer, identified by `metric` and `more`.
-
-  `more` must be a map from keywords listed in [[log/log-context-keys]] to strings.
-
-  Returns a timer-name object that can be fed to
-  [[cancel-metric-timer]] or [[stop-and-log-metric-timer]]."
-  [?metric & [?more]]
-  `(start-metric-timer-1 ~(str *ns*) ~?metric ~?more))
-
 (defn cancel-metric-timer-1
   "Cancels a metric timer, identified by `timer-name`."
   [timer-name]
   (monad/update-state-component! ::timers
                                  (fn [timers]
                                     (dissoc timers timer-name))))
-
-(defmacro cancel-metric-timer
-  "Cancels a metric timer.  It can either be identified by a timer name
-  returned by [[start-metric-timer]] or by current namespace, metric, and 
-  (optional) addtional context map."
-  ([?timer-name-or-metric]
-   `(let [thing# ~?timer-name-or-metric]
-      (if (timer-name? thing#)
-        (cancel-metric-timer-1 thing#)
-        (cancel-metric-timer-1 (make-timer-name ~(str *ns*) thing# nil)))))
-  ([?metric ?more]
-   `(cancel-metric-timer-1 (make-timer-name ~(str *ns*) ~?metric ~?more))))
 
 (defn stop-metric-timer
   [timer-name]
@@ -105,6 +84,28 @@
       (metric/log-metric (timer-name-metric timer-name) timer (timer-name-map timer-name) (timer-name-namespace timer-name))
       (monad/return timer))
      (monad/return nil))))
+
+(defmacro start-metric-timer
+  "Starts a metric timer, identified by `metric` and `more`.
+
+  `more` must be a map from keywords listed in [[log/log-context-keys]] to strings.
+
+  Returns a timer-name object that can be fed to
+  [[cancel-metric-timer]] or [[stop-and-log-metric-timer]]."
+  [?metric & [?more]]
+  `(start-metric-timer-1 ~(str *ns*) ~?metric ~?more))
+
+(defmacro cancel-metric-timer
+  "Cancels a metric timer.  It can either be identified by a timer name
+  returned by [[start-metric-timer]] or by current namespace, metric, and 
+  (optional) addtional context map."
+  ([?timer-name-or-metric]
+   `(let [thing# ~?timer-name-or-metric]
+      (if (timer-name? thing#)
+        (cancel-metric-timer-1 thing#)
+        (cancel-metric-timer-1 (make-timer-name ~(str *ns*) thing# nil)))))
+  ([?metric ?more]
+   `(cancel-metric-timer-1 (make-timer-name ~(str *ns*) ~?metric ~?more))))
 
 (defmacro stop-and-log-metric-timer
   "Stops a metric timer and logs the time.  The timer can either be identified by a timer name

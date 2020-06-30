@@ -1,8 +1,35 @@
 (ns active.clojure.logger.metric
-  (:require [active.clojure.logger.internal :as internal]
-            [active.clojure.record :refer [define-record-type]]
-            [active.clojure.logger.config.riemann :as riemann-config]
-            [active.clojure.monad :as monad]))
+  "Facilities for logging metrics."
+  (:require [active.clojure.logger.config.riemann :as riemann-config]
+            [active.clojure.logger.internal :as internal]
+            [active.clojure.monad :as monad]
+            [active.clojure.record :refer [define-record-type]]))
+
+
+;;;; Configuration
+
+(def metrics-config-default :events)
+(defonce metrics-config (atom metrics-config-default))
+
+(defn configure-metrics-logging
+  "Returns an object that can be fed to
+  [[set-global-log-metrics-config!]]."
+  [riemann-config desc]
+  (case desc
+    :events  :events
+    :riemann (riemann-config/make-riemann-config riemann-config)))
+
+(defn set-global-log-metrics-config!
+  [scc]
+  (reset! metrics-config scc))
+
+(defn reset-global-log-metrics-config!
+  "Reset to back to default, if the config equals `compare`."
+  [compare]
+  (swap! metrics-config #(if (= % compare) metrics-config-default %)))
+
+
+;;;; Data definition and DSL
 
 (define-record-type LogMetric
   (make-log-metric namespace label value map) log-metric?
@@ -15,15 +42,9 @@
 (define-record-type ^{:doc "Get the system time in milliseconds"} GetMilliTime
   (make-get-milli-time) get-milli-time? [])
 
-(def get-milli-time (make-get-milli-time))
+;;; Actions
 
-(defmacro log-metric
-  ([?label ?value]
-   `(make-log-metric ~(str *ns*) ~?label ~?value nil))
-  ([?label ?value ?mp]
-   `(make-log-metric ~(str *ns*) ~?label ~?value ~?mp))
-  ([?label ?value ?mp ?ns]
-   `(make-log-metric ~?ns ~?label ~?value ~?mp)))
+(def get-milli-time (make-get-milli-time))
 
 (defn log-metric-to-events!
   [namespace label value mp]
@@ -38,9 +59,6 @@
   [config label value mp]
   (riemann-config/send-event-to-riemann! config "metric" mp {:label label :metric value}))
 
-(def metrics-config-default :events)
-(defonce metrics-config (atom metrics-config-default))
-
 (defn log-metric!-internal
   [namespace label value mp]
   (let [mp (internal/sanitize-context mp)
@@ -52,6 +70,23 @@
 (defn get-milli-time!
   []
   (/ (double (System/nanoTime)) 1000000.0))
+
+(defmacro log-metric!
+  ([?label ?value]
+   `(internal/log-metric!-internal ~(str *ns*) ~?label ~?value nil))
+  ([?label ?value ?mp]
+   `(internal/log-metric!-internal ~(str *ns*) ~?label ~?value ~?mp)))
+
+(defmacro log-metric
+  ([?label ?value]
+   `(make-log-metric ~(str *ns*) ~?label ~?value nil))
+  ([?label ?value ?mp]
+   `(make-log-metric ~(str *ns*) ~?label ~?value ~?mp))
+  ([?label ?value ?mp ?ns]
+   `(make-log-metric ~?ns ~?label ~?value ~?mp)))
+
+
+;;;; Interpreter
 
 (defn run-log-metric
   [run-any env mstate m]
@@ -72,21 +107,3 @@
 
 (def log-metrics-command-config
   (monad/make-monad-command-config run-log-metric {} {}))
-
-(defn configure-metrics-logging
-  "Returns an object that can be fed to
-  [[set-global-log-metrics-config!]]."
-  [riemann-config desc]
-  (case desc
-    :events  :events
-    :riemann (riemann-config/make-riemann-config riemann-config)))
-
-(defn set-global-log-metrics-config!
-  [scc]
-  (reset! metrics-config scc))
-
-(defn reset-global-log-metrics-config!
-  "Reset to back to default, if the config equals `compare`."
-  [compare]
-  (swap! metrics-config #(if (= % compare) metrics-config-default %)))
-

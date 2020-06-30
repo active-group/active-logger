@@ -1,16 +1,17 @@
 (ns active.clojure.logger.config.timbre
-  (:require [active.clojure.condition :as c]
-            [active.clojure.condition-hooks :as condition-hooks]
-            [active.clojure.config :as config]
-            [active.clojure.logger.config.riemann :as logger-riemann]
-            [active.timbre-logstash :as timbre-logstash]
+  (:require [active.timbre-logstash :as timbre-logstash]
             [active.timbre-riemann :as timbre-riemann]
             [clojure.string :as string]
             [riemann.client :as riemann]
             [taoensso.encore :as encore]
             [taoensso.timbre :as timbre]
             [taoensso.timbre.appenders.core :as timbre-appenders]
-            [taoensso.timbre.appenders.3rd-party.rotor :as timbre-rotor]))
+            [taoensso.timbre.appenders.3rd-party.rotor :as timbre-rotor]
+
+            [active.clojure.condition :as c]
+            [active.clojure.condition-hooks :as condition-hooks]
+            [active.clojure.config :as config]
+            [active.clojure.logger.config.riemann :as logger-riemann]))
 
 ;; Basic and initial timbre config, before the config is loaded and
 ;; applied. Note that appenders defined here, are completely replace

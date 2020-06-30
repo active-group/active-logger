@@ -1,12 +1,12 @@
 (ns active.clojure.logger.test
   (:require [active.clojure.logger.config.timbre :as timbre-config]
+            [active.clojure.logger.event :as event]
             [active.clojure.logger.state-change :as state-change]
             [active.clojure.logger.metric :as metric]
-            [active.clojure.logger.core :as logger-core]
             [taoensso.timbre :as timbre]))
 
 (defn- log-config-test-fixture [config f]
-  (logger-core/set-global-log-events-config! config)
+  (event/set-global-log-events-config! config)
   (state-change/set-global-log-state-changes-config! (state-change/configure-state-changes-logging nil :events))
   (metric/set-global-log-metrics-config! (metric/configure-metrics-logging nil :events))
   ;; Note: set-global-log-events-config! uses timbre/set-config!,

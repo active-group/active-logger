@@ -14,15 +14,13 @@
 (defn sanitize-context
   "Make sure the context only contains string values."
   [mp]
-  (if (some (fn [entry]
-              (not (string? (val entry))))
-            mp)
-    (into {}
-          (filter (fn [entry]
-                    (if (string? (val entry))
-                      true
-                      (binding [*out* *err*]
-                        (println (str "WARNING: log context contains non-string value for key " (key entry) " (" (val entry) ")"))
-                        false)))
-                  mp))
+  (if (some (fn [entry] (not (string? (val entry)))) mp)
+    (->> mp
+         (filter (fn [entry]
+                   (if (string? (val entry))
+                     true
+                     (binding [*out* *err*]
+                       (println (str "WARNING: log context contains non-string value for key " (key entry) " (" (val entry) ")"))
+                       false))))
+         (into {}))
     mp))
