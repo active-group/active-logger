@@ -61,15 +61,15 @@
 
 (defn make-riemann-client
   "Log command config, to send state-changes or metrics to a Riemann server with the given riemann client."
-  [access-config]
-  (let [p {:host (access-config riemann-host)
-           :port (access-config riemann-port)}
-        p (if (access-config riemann-tls?)
+  [riemann-config]
+  (let [p {:host (config/access riemann-config riemann-host)
+           :port (config/access riemann-config riemann-port)}
+        p (if (config/access riemann-config riemann-tls?)
             (merge p
                    {:tls? true
-                    :key (access-config riemann-key)
-                    :cert (access-config riemann-cert)
-                    :ca-cert (access-config riemann-ca-cert)})
+                    :key (config/access riemann-config riemann-key)
+                    :cert (config/access riemann-config riemann-cert)
+                    :ca-cert (config/access riemann-config riemann-ca-cert)})
             p)]
     (riemann/tcp-client p)))
 
@@ -85,11 +85,12 @@
                   ;; TODO allow port/host settings
                   (config/one-of-range #{:riemann :events} :events)))
 
-(defn make-riemann-config [access-config]
-  {:client (make-riemann-client access-config)
+(defn make-riemann-config
+  [riemann-config]
+  {:client      (make-riemann-client riemann-config)
    ;; Note: this is the 'source hostname', used only as an event property.
-   :hostname (access-config riemann-hostname)
-   :application (access-config riemann-application)})
+   :hostname    (config/access riemann-config riemann-hostname)
+   :application (config/access riemann-config riemann-application)})
 
 (defn destroy-riemann-config! [config]
   ;; esp. closes the riemann-client, which otherwise leaves some non-daemon threads preventing process end.

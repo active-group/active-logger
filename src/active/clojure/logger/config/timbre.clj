@@ -251,20 +251,20 @@
 (defn configure-events-logging
   "Returns an object that can be fed to
   [[set-global-log-events-config!]]."
-  [access-config]
+  [timbre-config]
   (make-timbre-config
-   {:level          (access-config timbre-level-setting)
+   {:level          (config/access timbre-config timbre-level-setting)
     :appenders      (into {}
                      (map (fn [[k v]]
                             [k (timbre-spec->appender v)])
-                          (access-config timbre-appenders-setting)))
-    :ns-whitelist   (access-config timbre-ns-whitelist-setting)
-    :ns-blacklist   (access-config timbre-ns-blacklist-setting)
-    :middleware     (conj (access-config timbre-middleware-setting)
-                      (fixed-properties-timbre-middleware (access-config timbre-hostname-setting)
-                                                          (access-config timbre-application-setting)))
+                          (config/access timbre-config timbre-appenders-setting)))
+    :ns-whitelist   (config/access timbre-config timbre-ns-whitelist-setting)
+    :ns-blacklist   (config/access timbre-config timbre-ns-blacklist-setting)
+    :middleware     (conj (config/access timbre-config timbre-middleware-setting)
+                      (fixed-properties-timbre-middleware (config/access timbre-config timbre-hostname-setting)
+                                                          (config/access timbre-config timbre-application-setting)))
     :output-fn      output-fn
-    :timestamp-opts (let [tso (access-config timbre-timestamp-opts-setting)]
+    :timestamp-opts (let [tso (config/access timbre-config timbre-timestamp-opts-setting)]
                       {:pattern  (get tso :pattern)
                        :locale   (let [l (get tso :locale)]
                                  (if (string? l)

@@ -89,7 +89,7 @@
 (defn configure-state-changes-logging
   "Returns an object that can be fed to
   [[set-global-log-state-changes-config!]]."
-  [access-config desc]
+  [riemann-config desc]
   (case desc
     :events :events
-    :riemann (riemann-config/make-riemann-config access-config)))
+    :riemann (riemann-config/make-riemann-config riemann-config)))

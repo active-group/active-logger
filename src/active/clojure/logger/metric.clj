@@ -76,10 +76,10 @@
 (defn configure-metrics-logging
   "Returns an object that can be fed to
   [[set-global-log-metrics-config!]]."
-  [access-config desc]
+  [riemann-config desc]
   (case desc
-    :events :events
-    :riemann (riemann-config/make-riemann-config access-config)))
+    :events  :events
+    :riemann (riemann-config/make-riemann-config riemann-config)))
 
 (defn set-global-log-metrics-config!
   [scc]
