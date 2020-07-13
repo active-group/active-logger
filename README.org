@@ -1,0 +1,169 @@
+#+TITLE: active-logger
+
+Utilities and DSL for logging on top of [[https://github.com/ptaoussanis/timbre][Timbre]] with support for [[https://github.com/riemann/riemann][Riemann]].
+
+* Usage
+  =active-logger= is intended to be used alongside [[https://github.com/active-group/active-clojure][=active-clojure=]] and follows 
+  the same naming conventions.
+  This means, all =active-logger= namespaces can be found under 
+  =active.clojure.logger=.
+
+  There are two basic ways to do logging with =active-logger=: Effectful and 
+  monadic.
+  In general, both of theses options are available for each logging function in 
+  =active-logger=.
+** Effectful
+   /Effectful/ logging refers to logging functions that immediately execute.
+   Usually they are signified by a bang (=!=) at the end of the var's name 
+   (i. e. =active.clojure.logger.event/log-event!=).
+   In any non-monadic execution context, use these functions for logging, 
+   metrics, etc.
+** Monadic
+   /Monadic/ logging refers to logging functions that can be used to formulate 
+   the intent on logging at this location when executing a monadic program.
+   The log function will only be executed when the monadic program is run.
+
+** Example for /effectful/ and /monadic/ logging
+   #+begin_src clojure
+     (ns my.ns
+       (:require [active.clojure.config :as active-config]
+                 [active.clojure.logging.config.timbre :as timbre-config]
+                 [active.clojure.logging.event :as event-logger]
+                 [active.clojure.monad :as monad :refer [monadic]]))
+
+     (def schema ...)
+     (def config (active-config/make-configuration schema [] some-configuration))
+
+     ;; Setting up the logger based on some configuration.
+     (-> config
+         (active-config/section-subconfig timbre-config/timbre-config-section)
+         timbre-config/configure-events-logging
+         event-logger/set-global-log-events-config)
+
+
+     ;; Effectful logging 
+     (let [res (+ 2 2)]
+       (event-logger/log-event! :trace (str "res =" res))
+       res)     
+     ;; 2020-07-11 15:19:02.659 host INFO [my.ns] TRACE - res = 4
+     ;; => 4
+
+
+     ;; Monadic logging
+     (def prog (monadic [res (monad/return 4)]
+                        (event-logger/log-event! :trace (str "res =" res))
+                        (monad/return 4)))
+
+     (monad/run-free-reader-state-exception 
+      event-logger/log-events-command-config
+      prog)
+     ;; 2020-07-11 15:19:02.659 host INFO [my.ns] TRACE - res = 4
+     ;; => 4
+   #+end_src
+* Components
+  =active-logger= includes several different entities that can be logged.
+** TODO Event
+   Events are the most basic thing you might want to log.
+   Events are just things that happen in the system which need to be tracked.
+   Functions to log events can be found in =active.clojure.logger.event= and
+   include:
+   - =(log-event <level> <message>)=: Monadic function that logs a message at a
+     certain level. Corresponding effectful function: =log-event!=.
+** TODO Metrics
+** TODO State Change
+* Configuration
+  =active-logger= comes with two basic configuration sections: Timbre and Riemann.
+  For more information on =active.clojure.config=, refer to [[https://github.com/active-group/active-clojure][=active-clojure=]]'s documentation on the topic.
+  
+  In general, to provide a configuration means to supply a map that contains
+  only keys and values according to some schema defined as a 
+  =active.clojure.config/schema= and consumed by 
+  =active.clojure.config/make-configuration=.
+** Timbre
+   There are lots of configuration options to define how the event logger should
+   behave.
+   For a full list of options, refer to [[./src/active/clojure/logger/config/timbre.clj]].
+   
+   Here, we will cover the most important options:
+*** =:level=
+    *default*: =:debug=
+
+    The minimum level a message must have to be printed.
+    Possible values are =#{:trace :debug :info :warn :error :fatal :report}=.
+*** =:appenders=
+    *default*: ={:println (println)}=
+    
+    Defines how messages are printed (=stdout=, to a file, ...).
+    An appender spec is a list starting with one of 
+    ={spit, rotor, logstash, println}=,
+    followed by keyword parameters corresponding to the respective appender.
+    
+    Multiple appenders can be configured and active at the same time.
+    A full example of an appender configuration might look like this:
+    #+begin_src clojure
+      {:appenders {:split   (spit {:fname "/tmp/app.log"})
+                   :riemann (riemann {:host "localhost"
+                                      :port 5555})
+                   :println (println)}}
+    #+end_src
+**** Appender: spit
+     Specifies an appender that writes to a file, specified via the =:fname=
+     setting.
+     Example: ={:spit (spit {:fname "my.log"})}=
+**** Appender: rotor
+     Specifies an appender that writes to a file and rotates the file when it 
+     reaches a given file size. 
+     It accepts the following settings:
+     | option      | description                                                                            | default                |
+     |-------------+----------------------------------------------------------------------------------------+------------------------|
+     | =:path=     | Path to log file. file, historical versions are suffixed with a 3-digit index.         | ="./timbre-rotor.log"= |
+     | =:max-size= | Maximum size of a log file in bytes. Log files are rotated when they exceed this size. | 1.048.576 bytes (1~MB) |
+     | =:backlog=  | Number of rotated logs to keep.                                                        | =5=                    |
+     Example:
+     #+begin_src clojure
+       {:rotor (rotor {:path "/tmp/project.log" 
+                       :max-size 1073741824
+                       :backlog 999})}
+     #+end_src
+**** Appender: println
+     Specifies an appender that will print regular log entries to stdout, errors to stderr.
+     Example: ={:println (println)}=
+**** Appender: logstash
+     Specifies an appender that writes to a Logstash instance.
+     It takes two arguments: the host name, and the port number of the Logstash instance.
+     Example: ={:logstash (logstash "localhost" 4660)}=
+**** Appender: riemann
+     Specifies an appender that writes to a Riemann instance.
+     It accepts the following settings:
+     | option  | description                       | default     |
+     |---------+-----------------------------------+-------------|
+     | =:host= | The host Riemann is served on.    | "localhost" |
+     | =:port= | The host Riemann is listening on. | 5555        |
+     Example
+     #+begin_src clojure
+       {:riemann (riemann {:host "localhost" 
+                           :port 5555})}
+     #+end_src
+*** ns-blacklist
+    It is possible to ignore specific namespaces in the log-output.
+    =ns-blacklist='s value it a sequence of glob-patterns.
+    Matches will be ignored.
+    Example: ={:ns-blacklist ["my.project.internal.*"]}=
+*** ns-whitelist
+    Converse of =ns-blacklist=: All specified patterns are included in the log
+    output, everything else is ignored.
+    Example:  ={:ns-whitelist ["nothing.else.matters"]}=
+** TODO Riemann
+* License
+  Copyright © 2020 Active Group GmbH
+
+  This program and the accompanying materials are made available under the
+  terms of the Eclipse Public License 2.0 which is available at
+  http://www.eclipse.org/legal/epl-2.0.
+
+  This Source Code may also be made available under the following Secondary
+  Licenses when the conditions for such availability set forth in the Eclipse
+  Public License, v. 2.0 are satisfied: GNU General Public License as published by
+  the Free Software Foundation, either version 2 of the License, or (at your
+  option) any later version, with the GNU Classpath Exception which is available
+  at https://www.gnu.org/software/classpath/license.html.
