@@ -23,11 +23,11 @@ Utilities and DSL for logging on top of [[https://github.com/ptaoussanis/timbre]
           {:level :debug  ;; Log everything that is at least a :debug message.
            :appenders
            {;; Print messages to stdout/stderr.
-            :println (println)  
+            :println '(println)
             ;; Write messages to a file.
-            :spit (spit "/tmp/my-app.log")
+            :spit '(spit "/tmp/my-app.log")
             ;; Submit messages to a logstash instance.
-            :logstash (logstash "localhost" 4660)}}})
+            :logstash '(logstash "localhost" 4660)}}})
 
        (def schema (active-config/schema "Configuration schema." timbre-config/timbre-config-section))
        (def config (active-config/make-configuration schema [] config-map))
