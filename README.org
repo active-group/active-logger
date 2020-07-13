@@ -3,6 +3,49 @@
 Utilities and DSL for logging on top of [[https://github.com/ptaoussanis/timbre][Timbre]] with support for [[https://github.com/riemann/riemann][Riemann]], 
 [[https://www.elastic.co/de/logstash][Logstash]], and more.
 
+* TD;DR
+  If you just want to get going, here is a minimal working example on how to
+  start logging events.
+  1. Add `active-logger` and `active-clojure` to your `deps.edn`:
+     #+begin_src clojure
+       {:deps {de.active-group/active-clojure {:mvn/version "0.35.0"}
+               de.active-group/active-logger  {:git/url "https://github.com/active-group/active-logger"
+                                               :sha     "d53a0a55211ec6a8aed0e3315e5dc7679f0f3f3e"}}}
+     #+end_src
+  2. Define the configuration to use and initialize the logging backend.
+     #+begin_src clojure
+       (ns my.app
+         (:require [active.clojure.config :as active-config]
+                   [active.clojure.logger.config.timbre :as timbre-config]))
+
+       (def config-map
+         {:timbre-config 
+          {:level :debug  ;; Log everything that is at least a :debug message.
+           :appenders
+           {;; Print messages to stdout/stderr.
+            :println (println)  
+            ;; Write messages to a file.
+            :spit (spit "/tmp/my-app.log")
+            ;; Submit messages to a logstash instance.
+            :logstash (logstash "localhost" 4660)}}})
+
+       (def schema (active-config/schema "Configuration schema." timbre-config/timbre-config-section))
+       (def config (active-config/make-configuration schema [] config-map))
+
+       ;; Initialize the event-logger.
+       (-> config
+           (active-config/section-subconfig timbre-config/timbre-config-section)
+           timbre-config/configure-events-logging
+           logger/set-global-log-events-config!)
+     #+end_src
+  3. Start logging some events:
+     #+begin_src clojure
+       (ns my.app
+         (:require ...
+                   [active.clojure.logger.event :as event-logger]))
+
+       (event-logger/log-event! :info "We are live!")
+     #+end_src
 * Usage
   =active-logger= is intended to be used alongside [[https://github.com/active-group/active-clojure][=active-clojure=]] and follows 
   the same naming scheme (all =active-logger= namespaces can be found under 
@@ -23,6 +66,7 @@ Utilities and DSL for logging on top of [[https://github.com/ptaoussanis/timbre]
    the intent on logging at this location when executing a monadic program.
    The log function will only be executed when the monadic program is run.
 
+   Monadic in this context means programs defined using =active.clojure.monad=.
 ** Example for /effectful/ and /monadic/ logging
    #+begin_src clojure
      (ns my.ns
@@ -31,15 +75,7 @@ Utilities and DSL for logging on top of [[https://github.com/ptaoussanis/timbre]
                  [active.clojure.logging.event :as event-logger]
                  [active.clojure.monad :as monad :refer [monadic]]))
 
-     (def schema ...)
-     (def config (active-config/make-configuration schema [] some-configuration))
-
-     ;; Setting up the logger based on some configuration.
-     (-> config
-         (active-config/section-subconfig timbre-config/timbre-config-section)
-         timbre-config/configure-events-logging
-         event-logger/set-global-log-events-config)
-
+     ;; NOTE: Initialize as shown in TL;DR section.
 
      ;; Effectful logging 
      (let [res (+ 2 2)]
@@ -62,15 +98,24 @@ Utilities and DSL for logging on top of [[https://github.com/ptaoussanis/timbre]
    #+end_src
 * Components
   =active-logger= includes several different entities that can be logged.
-** TODO Event
-   Events are the most basic thing you might want to log.
-   Events are just things that happen in the system which need to be tracked.
-   Functions to log events can be found in =active.clojure.logger.event= and
-   include:
-   - =(log-event <level> <message>)=: Monadic function that logs a message at a
-     certain level. Corresponding effectful function: =log-event!=.
-** TODO Metrics
-** TODO State Change
+** Event
+   *Events* are reports of things that the emulator did that may be of interest 
+   for later perusal by system administrator in case of failures or by 
+   developers. 
+   Each event carries a /namespace/ saying where the event came from, and a 
+   /level/ that specifies how “important” the event is.
+   Functions to log events can be found in =active.clojure.logger.event=.
+** Metrics
+   *Metrics* can be used to log metrics for specified parts of your system. 
+   Functions to log events can be found in =active.clojure.logger.metric=.
+** Timed Metrics
+   *Timed metrics* can be used to log timing characteristics specified parts of 
+   your system. 
+   Functions to log events can be found in =active.clojure.logger.timed-metric=.
+** State Change
+   *State changes* are for monitoring the live operation of a system. 
+   They announce for a certain system component its state, its /service/.
+   Functions to log events can be found in =active.clojure.logger.state-change=.
 * Configuration
   =active-logger= comes with two basic configuration sections: Timbre and Riemann.
   For more information on =active.clojure.config=, refer to [[https://github.com/active-group/active-clojure][=active-clojure=]]'s documentation on the topic.
@@ -144,16 +189,35 @@ Utilities and DSL for logging on top of [[https://github.com/ptaoussanis/timbre]
        {:riemann (riemann {:host "localhost" 
                            :port 5555})}
      #+end_src
-*** ns-blacklist
+*** =:ns-blacklist=
     It is possible to ignore specific namespaces in the log-output.
     =ns-blacklist='s value it a sequence of glob-patterns.
     Matches will be ignored.
     Example: ={:ns-blacklist ["my.project.internal.*"]}=
-*** ns-whitelist
+*** =:ns-whitelist=
     Converse of =ns-blacklist=: All specified patterns are included in the log
     output, everything else is ignored.
     Example:  ={:ns-whitelist ["nothing.else.matters"]}=
-** TODO Riemann
+*** =:timestamp-opts=
+    Section containing three settings related to how timestamps are formatted in 
+    logs: 
+   | option      | description                                                                                                                                                                                                                                                      |
+   |-------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+   | =:pattern=  | Pattern for the timestamp (see [[http://docs.oracle.com/javase/7/docs/api/java/text/SimpleDateFormat.html][SimpleDateFormat]])                                                                                                                                                                                                                 |
+   | =:locale=   | This is an IETF BCP 47 language tag string specifying the locale such as ="de-DE"= or ="en-US"= or =:jvm-default=.                                                                                                                                               |
+   | =:timezone= | This is an ID for the time zone relative to which log entry dates should formatted. This can be a full name such as ="Germany/Berlin"=, or a custom ID such as ="GMT-8:00"=. The value may also be =:jvm-default= for the default time zone, and =:utc= for UTC. |
+** Riemann
+   Here are the configuration settings for Riemann. They happen in the 
+   =:riemann= section:
+  | option     | description                                                                                  | default      |
+  |------------+----------------------------------------------------------------------------------------------+--------------|
+  | =:host=    | String specifying the host where Riemann runs.                                               | ="127.0.0.1= |
+  | =:port=    | Port where Riemann runs.                                                                     | =5555=       |
+  | =:tls?=    | Specifies whether the communication with Riemann should use TLS. It can be =true= or =false= | =false=      |
+  | =:key=     | If =:tls?= is true, use the specified TLS key-file.                                          | -            |
+  | =:cert=    | If =:tls?= is true, use the specified TSL cert-file.                                         | -            |
+  | =:ca-cert= | If =:tls?= is true, use the specified TSL CA cert-file.                                      | -            |
+   
 * License
   Copyright © 2020 Active Group GmbH
 
