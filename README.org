@@ -99,7 +99,7 @@ Utilities and DSL for logging on top of [[https://github.com/ptaoussanis/timbre]
 * Components
   =active-logger= includes several different entities that can be logged.
 ** Event
-   *Events* are reports of things that the emulator did that may be of interest 
+   *Events* are reports of things that the system did that may be of interest 
    for later perusal by system administrator in case of failures or by 
    developers. 
    Each event carries a /namespace/ saying where the event came from, and a 
