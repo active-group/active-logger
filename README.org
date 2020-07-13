@@ -1,12 +1,12 @@
 #+TITLE: active-logger
 
-Utilities and DSL for logging on top of [[https://github.com/ptaoussanis/timbre][Timbre]] with support for [[https://github.com/riemann/riemann][Riemann]].
+Utilities and DSL for logging on top of [[https://github.com/ptaoussanis/timbre][Timbre]] with support for [[https://github.com/riemann/riemann][Riemann]], 
+[[https://www.elastic.co/de/logstash][Logstash]], and more.
 
 * Usage
   =active-logger= is intended to be used alongside [[https://github.com/active-group/active-clojure][=active-clojure=]] and follows 
-  the same naming conventions.
-  This means, all =active-logger= namespaces can be found under 
-  =active.clojure.logger=.
+  the same naming scheme (all =active-logger= namespaces can be found under 
+  =active.clojure.logger=).
 
   There are two basic ways to do logging with =active-logger=: Effectful and 
   monadic.
@@ -51,7 +51,7 @@ Utilities and DSL for logging on top of [[https://github.com/ptaoussanis/timbre]
 
      ;; Monadic logging
      (def prog (monadic [res (monad/return 4)]
-                        (event-logger/log-event! :trace (str "res =" res))
+                        (event-logger/log-event :trace (str "res =" res))
                         (monad/return 4)))
 
      (monad/run-free-reader-state-exception 
@@ -82,7 +82,7 @@ Utilities and DSL for logging on top of [[https://github.com/ptaoussanis/timbre]
 ** Timbre
    There are lots of configuration options to define how the event logger should
    behave.
-   For a full list of options, refer to [[./src/active/clojure/logger/config/timbre.clj]].
+   For a full list of options, refer to [[./src/active/clojure/logger/config/timbre.clj][the respective sources]].
    
    Here, we will cover the most important options:
 *** =:level=
