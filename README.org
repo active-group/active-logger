@@ -3,7 +3,7 @@
 Utilities and DSL for logging on top of [[https://github.com/ptaoussanis/timbre][Timbre]] with support for [[https://github.com/riemann/riemann][Riemann]], 
 [[https://www.elastic.co/de/logstash][Logstash]], and more.
 
-* TD;DR
+* TL;DR
   If you just want to get going, here is a minimal working example on how to
   start logging events.
   1. Add `active-logger` and `active-clojure` to your `deps.edn`:
@@ -16,6 +16,7 @@ Utilities and DSL for logging on top of [[https://github.com/ptaoussanis/timbre]
      #+begin_src clojure
        (ns my.app
          (:require [active.clojure.config :as active-config]
+                   [active.clojure.logger.event :as event-logger]
                    [active.clojure.logger.config.timbre :as timbre-config]))
 
        (def config-map
@@ -36,7 +37,7 @@ Utilities and DSL for logging on top of [[https://github.com/ptaoussanis/timbre]
        (-> config
            (active-config/section-subconfig timbre-config/timbre-config-section)
            timbre-config/configure-events-logging
-           logger/set-global-log-events-config!)
+           event-logger/set-global-log-events-config!)
      #+end_src
   3. Start logging some events:
      #+begin_src clojure
@@ -71,8 +72,8 @@ Utilities and DSL for logging on top of [[https://github.com/ptaoussanis/timbre]
    #+begin_src clojure
      (ns my.ns
        (:require [active.clojure.config :as active-config]
-                 [active.clojure.logging.config.timbre :as timbre-config]
-                 [active.clojure.logging.event :as event-logger]
+                 [active.clojure.logger.config.timbre :as timbre-config]
+                 [active.clojure.logger.event :as event-logger]
                  [active.clojure.monad :as monad :refer [monadic]]))
 
      ;; NOTE: Initialize as shown in TL;DR section.
