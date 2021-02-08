@@ -3,6 +3,7 @@
 Utilities and DSL for logging on top of [[https://github.com/ptaoussanis/timbre][Timbre]] with support for [[https://github.com/riemann/riemann][Riemann]], 
 [[https://www.elastic.co/de/logstash][Logstash]], and more.
 
+[[https://img.shields.io/clojars/v/de.active-group/active-logger.svg]]
 * TL;DR
   If you just want to get going, here is a minimal working example on how to
   start logging events.
