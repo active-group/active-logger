@@ -69,10 +69,14 @@
 
 ;;; Actions
 
+(defn nil->str
+  [x]
+  (if (nil? x) "nil" x))
+
 (defmacro log-msg
   "Convenience macro for assembling a log message from objects."
   [& ?args]
-  `(encore/spaced-str-with-nils [~@?args]))
+  `(string/join " " (mapv nil->str [~@?args])))
 
 (defmacro log-event*
   "Log an event with more data, described by a level and the arguments (monadic version).
