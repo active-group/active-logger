@@ -1,7 +1,7 @@
 (ns active.clojure.logger.event
   "Facilities for logging events."
   (:require [taoensso.timbre :as timbre]
-
+            [clojure.string :as string]
             [active.clojure.logger.internal :as internal]
             [active.clojure.monad :as monad]
             [active.clojure.record :refer [define-record-type]]))
