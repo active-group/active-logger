@@ -6,6 +6,5 @@
   :dependencies [[com.taoensso/timbre "4.10.0"]
                  [de.active-group/active-clojure "0.35.0"]
                  [de.active-group/timbre-riemann "0.2.0"]
-                 [riemann-clojure-client "0.5.1"]
-                 [timbre-logstash "0.3.0"]]
-  :repl-options {:init-ns active.clojure.logger.core})
+                 [cheshire "5.8.0"] ;; for logstash 3rd-party-appender of timbre
+                 [riemann-clojure-client "0.5.1"]])

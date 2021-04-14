@@ -1,7 +1,6 @@
 {:deps {com.taoensso/timbre            {:mvn/version "4.10.0"}
         de.active-group/active-clojure {:mvn/version "0.35.0"}
         de.active-group/timbre-riemann {:mvn/version "0.2.0"}
-        riemann-clojure-client         {:mvn/version "0.5.1"}
-        timbre-logstash                {:mvn/version "0.3.0"}}
+        riemann-clojure-client         {:mvn/version "0.5.1"}}
 
  :paths ["src"]}

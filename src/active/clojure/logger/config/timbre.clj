@@ -1,12 +1,12 @@
 (ns active.clojure.logger.config.timbre
-  (:require [active.timbre-logstash :as timbre-logstash]
-            [active.timbre-riemann :as timbre-riemann]
+  (:require [active.timbre-riemann :as timbre-riemann]
             [clojure.string :as string]
             [riemann.client :as riemann]
             [taoensso.encore :as encore]
             [taoensso.timbre :as timbre]
             [taoensso.timbre.appenders.core :as timbre-appenders]
             [taoensso.timbre.appenders.3rd-party.rotor :as timbre-rotor]
+            [taoensso.timbre.appenders.3rd-party.logstash :as timbre-logstash]
 
             [active.clojure.condition :as c]
             [active.clojure.condition-hooks :as condition-hooks]
@@ -178,8 +178,8 @@
                              (riemann/close! client))))))
 
 (defn logstash-appender [host port & [opts]]
-  (timbre-logstash/timbre-json-appender host port
-                                        (merge {:pr-stacktrace pr-exception-stacktrace} opts)))
+  (timbre-logstash/logstash-appender host port
+                                     (merge {:pr-stacktrace pr-exception-stacktrace} opts)))
 
 (defn rotor-appender [opts]
   (timbre-rotor/rotor-appender opts))
