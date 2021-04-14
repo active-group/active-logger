@@ -2,7 +2,6 @@
   (:require [clojure.test :refer [deftest is testing]]
             [active.clojure.monad :as monad]
             [active.clojure.mock-monad :as mock-monad]
-            [active.clojure.logger.core :as log]
             [active.clojure.logger.event :as event]
             [active.clojure.logger.metric :as metric]
             [active.clojure.logger.timed-metric :as timed-metric]))
