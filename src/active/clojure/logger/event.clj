@@ -1,7 +1,7 @@
 (ns active.clojure.logger.event
   "Facilities for logging events."
-  (:require [taoensso.timbre :as timbre]
-            [clojure.string :as string]
+  (:require [clojure.string :as string]
+            [active.clojure.logger.config.timbre :as timbre]
             [active.clojure.logger.internal :as internal]
             [active.clojure.monad :as monad]
             [active.clojure.record :refer [define-record-type]]))
@@ -9,25 +9,8 @@
 
 ;;;; Configuration
 
-(defonce timbre-default-config timbre/*config*) ;; actually not nil!
-
-(defn set-global-log-events-config!
-  [ec]
-  (timbre/set-config! ec))
-
-(defn destroy-timbre-config!
-  "Cleans up resources that might be held in result of [[make-timbre-config]] resp. [[configure-events-logging]]"
-  [timbre-config]
-  ;; we use a non-standard field :cleanup-fn in the appenders spec (see https://github.com/ptaoussanis/timbre/issues/217)
-  (doseq [[id appender] (:appenders timbre-config)]
-    (when-let [f (:cleanup-fn appender)]
-      (f appender))))
-
-(defn reset-global-log-events-config!
-  "Reset logging config to default, if it equals `compare`."
-  [compare]
-  (timbre/swap-config! #(if (= % compare) timbre-default-config %)))
-
+(def set-global-log-events-config! timbre/set-global-timbre-config!)
+(def set-global-log-events-config-from-map! timbre/set-global-timbre-config-from-map!)
 
 ;;;; Data definition and DSL
 

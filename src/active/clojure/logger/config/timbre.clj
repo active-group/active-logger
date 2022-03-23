@@ -13,16 +13,39 @@
             [active.clojure.config :as config]
             [active.clojure.logger.config.riemann :as logger-riemann]))
 
+(defonce timbre-default-config timbre/*config*) ;; actually not nil!
+
 ;; Basic and initial timbre config, before the config is loaded and
 ;; applied. Note that appenders defined here, are completely replace
 ;; with the configured appenders.
 (def basic-timbre-config ;; TODO: tune that a little
-  (dissoc timbre/example-config :appenders)) ;; we don't want to keep the initial appenders (a println-appender)
+  timbre/example-config)
+
+(defn destroy-timbre-config!
+  "Cleans up resources that might be held in result of [[make-timbre-config]] resp. [[configure-events-logging]]"
+  [timbre-config]
+  ;; we use a non-standard field :cleanup-fn in the appenders spec (see https://github.com/ptaoussanis/timbre/issues/217)
+  (doseq [[id appender] (:appenders timbre-config)]
+    (when-let [f (:cleanup-fn appender)]
+      (f appender))))
+
+(defn reset-global-timbre-config!
+  "Reset logging config to default, if it equals `compare`."
+  [compare]
+  (timbre/swap-config! #(if (= % compare) timbre-default-config %)))
+
+(defmacro with-context
+  [& args]
+  `(timbre/with-context ~@args))
+
+(def ^:dynamic *context* timbre/*context*)
 
 (defn make-timbre-config
   [cmap]
-  (encore/merge-deep basic-timbre-config cmap))
-
+  (if-let [appenders (:appenders cmap)]
+    ;; we don't want to keep the initial appenders (a println-appender)
+    (encore/merge-deep (dissoc basic-timbre-config :appenders) cmap)
+    (encore/merge-deep basic-timbre-config cmap)))
 
 (def log-events-command-config-setting
   (config/setting :log-events-command-config
@@ -249,23 +272,23 @@
           (assoc-in [:hostname_] hostname_)
           (assoc-in [:context :application] application)))))
 
-(defn configure-events-logging
+(defn configuration->timbre-config
   "Returns an object that can be fed to
-  [[set-global-log-events-config!]]."
-  [timbre-config]
+  [[set-global-timbre-config!]]."
+  [timbre-subconfig]
   (make-timbre-config
-   {:level          (config/access timbre-config timbre-level-setting)
+   {:level          (config/access timbre-subconfig timbre-level-setting)
     :appenders      (into {}
                      (map (fn [[k v]]
                             [k (timbre-spec->appender v)])
-                          (config/access timbre-config timbre-appenders-setting)))
-    :ns-whitelist   (config/access timbre-config timbre-ns-whitelist-setting)
-    :ns-blacklist   (config/access timbre-config timbre-ns-blacklist-setting)
-    :middleware     (conj (config/access timbre-config timbre-middleware-setting)
-                      (fixed-properties-timbre-middleware (config/access timbre-config timbre-hostname-setting)
-                                                          (config/access timbre-config timbre-application-setting)))
+                          (config/access timbre-subconfig timbre-appenders-setting)))
+    :ns-whitelist   (config/access timbre-subconfig timbre-ns-whitelist-setting)
+    :ns-blacklist   (config/access timbre-subconfig timbre-ns-blacklist-setting)
+    :middleware     (conj (config/access timbre-subconfig timbre-middleware-setting)
+                      (fixed-properties-timbre-middleware (config/access timbre-subconfig timbre-hostname-setting)
+                                                          (config/access timbre-subconfig timbre-application-setting)))
     :output-fn      output-fn
-    :timestamp-opts (let [tso (config/access timbre-config timbre-timestamp-opts-setting)]
+    :timestamp-opts (let [tso (config/access timbre-subconfig timbre-timestamp-opts-setting)]
                       {:pattern  (get tso :pattern)
                        :locale   (let [l (get tso :locale)]
                                  (if (string? l)
@@ -275,3 +298,11 @@
                                    (if (string? t)
                                      (java.util.TimeZone/getTimeZone ^String t)
                                      t))})}))
+
+(defn set-global-timbre-config!
+  [cmap]
+  (timbre/set-config! cmap))
+
+(defn set-global-timbre-config-from-map!
+  [cmap]
+  (set-global-timbre-config! (make-timbre-config cmap)))
