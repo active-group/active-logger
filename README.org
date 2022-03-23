@@ -7,40 +7,12 @@ Utilities and DSL for logging on top of [[https://github.com/ptaoussanis/timbre]
 * TL;DR
   If you just want to get going, here is a minimal working example on how to
   start logging events.
-  1. Add `active-logger` and `active-clojure` to your `deps.edn`:
+  1. Add =active-logger= and =active-clojure= to your =deps.edn=:
      #+begin_src clojure
-       {:deps {de.active-group/active-clojure {:mvn/version "0.35.0"}
-               de.active-group/active-logger  {:git/url "https://github.com/active-group/active-logger"
-                                               :sha     "d53a0a55211ec6a8aed0e3315e5dc7679f0f3f3e"}}}
+       {:deps {de.active-group/active-clojure {:mvn/version "0.40.0"}
+               de.active-group/active-logger  {:mvn/version "0.6.0"}}}
      #+end_src
-  2. Define the configuration to use and initialize the logging backend.
-     #+begin_src clojure
-       (ns my.app
-         (:require [active.clojure.config :as active-config]
-                   [active.clojure.logger.event :as event-logger]
-                   [active.clojure.logger.config.timbre :as timbre-config]))
-
-       (def config-map
-         {:timbre-config 
-          {:level :debug  ;; Log everything that is at least a :debug message.
-           :appenders
-           {;; Print messages to stdout/stderr.
-            :println '(println)
-            ;; Write messages to a file.
-            :spit '(spit "/tmp/my-app.log")
-            ;; Submit messages to a logstash instance.
-            :logstash '(logstash "localhost" 4660)}}})
-
-       (def schema (active-config/schema "Configuration schema." timbre-config/timbre-config-section))
-       (def config (active-config/make-configuration schema [] config-map))
-
-       ;; Initialize the event-logger.
-       (-> config
-           (active-config/section-subconfig timbre-config/timbre-config-section)
-           timbre-config/configure-events-logging
-           event-logger/set-global-log-events-config!)
-     #+end_src
-  3. Start logging some events:
+  2. Start logging some events:
      #+begin_src clojure
        (ns my.app
          (:require ...
@@ -48,8 +20,61 @@ Utilities and DSL for logging on top of [[https://github.com/ptaoussanis/timbre]
 
        (event-logger/log-event! :info "We are live!")
      #+end_src
+     The default configuration logs via =println= to =stdout=.
+
+  See [[examples/][examples/]] for example projects.
+
+** Change configuration
+
+   To adjust the configuration you can provide a [[http://ptaoussanis.github.io/timbre/taoensso.timbre.html#var-*config*][Timbre configuration map]]:
+     #+begin_src clojure
+       (ns my.app
+         (:require [active.clojure.logger.event :as event-logger]))
+       
+       (def timbre-config-map
+         {:min-level :debug  ;; Log everything that is at least a :debug message.
+          :appenders
+          {;; Print messages to stdout/stderr.
+           :println '(println)
+           ;; Write messages to a file.
+           :spit '(spit "/tmp/my-app.log")
+           ;; Submit messages to a logstash instance.
+           :logstash '(logstash "localhost" 4660)}})
+       
+       (event-logger/set-global-log-events-config-from-map! timbre-config-map)
+     #+end_src
+
+   Or use [[https://github.com/active-group/active-clojure][active-clojure]]'s =active.clojure.config= facilities:
+
+   #+begin_src clojure
+     (ns my.app
+       (:require [active.clojure.config :as active-config]
+                 [active.clojure.logger.event :as event-logger]
+                 [active.clojure.logger.config.timbre :as timbre-config]))
+     
+     (def config-map
+       {:timbre-config 
+        {:min-level :debug  ;; Log everything that is at least a :debug message.
+         :appenders
+         {;; Print messages to stdout/stderr.
+          :println '(println)
+          ;; Write messages to a file.
+          :spit '(spit "/tmp/my-app.log")
+          ;; Submit messages to a logstash instance.
+          :logstash '(logstash "localhost" 4660)}}})
+     
+     (def schema (active-config/schema "Configuration schema." timbre-config/timbre-config-section))
+     (def configuration (active-config/make-configuration schema [] config-map))
+     
+     ;; Initialize the event-logger.
+     (-> configuration
+         (active-config/section-subconfig timbre-config/timbre-config-section)
+         timbre-config/configuration->timbre-config
+         event-logger/set-global-log-events-config!)
+   #+end_src
+
 * Usage
-  =active-logger= is intended to be used alongside [[https://github.com/active-group/active-clojure][=active-clojure=]] and follows 
+  =active-logger= is intended to be used alongside [[https://github.com/active-group/active-clojure][active-clojure]] and follows 
   the same naming scheme (all =active-logger= namespaces can be found under 
   =active.clojure.logger=).
 
@@ -120,7 +145,7 @@ Utilities and DSL for logging on top of [[https://github.com/ptaoussanis/timbre]
    Functions to log events can be found in =active.clojure.logger.state-change=.
 * Configuration
   =active-logger= comes with two basic configuration sections: Timbre and Riemann.
-  For more information on =active.clojure.config=, refer to [[https://github.com/active-group/active-clojure][=active-clojure=]]'s documentation on the topic.
+  For more information on =active.clojure.config=, refer to [[https://github.com/active-group/active-clojure][active-clojure]]'s documentation on the topic.
   
   In general, to provide a configuration means to supply a map that contains
   only keys and values according to some schema defined as a 
