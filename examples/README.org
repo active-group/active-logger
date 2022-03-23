@@ -1,0 +1,3 @@
+# active.logger examples
+
+Run with =clj -X:app=.
