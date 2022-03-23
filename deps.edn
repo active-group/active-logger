@@ -1,5 +1,5 @@
-{:deps {com.taoensso/timbre            {:mvn/version "4.10.0"}
-        de.active-group/active-clojure {:mvn/version "0.35.0"}
+{:deps {com.taoensso/timbre            {:mvn/version "5.1.0"}
+        de.active-group/active-clojure {:mvn/version "0.40.0"}
         de.active-group/timbre-riemann {:mvn/version "0.2.0"}
         riemann-clojure-client         {:mvn/version "0.5.1"}}
 
