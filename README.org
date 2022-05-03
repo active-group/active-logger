@@ -3,6 +3,9 @@
 Utilities and DSL for logging on top of [[https://github.com/ptaoussanis/timbre][Timbre]] with support for [[https://github.com/riemann/riemann][Riemann]], 
 [[https://www.elastic.co/de/logstash][Logstash]], and more.
 
+One /goal/ of this library is to funnel log messages coming from
+different libraries that talk to =slf4j= into =active-logger=.
+
 [[https://img.shields.io/clojars/v/de.active-group/active-logger.svg]]
 * TL;DR
   If you just want to get going, here is a minimal working example on how to
@@ -73,6 +76,15 @@ Utilities and DSL for logging on top of [[https://github.com/ptaoussanis/timbre]
          event-logger/set-global-log-events-config!)
    #+end_src
 
+* Prerequisites
+For =active-logger= to work as expected, please make sure to exclude
+any direct or transitive dependencies on =org.slf4j/slf4j-log4j12=.
+You compiler should give you a warning along these lines if you still
+depend on it:
+
+#+begin_src
+SLF4J: Class path contains multiple SLF4J bindings.
+#+end_src
 * Usage
   =active-logger= is intended to be used alongside [[https://github.com/active-group/active-clojure][active-clojure]] and follows 
   the same naming scheme (all =active-logger= namespaces can be found under 
@@ -244,7 +256,46 @@ Utilities and DSL for logging on top of [[https://github.com/ptaoussanis/timbre]
   | =:key=     | If =:tls?= is true, use the specified TLS key-file.                                          | -            |
   | =:cert=    | If =:tls?= is true, use the specified TSL cert-file.                                         | -            |
   | =:ca-cert= | If =:tls?= is true, use the specified TSL CA cert-file.                                      | -            |
-   
+* Troubleshooting/Bad Players
+Certain libraries and frameworks are notorious for emitting log
+messages as soon as their namespaces are included.  This will happen
+before any configuration for =active-clojure= can be applied.
+Therefore, you need to handle each such scenario differently.  Refer
+to the Jetty example below to get an idea on how such problems might
+be fixed.
+** Jetty
+[[https://www.eclipse.org/jetty/][Jetty]] is one example of a bad player.  It will, as soon as any of it's
+namespaces are included, emit an 'announcement' message that will be
+printed to stdout as soon as your =ns=-declaration is evaluated:
+
+#+begin_src
+Logging to org.slf4j.impl.Log4jLoggerAdapter(org.eclipse.jetty.util.log) via org.eclipse.jetty.util.log.Slf4jLog
+Logging initialized @18641ms to org.eclipse.jetty.util.log.Slf4jLog
+#+end_src
+
+The solution is to disable the message is to
+
+- create a namespace, i.e. =my-project.disable-jetty-logs= that turns
+  off this message in particular
+- include that namespace in the namespace that will be called first
+  (usually the one that contains your =-main= function, likely
+  =core.clj=) *as the very first dependency*
+
+Example:
+
+#+begin_src clojure
+  ;; disable_jetty_logs.clj
+  (ns my-project.disable-jetty-logs)
+
+  (.setProperty (org.eclipse.jetty.util.log.Log/getProperties) "org.eclipse.jetty.util.log.announce" "false")
+
+  ;; core.clj
+  (ns my-project.core
+    (:require [my-project.disable-jetty-logs]
+              ...))  ; more imports
+#+end_src
+
+[[https://stackoverflow.com/a/53064639][This answer on StackOverflow]] led to this solution.
 * License
   Copyright © 2020 Active Group GmbH
 
