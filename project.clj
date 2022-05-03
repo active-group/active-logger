@@ -9,7 +9,7 @@
                  [de.active-group/active-clojure "0.40.0"]
                  [de.active-group/timbre-riemann "0.2.0"]
                  [cheshire "5.10.1"] ;; for logstash 3rd-party-appender of timbre
-                 [riemann-clojure-client "0.5.1" :exclusions [org.slf4j/slf4j-api]]
+                 [riemann-clojure-client "0.5.4"]
                  [org.slf4j/log4j-over-slf4j "1.7.36"]
                  [org.slf4j/jul-to-slf4j     "1.7.36"]
                  [org.slf4j/jcl-over-slf4j   "1.7.36"]])
