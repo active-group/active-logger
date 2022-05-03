@@ -5,7 +5,7 @@
             :url  "https://www.eclipse.org/legal/epl-2.0/"}
   :dependencies [[org.clojure/clojure "1.10.0" :scope "provided"]
                  [com.fzakaria/slf4j-timbre "0.3.21"]
-                 [com.taoensso/timbre "5.1.0"]
+                 [com.taoensso/timbre "5.2.1"]
                  [de.active-group/active-clojure "0.40.0"]
                  [de.active-group/timbre-riemann "0.2.0"]
                  [cheshire "5.10.1"] ;; for logstash 3rd-party-appender of timbre
