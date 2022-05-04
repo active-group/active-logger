@@ -299,7 +299,7 @@ Example:
 
 [[https://stackoverflow.com/a/53064639][This answer on StackOverflow]] led to this solution.
 * License
-Copyright © 2020 Active Group GmbH
+Copyright © 2022 Active Group GmbH
 
 This program and the accompanying materials are made available under the
 terms of the Eclipse Public License 2.0 which is available at
