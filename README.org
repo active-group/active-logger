@@ -8,73 +8,73 @@ java.util.logging (JUL), and Apache Commons Logging (JCL).
 
 [[https://img.shields.io/clojars/v/de.active-group/active-logger.svg]]
 * TL;DR
-  If you just want to get going, here is a minimal working example on how to
-  start logging events.
-  1. Add =active-logger= and =active-clojure= to your =deps.edn=:
-     #+begin_src clojure
-       {:deps {de.active-group/active-clojure {:mvn/version "0.40.0"}
-               de.active-group/active-logger  {:mvn/version "0.6.0"}}}
-     #+end_src
-  2. Start logging some events:
-     #+begin_src clojure
-       (ns my.app
-         (:require ...
-                   [active.clojure.logger.event :as event-logger]))
+If you just want to get going, here is a minimal working example on how to
+start logging events.
+   1. Add =active-logger= and =active-clojure= to your =deps.edn=:
+      #+begin_src clojure
+        {:deps {de.active-group/active-clojure {:mvn/version "0.40.0"}
+                de.active-group/active-logger  {:mvn/version "0.6.0"}}}
+      #+end_src
+   2. Start logging some events:
+      #+begin_src clojure
+        (ns my.app
+          (:require ...
+                    [active.clojure.logger.event :as event-logger]))
 
-       (event-logger/log-event! :info "We are live!")
-     #+end_src
-     The default configuration logs via =println= to =stdout=.
+        (event-logger/log-event! :info "We are live!")
+      #+end_src
+      The default configuration logs via =println= to =stdout=.
 
-  See [[examples/][examples/]] for example projects.
+      See [[examples/][examples/]] for example projects.
 
 ** Change configuration
 
-   To adjust the configuration you can provide a [[http://ptaoussanis.github.io/timbre/taoensso.timbre.html#var-*config*][Timbre configuration map]]:
-     #+begin_src clojure
-       (ns my.app
-         (:require [active.clojure.logger.event :as event-logger]))
-       
-       (def timbre-config-map
-         {:min-level :debug  ;; Log everything that is at least a :debug message.
-          :appenders
-          {;; Print messages to stdout/stderr.
-           :println '(println)
-           ;; Write messages to a file.
-           :spit '(spit "/tmp/my-app.log")
-           ;; Submit messages to a logstash instance.
-           :logstash '(logstash "localhost" 4660)}})
-       
-       (event-logger/set-global-log-events-config-from-map! timbre-config-map)
-     #+end_src
+To adjust the configuration you can provide a [[http://ptaoussanis.github.io/timbre/taoensso.timbre.html#var-*config*][Timbre configuration map]]:
+#+begin_src clojure
+  (ns my.app
+    (:require [active.clojure.logger.event :as event-logger]))
 
-   Or use [[https://github.com/active-group/active-clojure][active-clojure]]'s =active.clojure.config= facilities:
+  (def timbre-config-map
+    {:min-level :debug  ;; Log everything that is at least a :debug message.
+     :appenders
+     {;; Print messages to stdout/stderr.
+      :println '(println)
+      ;; Write messages to a file.
+      :spit '(spit "/tmp/my-app.log")
+      ;; Submit messages to a logstash instance.
+      :logstash '(logstash "localhost" 4660)}})
 
-   #+begin_src clojure
-     (ns my.app
-       (:require [active.clojure.config :as active-config]
-                 [active.clojure.logger.event :as event-logger]
-                 [active.clojure.logger.config.timbre :as timbre-config]))
-     
-     (def config-map
-       {:timbre-config 
-        {:min-level :debug  ;; Log everything that is at least a :debug message.
-         :appenders
-         {;; Print messages to stdout/stderr.
-          :println '(println)
-          ;; Write messages to a file.
-          :spit '(spit "/tmp/my-app.log")
-          ;; Submit messages to a logstash instance.
-          :logstash '(logstash "localhost" 4660)}}})
-     
-     (def schema (active-config/schema "Configuration schema." timbre-config/timbre-config-section))
-     (def configuration (active-config/make-configuration schema [] config-map))
-     
-     ;; Initialize the event-logger.
-     (-> configuration
-         (active-config/section-subconfig timbre-config/timbre-config-section)
-         timbre-config/configuration->timbre-config
-         event-logger/set-global-log-events-config!)
-   #+end_src
+  (event-logger/set-global-log-events-config-from-map! timbre-config-map)
+#+end_src
+
+Or use [[https://github.com/active-group/active-clojure][active-clojure]]'s =active.clojure.config= facilities:
+
+#+begin_src clojure
+  (ns my.app
+    (:require [active.clojure.config :as active-config]
+              [active.clojure.logger.event :as event-logger]
+              [active.clojure.logger.config.timbre :as timbre-config]))
+
+  (def config-map
+    {:timbre-config
+     {:min-level :debug  ;; Log everything that is at least a :debug message.
+      :appenders
+      {;; Print messages to stdout/stderr.
+       :println '(println)
+       ;; Write messages to a file.
+       :spit '(spit "/tmp/my-app.log")
+       ;; Submit messages to a logstash instance.
+       :logstash '(logstash "localhost" 4660)}}})
+
+  (def schema (active-config/schema "Configuration schema." timbre-config/timbre-config-section))
+  (def configuration (active-config/make-configuration schema [] config-map))
+
+  ;; Initialize the event-logger.
+  (-> configuration
+      (active-config/section-subconfig timbre-config/timbre-config-section)
+      timbre-config/configuration->timbre-config
+      event-logger/set-global-log-events-config!)
+#+end_src
 
 * Prerequisites
 For =active-logger= to work as expected, please make sure to exclude
@@ -88,176 +88,176 @@ depend on it:
 SLF4J: Class path contains multiple SLF4J bindings.
 #+end_src
 * Usage
-  =active-logger= is intended to be used alongside [[https://github.com/active-group/active-clojure][active-clojure]] and follows 
-  the same naming scheme (all =active-logger= namespaces can be found under 
-  =active.clojure.logger=).
+=active-logger= is intended to be used alongside [[https://github.com/active-group/active-clojure][active-clojure]] and follows 
+the same naming scheme (all =active-logger= namespaces can be found under 
+=active.clojure.logger=).
 
-  There are two basic ways to do logging with =active-logger=: Effectful and 
-  monadic.
-  In general, both of theses options are available for each logging function in 
-  =active-logger=.
+There are two basic ways to do logging with =active-logger=: Effectful and 
+monadic.
+In general, both of theses options are available for each logging function in 
+=active-logger=.
 ** Effectful
-   /Effectful/ logging refers to logging functions that immediately execute.
-   Usually they are signified by a bang (=!=) at the end of the var's name 
-   (i. e. =active.clojure.logger.event/log-event!=).
-   In any non-monadic execution context, use these functions for logging, 
-   metrics, etc.
+/Effectful/ logging refers to logging functions that immediately execute.
+Usually they are signified by a bang (=!=) at the end of the var's name 
+(i. e. =active.clojure.logger.event/log-event!=).
+In any non-monadic execution context, use these functions for logging, 
+metrics, etc.
 ** Monadic
-   /Monadic/ logging refers to logging functions that can be used to formulate 
-   the intent on logging at this location when executing a monadic program.
-   The log function will only be executed when the monadic program is run.
+/Monadic/ logging refers to logging functions that can be used to formulate 
+the intent on logging at this location when executing a monadic program.
+The log function will only be executed when the monadic program is run.
 
-   Monadic in this context means programs defined using =active.clojure.monad=.
+Monadic in this context means programs defined using =active.clojure.monad=.
 ** Example for /effectful/ and /monadic/ logging
-   #+begin_src clojure
-     (ns my.ns
-       (:require [active.clojure.config :as active-config]
-                 [active.clojure.logger.config.timbre :as timbre-config]
-                 [active.clojure.logger.event :as event-logger]
-                 [active.clojure.monad :as monad :refer [monadic]]))
+#+begin_src clojure
+  (ns my.ns
+    (:require [active.clojure.config :as active-config]
+              [active.clojure.logger.config.timbre :as timbre-config]
+              [active.clojure.logger.event :as event-logger]
+              [active.clojure.monad :as monad :refer [monadic]]))
 
-     ;; NOTE: Initialize as shown in TL;DR section.
+  ;; NOTE: Initialize as shown in TL;DR section.
 
-     ;; Effectful logging 
-     (let [res (+ 2 2)]
-       (event-logger/log-event! :trace (str "res =" res))
-       res)     
-     ;; 2020-07-11 15:19:02.659 host INFO [my.ns] TRACE - res = 4
-     ;; => 4
+  ;; Effectful logging 
+  (let [res (+ 2 2)]
+    (event-logger/log-event! :trace (str "res =" res))
+    res)     
+  ;; 2020-07-11 15:19:02.659 host INFO [my.ns] TRACE - res = 4
+  ;; => 4
 
 
-     ;; Monadic logging
-     (def prog (monadic [res (monad/return 4)]
-                        (event-logger/log-event :trace (str "res =" res))
-                        (monad/return 4)))
+  ;; Monadic logging
+  (def prog (monadic [res (monad/return 4)]
+                     (event-logger/log-event :trace (str "res =" res))
+                     (monad/return 4)))
 
-     (monad/run-free-reader-state-exception 
-      event-logger/log-events-command-config
-      prog)
-     ;; 2020-07-11 15:19:02.659 host INFO [my.ns] TRACE - res = 4
-     ;; => 4
-   #+end_src
+  (monad/run-free-reader-state-exception 
+   event-logger/log-events-command-config
+   prog)
+  ;; 2020-07-11 15:19:02.659 host INFO [my.ns] TRACE - res = 4
+  ;; => 4
+#+end_src
 * Components
-  =active-logger= includes several different entities that can be logged.
+=active-logger= includes several different entities that can be logged.
 ** Event
-   *Events* are reports of things that the system did that may be of interest 
-   for later perusal by system administrator in case of failures or by 
-   developers. 
-   Each event carries a /namespace/ saying where the event came from, and a 
-   /level/ that specifies how “important” the event is.
-   Functions to log events can be found in =active.clojure.logger.event=.
+*Events* are reports of things that the system did that may be of interest 
+for later perusal by system administrator in case of failures or by 
+developers. 
+Each event carries a /namespace/ saying where the event came from, and a 
+/level/ that specifies how “important” the event is.
+Functions to log events can be found in =active.clojure.logger.event=.
 ** Metrics
-   *Metrics* can be used to log metrics for specified parts of your system. 
-   Functions to log events can be found in =active.clojure.logger.metric=.
+*Metrics* can be used to log metrics for specified parts of your system. 
+Functions to log events can be found in =active.clojure.logger.metric=.
 ** Timed Metrics
-   *Timed metrics* can be used to log timing characteristics specified parts of 
-   your system. 
-   Functions to log events can be found in =active.clojure.logger.timed-metric=.
+*Timed metrics* can be used to log timing characteristics specified parts of 
+your system. 
+Functions to log events can be found in =active.clojure.logger.timed-metric=.
 ** State Change
-   *State changes* are for monitoring the live operation of a system. 
-   They announce for a certain system component its state, its /service/.
-   Functions to log events can be found in =active.clojure.logger.state-change=.
+*State changes* are for monitoring the live operation of a system. 
+They announce for a certain system component its state, its /service/.
+Functions to log events can be found in =active.clojure.logger.state-change=.
 * Configuration
-  =active-logger= comes with two basic configuration sections: Timbre and Riemann.
-  For more information on =active.clojure.config=, refer to [[https://github.com/active-group/active-clojure][active-clojure]]'s documentation on the topic.
+=active-logger= comes with two basic configuration sections: Timbre and Riemann.
+For more information on =active.clojure.config=, refer to [[https://github.com/active-group/active-clojure][active-clojure]]'s documentation on the topic.
   
-  In general, to provide a configuration means to supply a map that contains
-  only keys and values according to some schema defined as a 
-  =active.clojure.config/schema= and consumed by 
-  =active.clojure.config/make-configuration=.
+In general, to provide a configuration means to supply a map that contains
+only keys and values according to some schema defined as a 
+=active.clojure.config/schema= and consumed by 
+=active.clojure.config/make-configuration=.
 ** Timbre
-   There are lots of configuration options to define how the event logger should
-   behave.
-   For a full list of options, refer to [[./src/active/clojure/logger/config/timbre.clj][the respective sources]].
+There are lots of configuration options to define how the event logger should
+behave.
+For a full list of options, refer to [[./src/active/clojure/logger/config/timbre.clj][the respective sources]].
    
-   Here, we will cover the most important options:
+Here, we will cover the most important options:
 *** =:level=
-    *default*: =:debug=
+*default*: =:debug=
 
-    The minimum level a message must have to be printed.
-    Possible values are =#{:trace :debug :info :warn :error :fatal :report}=.
+The minimum level a message must have to be printed.
+Possible values are =#{:trace :debug :info :warn :error :fatal :report}=.
 *** =:appenders=
-    *default*: ={:println (println)}=
+*default*: ={:println (println)}=
     
-    Defines how messages are printed (=stdout=, to a file, ...).
-    An appender spec is a list starting with one of 
-    ={spit, rotor, logstash, println}=,
-    followed by keyword parameters corresponding to the respective appender.
+Defines how messages are printed (=stdout=, to a file, ...).
+An appender spec is a list starting with one of 
+={spit, rotor, logstash, println}=,
+followed by keyword parameters corresponding to the respective appender.
     
-    Multiple appenders can be configured and active at the same time.
-    A full example of an appender configuration might look like this:
-    #+begin_src clojure
-      {:appenders {:split   (spit {:fname "/tmp/app.log"})
-                   :riemann (riemann {:host "localhost"
-                                      :port 5555})
-                   :println (println)}}
-    #+end_src
+Multiple appenders can be configured and active at the same time.
+A full example of an appender configuration might look like this:
+#+begin_src clojure
+  {:appenders {:split   (spit {:fname "/tmp/app.log"})
+               :riemann (riemann {:host "localhost"
+                                  :port 5555})
+               :println (println)}}
+#+end_src
 **** Appender: spit
-     Specifies an appender that writes to a file, specified via the =:fname=
-     setting.
-     Example: ={:spit (spit {:fname "my.log"})}=
+Specifies an appender that writes to a file, specified via the =:fname=
+setting.
+Example: ={:spit (spit {:fname "my.log"})}=
 **** Appender: rotor
-     Specifies an appender that writes to a file and rotates the file when it 
-     reaches a given file size. 
-     It accepts the following settings:
-     | option      | description                                                                            | default                |
-     |-------------+----------------------------------------------------------------------------------------+------------------------|
-     | =:path=     | Path to log file. file, historical versions are suffixed with a 3-digit index.         | ="./timbre-rotor.log"= |
-     | =:max-size= | Maximum size of a log file in bytes. Log files are rotated when they exceed this size. | 1.048.576 bytes (1~MB) |
-     | =:backlog=  | Number of rotated logs to keep.                                                        | =5=                    |
-     Example:
-     #+begin_src clojure
-       {:rotor (rotor {:path "/tmp/project.log" 
-                       :max-size 1073741824
-                       :backlog 999})}
-     #+end_src
+Specifies an appender that writes to a file and rotates the file when it 
+reaches a given file size. 
+It accepts the following settings:
+| option      | description                                                                            | default                |
+|-------------+----------------------------------------------------------------------------------------+------------------------|
+| =:path=     | Path to log file. file, historical versions are suffixed with a 3-digit index.         | ="./timbre-rotor.log"= |
+| =:max-size= | Maximum size of a log file in bytes. Log files are rotated when they exceed this size. | 1.048.576 bytes (1~MB) |
+| =:backlog=  | Number of rotated logs to keep.                                                        | =5=                    |
+Example:
+#+begin_src clojure
+  {:rotor (rotor {:path "/tmp/project.log" 
+                  :max-size 1073741824
+                  :backlog 999})}
+#+end_src
 **** Appender: println
-     Specifies an appender that will print regular log entries to stdout, errors to stderr.
-     Example: ={:println (println)}=
+Specifies an appender that will print regular log entries to stdout, errors to stderr.
+Example: ={:println (println)}=
 **** Appender: logstash
-     Specifies an appender that writes to a Logstash instance.
-     It takes two arguments: the host name, and the port number of the Logstash instance.
-     Example: ={:logstash (logstash "localhost" 4660)}=
+Specifies an appender that writes to a Logstash instance.
+It takes two arguments: the host name, and the port number of the Logstash instance.
+Example: ={:logstash (logstash "localhost" 4660)}=
 **** Appender: riemann
-     Specifies an appender that writes to a Riemann instance.
-     It accepts the following settings:
-     | option  | description                       | default     |
-     |---------+-----------------------------------+-------------|
-     | =:host= | The host Riemann is served on.    | "localhost" |
-     | =:port= | The host Riemann is listening on. | 5555        |
-     Example
-     #+begin_src clojure
-       {:riemann (riemann {:host "localhost" 
-                           :port 5555})}
-     #+end_src
+Specifies an appender that writes to a Riemann instance.
+It accepts the following settings:
+| option  | description                       | default     |
+|---------+-----------------------------------+-------------|
+| =:host= | The host Riemann is served on.    | "localhost" |
+| =:port= | The host Riemann is listening on. | 5555        |
+Example
+#+begin_src clojure
+  {:riemann (riemann {:host "localhost" 
+                      :port 5555})}
+#+end_src
 *** =:ns-blacklist=
-    It is possible to ignore specific namespaces in the log-output.
-    =ns-blacklist='s value it a sequence of glob-patterns.
-    Matches will be ignored.
-    Example: ={:ns-blacklist ["my.project.internal.*"]}=
+It is possible to ignore specific namespaces in the log-output.
+=ns-blacklist='s value it a sequence of glob-patterns.
+Matches will be ignored.
+Example: ={:ns-blacklist ["my.project.internal.*"]}=
 *** =:ns-whitelist=
-    Converse of =ns-blacklist=: All specified patterns are included in the log
-    output, everything else is ignored.
-    Example:  ={:ns-whitelist ["nothing.else.matters"]}=
+Converse of =ns-blacklist=: All specified patterns are included in the log
+output, everything else is ignored.
+Example:  ={:ns-whitelist ["nothing.else.matters"]}=
 *** =:timestamp-opts=
-    Section containing three settings related to how timestamps are formatted in 
-    logs: 
-   | option      | description                                                                                                                                                                                                                                                      |
-   |-------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-   | =:pattern=  | Pattern for the timestamp (see [[http://docs.oracle.com/javase/7/docs/api/java/text/SimpleDateFormat.html][SimpleDateFormat]])                                                                                                                                                                                                                 |
-   | =:locale=   | This is an IETF BCP 47 language tag string specifying the locale such as ="de-DE"= or ="en-US"= or =:jvm-default=.                                                                                                                                               |
-   | =:timezone= | This is an ID for the time zone relative to which log entry dates should formatted. This can be a full name such as ="Germany/Berlin"=, or a custom ID such as ="GMT-8:00"=. The value may also be =:jvm-default= for the default time zone, and =:utc= for UTC. |
+Section containing three settings related to how timestamps are formatted in 
+logs: 
+| option      | description                                                                                                                                                                                                                                                      |
+|-------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| =:pattern=  | Pattern for the timestamp (see [[http://docs.oracle.com/javase/7/docs/api/java/text/SimpleDateFormat.html][SimpleDateFormat]])                                                                                                                                                                                                                 |
+| =:locale=   | This is an IETF BCP 47 language tag string specifying the locale such as ="de-DE"= or ="en-US"= or =:jvm-default=.                                                                                                                                               |
+| =:timezone= | This is an ID for the time zone relative to which log entry dates should formatted. This can be a full name such as ="Germany/Berlin"=, or a custom ID such as ="GMT-8:00"=. The value may also be =:jvm-default= for the default time zone, and =:utc= for UTC. |
 ** Riemann
-   Here are the configuration settings for Riemann. They happen in the 
-   =:riemann= section:
-  | option     | description                                                                                  | default      |
-  |------------+----------------------------------------------------------------------------------------------+--------------|
-  | =:host=    | String specifying the host where Riemann runs.                                               | ="127.0.0.1= |
-  | =:port=    | Port where Riemann runs.                                                                     | =5555=       |
-  | =:tls?=    | Specifies whether the communication with Riemann should use TLS. It can be =true= or =false= | =false=      |
-  | =:key=     | If =:tls?= is true, use the specified TLS key-file.                                          | -            |
-  | =:cert=    | If =:tls?= is true, use the specified TSL cert-file.                                         | -            |
-  | =:ca-cert= | If =:tls?= is true, use the specified TSL CA cert-file.                                      | -            |
+Here are the configuration settings for Riemann. They happen in the 
+=:riemann= section:
+| option     | description                                                                                  | default      |
+|------------+----------------------------------------------------------------------------------------------+--------------|
+| =:host=    | String specifying the host where Riemann runs.                                               | ="127.0.0.1= |
+| =:port=    | Port where Riemann runs.                                                                     | =5555=       |
+| =:tls?=    | Specifies whether the communication with Riemann should use TLS. It can be =true= or =false= | =false=      |
+| =:key=     | If =:tls?= is true, use the specified TLS key-file.                                          | -            |
+| =:cert=    | If =:tls?= is true, use the specified TSL cert-file.                                         | -            |
+| =:ca-cert= | If =:tls?= is true, use the specified TSL CA cert-file.                                      | -            |
 * Troubleshooting/Bad Players
 Certain libraries and frameworks are notorious for emitting log
 messages as soon as their namespaces are included.  This will happen
@@ -299,15 +299,15 @@ Example:
 
 [[https://stackoverflow.com/a/53064639][This answer on StackOverflow]] led to this solution.
 * License
-  Copyright © 2020 Active Group GmbH
+Copyright © 2020 Active Group GmbH
 
-  This program and the accompanying materials are made available under the
-  terms of the Eclipse Public License 2.0 which is available at
-  http://www.eclipse.org/legal/epl-2.0.
+This program and the accompanying materials are made available under the
+terms of the Eclipse Public License 2.0 which is available at
+http://www.eclipse.org/legal/epl-2.0.
 
-  This Source Code may also be made available under the following Secondary
-  Licenses when the conditions for such availability set forth in the Eclipse
-  Public License, v. 2.0 are satisfied: GNU General Public License as published by
-  the Free Software Foundation, either version 2 of the License, or (at your
-  option) any later version, with the GNU Classpath Exception which is available
-  at https://www.gnu.org/software/classpath/license.html.
+This Source Code may also be made available under the following Secondary
+Licenses when the conditions for such availability set forth in the Eclipse
+Public License, v. 2.0 are satisfied: GNU General Public License as published by
+the Free Software Foundation, either version 2 of the License, or (at your
+option) any later version, with the GNU Classpath Exception which is available
+at https://www.gnu.org/software/classpath/license.html.
