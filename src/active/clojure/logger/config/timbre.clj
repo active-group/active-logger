@@ -52,11 +52,23 @@
                   "Monad command config for running event log commands."
                   (config/one-of-range #{:timbre} :timbre)))
 
+;; Since inception of `active-logger`, timbre's api changed the key
+;; from :level to :log-level.  We will support both options, with
+;; :min-level taking precedence over :level if both are configured.
+;; See https://github.com/ptaoussanis/timbre/releases/tag/v5.0.0
+(def timbre-min-level-setting
+  (config/setting :min-level
+                  "Log level for Timbre"
+                  (config/optional-range
+                   (config/one-of-range #{:trace :debug :info :warn :error :fatal :report}
+                                        :debug))))
+
 (def timbre-level-setting
   (config/setting :level
-                  "Log level for Timbre"
-                  (config/one-of-range #{:trace :debug :info :warn :error :fatal :report}
-                                       :debug)))
+                  "Log level for Timbre.  If both :min-level and :level are configured, :min-level takes precedence over :level."
+                  (config/optional-range
+                   (config/one-of-range #{:trace :debug :info :warn :error :fatal :report}
+                                        :debug))))
 
 (def timbre-appenders-setting
   (config/setting :appenders
@@ -130,6 +142,7 @@
                   (config/schema
                    "Configuration for Timbre, merged into the default configuration."
                    ;; These could use fleshing out.  Or not.
+                   timbre-min-level-setting
                    timbre-level-setting
                    timbre-appenders-setting
                    timbre-ns-whitelist-setting
@@ -272,12 +285,21 @@
           (assoc-in [:hostname_] hostname_)
           (assoc-in [:context :application] application)))))
 
+(def timbre-default-min-level :debug)
+
 (defn configuration->timbre-config
   "Returns an object that can be fed to
   [[set-global-timbre-config!]]."
   [timbre-subconfig]
   (make-timbre-config
-   {:level          (config/access timbre-subconfig timbre-level-setting)
+   {:min-level      (or (config/access timbre-subconfig timbre-min-level-setting)
+                        (config/access timbre-subconfig timbre-level-setting)
+                        ;; Since both configuration settings are
+                        ;; optional, if none are configured, they will
+                        ;; both be `nil`.  That's why we pass :debug
+                        ;; as the default here (which matches timbre's
+                        ;; default).
+                        timbre-default-min-level)
     :appenders      (into {}
                      (map (fn [[k v]]
                             [k (timbre-spec->appender v)])
