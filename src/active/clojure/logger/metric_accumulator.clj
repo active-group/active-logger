@@ -11,7 +11,8 @@
   (atom {}))
 
 ;; FIXME: document assertions == types of fields
-(define-record-type ^{:doc "Metric key. ..."}
+(define-record-type ^{:doc "Metric key with it's `name` and `labels`, where
+`name` must be a string and `labels` must be a map."}
   MetricKey
   really-make-metric-key
   metric-key?
@@ -45,6 +46,9 @@
   (swap! a-metrics assoc metric-key metric-value))
 
 (defn update-metric-value
+  "Update a metric-value by applying `f` to the values of `metric-value-1` and
+  `metric-value-2` and setting the timestamp to `metric-value-2`s timestamp. If
+  `metric-value-1` is `nil` take `metric-value-2`."
   [f metric-value-1 metric-value-2]
   (if metric-value-1
     (-> metric-value-1
@@ -52,11 +56,15 @@
         (metric-value-timestamp (metric-value-timestamp metric-value-2)))
     metric-value-2))
 
-(def inc-metric-value (partial update-metric-value inc))
+(def sum-metric-value (partial update-metric-value +))
 
 (defn inc-metric!
+  "Find a metric with `metric-key` in `a-metrics` and update this metric's value
+  by adding `metric-value` to the current metric's value and setting the
+  timestamp of `metric-value`. If the metric is not in `a-metrics` it will be
+  added as `metric-key` with `metric-value`."
   [a-metrics metric-key metric-value]
-  (swap! a-metrics update metric-key inc-metric-value metric-value))
+  (swap! a-metrics update metric-key sum-metric-value metric-value))
 
 (defn get-metric-sample!
   [a-metrics metric-key]
@@ -118,22 +126,23 @@
 
 (defn run-metrics
   [_run-any env state m]
-  (let [_metrics (::metrics env)]
+  (let [metrics (::metrics env)]
     (cond
       (set-metric? m)
-      [(set-metric! (set-metric-metric-key m)
-                    (set-metric-value m)
-                    (set-metric-timestamp m))
+      [(set-metric! metrics
+                    (set-metric-metric-key m)
+                    (set-metric-value m))
        state]
 
       (inc-metric? m)
-      [(inc-metric! (inc-metric-metric-key m)
-                    (inc-metric-value m)
-                    (inc-metric-timestamp m))
+      [(inc-metric! metrics
+                    (inc-metric-metric-key m)
+                    (inc-metric-value m))
        state]
 
       (get-metric-sample? m)
-      [(get-metric-sample! (get-metric-sample-metric-key m))
+      [(get-metric-sample! metrics
+                           (get-metric-sample-metric-key m))
        state]
 
       :else
