@@ -10,7 +10,6 @@
   []
   (atom {}))
 
-;; FIXME: document assertions == types of fields
 (define-record-type ^{:doc "Metric key with it's `name` and `labels`, where
 `name` must be a string and `labels` must be a map."}
   MetricKey
@@ -25,30 +24,53 @@
   (assert (map? labels) "labels must be a map")
   (really-make-metric-key name labels))
 
-(define-record-type ^{:doc "Metric value."}
+(define-record-type ^{:doc "Metric value with it's `value` and `timestamp`,
+where `value` must be a number and ``timestamp` must be a number or nil."}
   MetricValue
-  make-metric-value
+  really-make-metric-value
   metric-value?
   [value metric-value-value
    timestamp metric-value-timestamp])
 
-(define-record-type ^{:doc "Metric sample."}
+(defn make-metric-value
+  [value timestamp]
+  (assert (number? value) "value must be a number")
+  (assert (or (number? timestamp) (nil? timestamp))
+          "timestamp must be a number or nil")
+  (really-make-metric-value value timestamp))
+
+(define-record-type ^{:doc "Metric sample with the sum of the fields of
+`MetricKey` and `MetricValue` and the same constraints."}
   MetricSample
-  make-metric-sample
+  really-make-metric-sample
   metric-sample?
   [name metric-sample-name
    labels metric-sample-labels
    value metric-sample-value
    timestamp metric-sample-timestamp])
 
+(defn make-metric-sample
+  [name labels value timestamp]
+  (assert (string? name) "name must be a string")
+  (assert (map? labels) "labels must be a map")
+  (assert (number? value) "value must be a number")
+  (assert (or (number? timestamp) (nil? timestamp))
+          "timestamp must be a number or nil")
+  really-make-metric-sample name labels value timestamp)
+
 (defn set-metric!
+  "Sets a `metric-value` (`MetricValue`) for the given `metric-key`
+  (`MetricKey`) in `a-metrics` (`Map`). If `metric-key` is not in `a-metrics`
+  key and value are added, otherwise the value of `metric-key` will be
+  overwritten."
   [a-metrics metric-key metric-value]
   (swap! a-metrics assoc metric-key metric-value))
 
+;; Update a metric-value (`MetricValue`) by applying a function `f` to the
+;; `value`s of `metric-value-1` (`MetricValue`) and `metric-value-2`
+;; (`MetricValue`) and setting the `timestamp` to `metric-value-2`s timestamp.
+;; If `metric-value-1` is `nil` take `metric-value-2`.
 (defn update-metric-value
-  "Update a metric-value by applying `f` to the values of `metric-value-1` and
-  `metric-value-2` and setting the timestamp to `metric-value-2`s timestamp. If
-  `metric-value-1` is `nil` take `metric-value-2`."
   [f metric-value-1 metric-value-2]
   (if metric-value-1
     (-> metric-value-1
@@ -59,10 +81,11 @@
 (def sum-metric-value (partial update-metric-value +))
 
 (defn inc-metric!
-  "Find a metric with `metric-key` in `a-metrics` and update this metric's value
-  by adding `metric-value` to the current metric's value and setting the
-  timestamp of `metric-value`. If the metric is not in `a-metrics` it will be
-  added as `metric-key` with `metric-value`."
+  "Find a metric with `metric-key` (`MetricKey`) in the `a-metrics` (`Map`) and
+  update this metric's value (`MetricValue`) by adding `metric-value` to the
+  current metric's `value` and setting the `timestamp` of `metric-value`. If the
+  metric is not in `a-metrics` it will be added as `metric-key` with
+  `metric-value`."
   [a-metrics metric-key metric-value]
   (swap! a-metrics update metric-key sum-metric-value metric-value))
 

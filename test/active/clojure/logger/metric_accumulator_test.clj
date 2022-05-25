@@ -4,8 +4,6 @@
             [active.clojure.monad :as monad]
             [active.clojure.mock-monad :as mock-monad]))
 
-;; DATA
-
 (t/deftest t-fresh-metrics
   (t/testing "fresh-metrics is created empty"
     (t/is (some? (m/fresh-metrics)))
@@ -20,6 +18,9 @@
       (t/is (m/metric-key? example-metric-key))
       (t/is (= "test-metric" (m/metric-key-name example-metric-key)))
       (t/is (= {:label-1 :value-1} (m/metric-key-labels example-metric-key))))))
+
+(t/deftest t-make-metric-value)
+(t/deftest t-make-metric-sample)
 
 (t/deftest t-set-metric!
   (t/testing "basic setting and getting of one metric works"
@@ -77,28 +78,25 @@
       (t/is (= (m/make-metric-value 24 2)
                (m/update-metric-value + example-metric-value-1 example-metric-value-2))
             "Add value-1 and value-2. Take timestamp from 2.")))
-  (t/testing "Values and timestamp can be any type and even nil."
-    (let [example-metric-value-1 (m/make-metric-value nil nil)
-          example-metric-value-2 (m/make-metric-value nil nil)]
-      (t/is (= (m/make-metric-value "" nil)
-               (m/update-metric-value str example-metric-value-1 example-metric-value-2))))
-    (let [example-metric-value-1 (m/make-metric-value nil nil)
-          example-metric-value-2 (m/make-metric-value "b" nil)]
-      (t/is (= (m/make-metric-value "b" nil)
-               (m/update-metric-value str example-metric-value-1 example-metric-value-2))))
-    (let [example-metric-value-1 (m/make-metric-value "a" nil)
-          example-metric-value-2 (m/make-metric-value "b" nil)]
-      (t/is (= (m/make-metric-value "ab" nil)
-               (m/update-metric-value str example-metric-value-1 example-metric-value-2))))
-    (let [example-metric-value-1 (m/make-metric-value "a" nil)
-          example-metric-value-2 (m/make-metric-value "b" "my-time")]
-      (t/is (= (m/make-metric-value "ab" "my-time")
-               (m/update-metric-value str example-metric-value-1 example-metric-value-2)))))
   (t/testing "The function may not be null."
     (let [example-metric-value-1 (m/make-metric-value 23 1)
           example-metric-value-2 (m/make-metric-value 1 2)]
       (t/is (thrown? NullPointerException
                      (m/update-metric-value nil example-metric-value-1 example-metric-value-2))))))
+
+(t/deftest t-sum-metric-value
+  (t/testing "Adds metric-values and nothing else."
+    (let [example-metric-value-1 (m/make-metric-value 23 1)
+          example-metric-value-2 (m/make-metric-value 1 2)]
+      (t/is (= example-metric-value-2
+               (m/sum-metric-value nil example-metric-value-2))
+            "If there is no base value, just take the second.")
+      (t/is (thrown? NullPointerException
+                     (m/sum-metric-value example-metric-value-1 nil))
+            "metric-value-2 must not be nil")
+      (t/is (= (m/make-metric-value 24 2)
+               (m/sum-metric-value example-metric-value-1 example-metric-value-2))
+            "Add value-1 and value-2. Take timestamp from 2."))))
 
 (t/deftest t-inc-metric!
   (t/testing "Basic increasing metric works"
@@ -158,20 +156,6 @@
       (m/inc-metric! metrics example-metric-key example-metric-value-2)
       (t/is (= (m/make-metric-sample "test-metric" {nil :value-1} 33 2)
                (m/get-metric-sample! metrics example-metric-key))))
-    (let [metrics (m/fresh-metrics)
-          example-metric-key (m/make-metric-key "test-metric" {:label-1 :value-1})
-          example-metric-value-1 (m/make-metric-value nil 1)
-          example-metric-value-2 (m/make-metric-value 10 2)]
-      (m/inc-metric! metrics example-metric-key example-metric-value-1)
-      (t/is (thrown? NullPointerException
-                     (m/inc-metric! metrics example-metric-key example-metric-value-2))))
-    (let [metrics (m/fresh-metrics)
-          example-metric-key (m/make-metric-key "test-metric" {:label-1 :value-1})
-          example-metric-value-1 (m/make-metric-value 23 1)
-          example-metric-value-2 (m/make-metric-value nil 2)]
-      (m/inc-metric! metrics example-metric-key example-metric-value-1)
-      (t/is (thrown? NullPointerException
-                     (m/inc-metric! metrics example-metric-key example-metric-value-2))))
     (let [metrics (m/fresh-metrics)
           example-metric-key (m/make-metric-key "test-metric" {:label-1 :value-1})
           example-metric-value-1 (m/make-metric-value 23 nil)
