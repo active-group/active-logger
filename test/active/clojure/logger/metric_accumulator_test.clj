@@ -1,6 +1,8 @@
 (ns active.clojure.logger.metric-accumulator-test
   (:require [active.clojure.logger.metric-accumulator :as m]
-            [clojure.test :as t]))
+            [clojure.test :as t]
+            [active.clojure.monad :as monad]
+            [active.clojure.mock-monad :as mock-monad]))
 
 ;; DATA
 
@@ -257,3 +259,16 @@
                 (m/make-metric-sample "test-metric-3" {:label-3 :value-1} 33 2),
                 (m/make-metric-sample "test-metric-4" {:label-4 :value-4} 69 3)]
                (m/get-metric-samples! metrics))))))
+
+(t/deftest t-monadic-set-get
+  (t/testing "monadic setting and getting works"
+    (let [result
+          (mock-monad/mock-run-monad
+            (m/monad-command-config)
+            []
+            (let [example-metric-key (m/make-metric-key "test-metric" {:label-1 :value-1})]
+              (monad/monadic
+                (m/set-metric example-metric-key (m/make-metric-value 23 1))
+                (m/get-metric-sample example-metric-key))))]
+      (t/is (= (m/make-metric-sample "test-metric" {:label-1 :value-1} 23 1)
+               result)))))

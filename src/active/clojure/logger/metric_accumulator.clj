@@ -105,12 +105,12 @@
 
 (define-record-type ^{:doc "Monadic command for getting metrics."}
   GetMetricSample
-  (make-get-metric-sample metric-key)
+  (get-metric-sample metric-key)
   get-metric-sample?
   [metric-key get-metric-sample-metric-key])
 
 (defn with-maybe-timestamp
-  [f metric value & [timestamp]]
+  [f metric-key metric-value & [timestamp]]
   (monad/monadic
     ;; https://prometheus.io/docs/instrumenting/writing_exporters/
     ;; "You should not set timestamps on the metrics you expose, let Prometheus
@@ -118,7 +118,7 @@
     #_[timestamp (if timestamp
                    (monad/return timestamp)
                    (timeout/get-milli-time))]
-    (f metric value timestamp)))
+    (f metric-key metric-value timestamp)))
 
 (def set-metric (partial with-maybe-timestamp make-set-metric))
 
@@ -212,7 +212,6 @@
 
 (defn monad-command-config
   [& [metrics]]
-  (fn [_label _inject-event-fn _get-milli-time-fn]
-    (monad/make-monad-command-config
-      run-metrics
-      {::metrics (or metrics (fresh-metrics))} {})))
+  (monad/make-monad-command-config
+    run-metrics
+    {::metrics (or metrics (fresh-metrics))} {}))
