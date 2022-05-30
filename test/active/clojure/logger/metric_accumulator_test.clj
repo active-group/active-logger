@@ -31,24 +31,24 @@
 
 (t/deftest t-set-metric!
   (t/testing "basic setting and getting of one metric works"
-    (let [metrics (m/fresh-metrics)
+    (let [metrics            (m/fresh-metrics)
           example-metric-key (m/make-metric-key "test-metric" {:label-1 :value-1})]
       (m/set-metric! metrics example-metric-key (m/make-metric-value 23 1))
       (t/is (= (m/make-metric-sample "test-metric" {:label-1 :value-1} 23 1)
-             (m/get-metric-sample! metrics example-metric-key)))))
+               (m/get-metric-sample! metrics example-metric-key)))))
 
   (t/testing "basic setting and resetting and getting of one metric works"
-    (let [metrics (m/fresh-metrics)
+    (let [metrics            (m/fresh-metrics)
           example-metric-key (m/make-metric-key "test-metric" {:label-1 :value-1})]
       (m/set-metric! metrics example-metric-key (m/make-metric-value 23 1))
       (t/is (= (m/make-metric-sample "test-metric" {:label-1 :value-1} 23 1)
-             (m/get-metric-sample! metrics example-metric-key)))
+               (m/get-metric-sample! metrics example-metric-key)))
       (m/set-metric! metrics example-metric-key (m/make-metric-value 42 2))
       (t/is (= (m/make-metric-sample "test-metric" {:label-1 :value-1} 42 2)
                (m/get-metric-sample! metrics example-metric-key)))))
 
   (t/testing "Metrics are different: Same metric name, but different labels."
-    (let [metrics (m/fresh-metrics)
+    (let [metrics              (m/fresh-metrics)
           example-metric-key-1 (m/make-metric-key "same-name" {:label-1 :value-1})
           example-metric-key-2 (m/make-metric-key "same-name" {:label-1 :value-2})]
       (m/set-metric! metrics example-metric-key-1 (m/make-metric-value 23 1))
@@ -61,7 +61,7 @@
                (m/get-metric-sample! metrics example-metric-key-2)))))
 
   (t/testing "Metrics are different: Different metric names, but same labels."
-    (let [metrics (m/fresh-metrics)
+    (let [metrics              (m/fresh-metrics)
           example-metric-key-1 (m/make-metric-key "test-metric-1" {:label-1 :value-1})
           example-metric-key-2 (m/make-metric-key "test-metric-2" {:label-1 :value-1})]
       (m/set-metric! metrics example-metric-key-1 (m/make-metric-value 23 1))
@@ -79,7 +79,7 @@
           example-metric-value-2 (m/make-metric-value 1 2)]
       (t/is (= example-metric-value-2
                (m/update-metric-value + nil example-metric-value-2))
-               "If there is no base value, just take the second.")
+            "If there is no base value, just take the second.")
       (t/is (= (m/make-metric-value 24 2)
                (m/update-metric-value + example-metric-value-1 example-metric-value-2))
             "Add value-1 and value-2. Take timestamp from 2."))))
@@ -100,15 +100,15 @@
 
 (t/deftest t-inc-metric!
   (t/testing "Basic increasing metric works"
-    (let [metrics (m/fresh-metrics)
-          example-metric-key (m/make-metric-key "test-metric" {:label-1 :value-1})
+    (let [metrics              (m/fresh-metrics)
+          example-metric-key   (m/make-metric-key "test-metric" {:label-1 :value-1})
           example-metric-value (m/make-metric-value 23 1)]
       (m/inc-metric! metrics example-metric-key example-metric-value)
       (t/is (= (m/make-metric-sample "test-metric" {:label-1 :value-1} 23 1)
                (m/get-metric-sample! metrics example-metric-key))
             "If the metric is not in metrics, just add it."))
-    (let [metrics (m/fresh-metrics)
-          example-metric-key (m/make-metric-key "test-metric" {:label-1 :value-1})
+    (let [metrics                (m/fresh-metrics)
+          example-metric-key     (m/make-metric-key "test-metric" {:label-1 :value-1})
           example-metric-value-1 (m/make-metric-value 23 1)
           example-metric-value-2 (m/make-metric-value 23 2)]
       (m/set-metric! metrics example-metric-key example-metric-value-1)
@@ -119,14 +119,14 @@
 
 (t/deftest t-get-metric-sample!
   (t/testing "Getting metrics after simple set and inc operations works."
-    (let [metrics (m/fresh-metrics)
+    (let [metrics            (m/fresh-metrics)
           example-metric-key (m/make-metric-key "test-metric" {:label-1 :value-1})]
       (t/is (nil? (m/get-metric-sample! metrics example-metric-key))))
-    (let [metrics (m/fresh-metrics)
-          example-metric-key-1 (m/make-metric-key "test-metric-1" {:label-1 :value-1})
-          example-metric-key-2 (m/make-metric-key "test-metric-2" {:label-1 :value-2})
-          example-metric-key-3 (m/make-metric-key "test-metric-3" {:label-3 :value-1})
-          example-metric-key-4 (m/make-metric-key "test-metric-4" {:label-4 :value-4})
+    (let [metrics                (m/fresh-metrics)
+          example-metric-key-1   (m/make-metric-key "test-metric-1" {:label-1 :value-1})
+          example-metric-key-2   (m/make-metric-key "test-metric-2" {:label-1 :value-2})
+          example-metric-key-3   (m/make-metric-key "test-metric-3" {:label-3 :value-1})
+          example-metric-key-4   (m/make-metric-key "test-metric-4" {:label-4 :value-4})
           example-metric-value-1 (m/make-metric-value 23 1)
           example-metric-value-2 (m/make-metric-value 33 2)
           example-metric-value-3 (m/make-metric-value 13 3)]
@@ -152,11 +152,11 @@
   (t/testing "Getting all metrics after simple set and inc operations works."
     (let [metrics (m/fresh-metrics)]
       (t/is (= [] (m/get-metric-samples! metrics))))
-    (let [metrics (m/fresh-metrics)
-          example-metric-key-1 (m/make-metric-key "test-metric-1" {:label-1 :value-1})
-          example-metric-key-2 (m/make-metric-key "test-metric-2" {:label-1 :value-2})
-          example-metric-key-3 (m/make-metric-key "test-metric-3" {:label-3 :value-1})
-          example-metric-key-4 (m/make-metric-key "test-metric-4" {:label-4 :value-4})
+    (let [metrics                (m/fresh-metrics)
+          example-metric-key-1   (m/make-metric-key "test-metric-1" {:label-1 :value-1})
+          example-metric-key-2   (m/make-metric-key "test-metric-2" {:label-1 :value-2})
+          example-metric-key-3   (m/make-metric-key "test-metric-3" {:label-3 :value-1})
+          example-metric-key-4   (m/make-metric-key "test-metric-4" {:label-4 :value-4})
           example-metric-value-1 (m/make-metric-value 23 1)
           example-metric-value-2 (m/make-metric-value 33 2)
           example-metric-value-3 (m/make-metric-value 13 3)]
@@ -221,55 +221,55 @@
 
 (t/deftest t-d-inc-metric!
   (t/testing "Increasing metric with included nils."
-    (let [metrics nil
-          example-metric-key (m/make-metric-key "test-metric" {:label-1 :value-1})
+    (let [metrics              nil
+          example-metric-key   (m/make-metric-key "test-metric" {:label-1 :value-1})
           example-metric-value (m/make-metric-value 23 1)]
       (t/is (thrown? NullPointerException
                      (m/inc-metric! metrics example-metric-key example-metric-value))))
-    (let [metrics (m/fresh-metrics)
-          example-metric-key nil
+    (let [metrics              (m/fresh-metrics)
+          example-metric-key   nil
           example-metric-value (m/make-metric-value 23 1)]
       (m/inc-metric! metrics example-metric-key example-metric-value)
       (t/is (empty? (m/get-metric-samples! (m/fresh-metrics)))))
-    (let [metrics (m/fresh-metrics)
-          example-metric-key (m/make-metric-key "test-metric" {:label-1 :value-1})
+    (let [metrics              (m/fresh-metrics)
+          example-metric-key   (m/make-metric-key "test-metric" {:label-1 :value-1})
           example-metric-value nil]
       (m/inc-metric! metrics example-metric-key example-metric-value)
       (t/is (empty? (m/get-metric-samples! (m/fresh-metrics)))))
-    (let [metrics (m/fresh-metrics)
-          example-metric-key (m/make-metric-key "test-metric" {nil nil})
+    (let [metrics                (m/fresh-metrics)
+          example-metric-key     (m/make-metric-key "test-metric" {nil nil})
           example-metric-value-1 (m/make-metric-value 23 1)
           example-metric-value-2 (m/make-metric-value 10 2)]
       (m/inc-metric! metrics example-metric-key example-metric-value-1)
       (m/inc-metric! metrics example-metric-key example-metric-value-2)
       (t/is (= (m/make-metric-sample "test-metric" {nil nil} 33 2)
                (m/get-metric-sample! metrics example-metric-key))))
-    (let [metrics (m/fresh-metrics)
-          example-metric-key (m/make-metric-key "test-metric" {:label-1 nil})
+    (let [metrics                (m/fresh-metrics)
+          example-metric-key     (m/make-metric-key "test-metric" {:label-1 nil})
           example-metric-value-1 (m/make-metric-value 23 1)
           example-metric-value-2 (m/make-metric-value 10 2)]
       (m/inc-metric! metrics example-metric-key example-metric-value-1)
       (m/inc-metric! metrics example-metric-key example-metric-value-2)
       (t/is (= (m/make-metric-sample "test-metric" {:label-1 nil} 33 2)
                (m/get-metric-sample! metrics example-metric-key))))
-    (let [metrics (m/fresh-metrics)
-          example-metric-key (m/make-metric-key "test-metric" {nil :value-1})
+    (let [metrics                (m/fresh-metrics)
+          example-metric-key     (m/make-metric-key "test-metric" {nil :value-1})
           example-metric-value-1 (m/make-metric-value 23 1)
           example-metric-value-2 (m/make-metric-value 10 2)]
       (m/inc-metric! metrics example-metric-key example-metric-value-1)
       (m/inc-metric! metrics example-metric-key example-metric-value-2)
       (t/is (= (m/make-metric-sample "test-metric" {nil :value-1} 33 2)
                (m/get-metric-sample! metrics example-metric-key))))
-    (let [metrics (m/fresh-metrics)
-          example-metric-key (m/make-metric-key "test-metric" {:label-1 :value-1})
+    (let [metrics                (m/fresh-metrics)
+          example-metric-key     (m/make-metric-key "test-metric" {:label-1 :value-1})
           example-metric-value-1 (m/make-metric-value 23 nil)
           example-metric-value-2 (m/make-metric-value 10 2)]
       (m/inc-metric! metrics example-metric-key example-metric-value-1)
       (m/inc-metric! metrics example-metric-key example-metric-value-2)
       (t/is (= (m/make-metric-sample "test-metric" {:label-1 :value-1} 33 2)
                (m/get-metric-sample! metrics example-metric-key))))
-    (let [metrics (m/fresh-metrics)
-          example-metric-key (m/make-metric-key "test-metric" {:label-1 :value-1})
+    (let [metrics                (m/fresh-metrics)
+          example-metric-key     (m/make-metric-key "test-metric" {:label-1 :value-1})
           example-metric-value-1 (m/make-metric-value 23 1)
           example-metric-value-2 (m/make-metric-value 10 nil)]
       (m/inc-metric! metrics example-metric-key example-metric-value-1)

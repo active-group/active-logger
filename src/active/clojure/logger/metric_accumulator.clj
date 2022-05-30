@@ -56,7 +56,7 @@ where `value` must be a number and ``timestamp` must be a number or nil."}
   (assert (number? value) "value must be a number")
   (assert (or (number? timestamp) (nil? timestamp))
           "timestamp must be a number or nil")
-  really-make-metric-sample name labels value timestamp)
+  (really-make-metric-sample name labels value timestamp))
 
 (defn set-metric!
   "Sets a `metric-value` (`MetricValue`) for the given `metric-key`
@@ -195,7 +195,7 @@ where `value` must be a number and ``timestamp` must be a number or nil."}
 (defn m-get-metrics
   [& ms]
   (monad/monadic
-    [samples (monad/sequ (map make-get-metric-sample ms))]
+    [samples (monad/sequ (map get-metric-sample ms))]
     (monad/return (remove nil? samples))))
 
 (defn make-gauge-metric
