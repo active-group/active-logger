@@ -221,7 +221,6 @@
 
 ;; -- METRICS
 
-
 (t/deftest t-record-get-metric!
   (t/testing "Basic recording and getting counters works."
     (let [raw-metric-store       (m/fresh-raw-metric-store)
@@ -246,40 +245,54 @@
     (let [raw-metric-store      (m/fresh-raw-metric-store)
           example-histogram-metric (m/make-histogram-metric "test-histogram" 25 nil {:label-1 :value-1})]
       (m/record-metric! raw-metric-store example-histogram-metric 23 1)
-      (t/is (= [[(m/make-metric-sample "test-histogram_sum" {:label-1 :value-1} 23 1)]
-                [(m/make-metric-sample "test-histogram_bucket" {:label-1 :value-1 :le "+Inf"} 1 1)]
-                [(m/make-metric-sample "test-histogram_count" {:label-1 :value-1} 1 1)]
-                [(m/make-metric-sample "test-histogram_bucket" {:label-1 :value-1 :le "25"} 1 1)]]
+      (t/is (= [(m/make-metric-sample "test-histogram_sum" {:label-1 :value-1} 23 1)
+                (m/make-metric-sample "test-histogram_bucket" {:label-1 :value-1 :le "+Inf"} 1 1)
+                (m/make-metric-sample "test-histogram_count" {:label-1 :value-1} 1 1)
+                (m/make-metric-sample "test-histogram_bucket" {:label-1 :value-1 :le "25"} 1 1)]
                ;; returns vector of vector?
                (m/get-metrics! raw-metric-store example-histogram-metric)))
       (m/record-metric! raw-metric-store example-histogram-metric 10 2)
-      (t/is (= [[(m/make-metric-sample "test-histogram_sum" {:label-1 :value-1} 33 2)]
-                [(m/make-metric-sample "test-histogram_bucket" {:label-1 :value-1 :le "+Inf"} 2 2)]
-                [(m/make-metric-sample "test-histogram_count" {:label-1 :value-1} 2 2)]
-                [(m/make-metric-sample "test-histogram_bucket" {:label-1 :value-1 :le "25"} 2 2)]]
+      (t/is (= [(m/make-metric-sample "test-histogram_sum" {:label-1 :value-1} 33 2)
+                (m/make-metric-sample "test-histogram_bucket" {:label-1 :value-1 :le "+Inf"} 2 2)
+                (m/make-metric-sample "test-histogram_count" {:label-1 :value-1} 2 2)
+                (m/make-metric-sample "test-histogram_bucket" {:label-1 :value-1 :le "25"} 2 2)]
                (m/get-metrics! raw-metric-store example-histogram-metric)))
       (m/record-metric! raw-metric-store example-histogram-metric 25 3)
-      (t/is (= [[(m/make-metric-sample "test-histogram_sum" {:label-1 :value-1} 58 3)]
-                [(m/make-metric-sample "test-histogram_bucket" {:label-1 :value-1 :le "+Inf"} 3 3)]
-                [(m/make-metric-sample "test-histogram_count" {:label-1 :value-1} 3 3)]
-                [(m/make-metric-sample "test-histogram_bucket" {:label-1 :value-1 :le "25"} 3 3)]]
+      (t/is (= [(m/make-metric-sample "test-histogram_sum" {:label-1 :value-1} 58 3)
+                (m/make-metric-sample "test-histogram_bucket" {:label-1 :value-1 :le "+Inf"} 3 3)
+                (m/make-metric-sample "test-histogram_count" {:label-1 :value-1} 3 3)
+                (m/make-metric-sample "test-histogram_bucket" {:label-1 :value-1 :le "25"} 3 3)]
                (m/get-metrics! raw-metric-store example-histogram-metric)))
       (m/record-metric! raw-metric-store example-histogram-metric 30 5)
-      (t/is (= [[(m/make-metric-sample "test-histogram_sum" {:label-1 :value-1} 88 5)]
-                [(m/make-metric-sample "test-histogram_bucket" {:label-1 :value-1 :le "+Inf"} 4 5)]
-                [(m/make-metric-sample "test-histogram_count" {:label-1 :value-1} 4 5)]
+      (t/is (= [(m/make-metric-sample "test-histogram_sum" {:label-1 :value-1} 88 5)
+                (m/make-metric-sample "test-histogram_bucket" {:label-1 :value-1 :le "+Inf"} 4 5)
+                (m/make-metric-sample "test-histogram_count" {:label-1 :value-1} 4 5)
                 ;; Timestamp gets updated, counter remains the same
-                [(m/make-metric-sample "test-histogram_bucket" {:label-1 :value-1 :le "25"} 3 5)]]
+                (m/make-metric-sample "test-histogram_bucket" {:label-1 :value-1 :le "25"} 3 5)]
                (m/get-metrics! raw-metric-store example-histogram-metric))))
     (let [raw-metric-store      (m/fresh-raw-metric-store)
           example-histogram-metric (m/make-histogram-metric "test-histogram" 20 nil {:label-1 :value-1})]
       (m/record-metric! raw-metric-store example-histogram-metric 23 1)
-      (t/is (= [[(m/make-metric-sample "test-histogram_sum" {:label-1 :value-1} 23 1)]
-                [(m/make-metric-sample "test-histogram_bucket" {:label-1 :value-1 :le "+Inf"} 1 1)]
-                [(m/make-metric-sample "test-histogram_count" {:label-1 :value-1} 1 1)]
+      (t/is (= [(m/make-metric-sample "test-histogram_sum" {:label-1 :value-1} 23 1)
+                (m/make-metric-sample "test-histogram_bucket" {:label-1 :value-1 :le "+Inf"} 1 1)
+                (m/make-metric-sample "test-histogram_count" {:label-1 :value-1} 1 1)
                 ;; Bucket available but count is 0
-                [(m/make-metric-sample "test-histogram_bucket" {:label-1 :value-1 :le "20"} 0 1)]]
+                (m/make-metric-sample "test-histogram_bucket" {:label-1 :value-1 :le "20"} 0 1)]
                 (m/get-metrics! raw-metric-store example-histogram-metric))))))
+
+(t/deftest t-monadic-record-get
+  (t/testing "monadic recording and getting counters works"
+    (let [result
+          (mock-monad/mock-run-monad
+           (m/monad-command-config)
+           []
+           (let [example-counter-metric (m/make-counter-metric "test-counter" nil {:label-1 :value-1})]
+             (monad/monadic
+              (m/record-metric example-counter-metric 23 1)
+              (m/get-metrics example-counter-metric))))]
+      (t/is (= [(m/make-metric-sample "test-counter" {:label-1 :value-1} 23 1)]
+               result)))))
+
 
 ;; DESTRUCTIVE
 

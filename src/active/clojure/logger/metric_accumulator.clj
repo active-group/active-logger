@@ -275,35 +275,39 @@ where `value` must be a number and ``timestamp` must be a number or nil."}
     [(get-raw-metric-sample! raw-metric-store (gauge-metric-key metric))]
 
     (histogram-metric? metric)
-    (mapv (partial get-metrics! raw-metric-store)
-          [(histogram-metric-total-sum metric)
-           (histogram-metric-bucket-le-inf metric)
-           (histogram-metric-total-count metric)
-           (histogram-metric-bucket-le-threshold metric)])))
+    (mapcat (partial get-metrics! raw-metric-store)
+            [(histogram-metric-total-sum metric)
+             (histogram-metric-bucket-le-inf metric)
+             (histogram-metric-total-count metric)
+             (histogram-metric-bucket-le-threshold metric)])))
 
 (defn get-metrics
   "Returns a collection of metric samples."
   [metric]
   (cond
     (counter-metric? metric)
-    (monad/return [(get-raw-metric-sample (counter-metric-key metric))])
+    (monad/monadic
+     [metric (get-raw-metric-sample (counter-metric-key metric))]
+     (monad/return [metric]))
 
     (gauge-metric? metric)
-    (monad/return [(get-raw-metric-sample (gauge-metric-key metric))])
+    (monad/monadic
+     [metric (get-raw-metric-sample (gauge-metric-key metric))]
+     (monad/return [metric]))
 
     (histogram-metric? metric)
-    (monad/sequ
-      (mapv get-metrics [(histogram-metric-total-sum metric)
-                         (histogram-metric-bucket-le-inf metric)
-                         (histogram-metric-total-count metric)
-                         (histogram-metric-bucket-le-threshold metric)]))))
-
+    (monad/monadic
+     [metrics (monad/sequ
+               (mapv get-metrics [(histogram-metric-total-sum metric)
+                                  (histogram-metric-bucket-le-inf metric)
+                                  (histogram-metric-total-count metric)
+                                  (histogram-metric-bucket-le-threshold metric)]))]
+     (monad/return (apply concat metrics)))))
 
 (defn record-and-get!
   [metrics metric & [value timestamp]]
-  (do
-    (record-metric! metrics metric value timestamp)
-    (get-metrics! metrics metric)))
+  (record-metric! metrics metric value timestamp)
+  (get-metrics! metrics metric))
 
 (defn record-and-get
   [metric & [value timestamp]]
