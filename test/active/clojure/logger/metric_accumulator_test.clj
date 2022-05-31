@@ -12,7 +12,7 @@
 
 ;; CONSTRUCTIVE
 
-;; -- DATA
+;; -- DATA: raw metrics
 
 (t/deftest t-fresh-raw-metric-store
   (t/testing "fresh-raw-metric-store is created empty"
@@ -188,7 +188,7 @@
                 (m/make-metric-sample "test-metric-4" {:label-4 :value-4} 69 3)]
                (m/get-raw-metric-samples! raw-metric-store))))))
 
-;; -- COMMANDS
+;; -- COMMANDS on raw metrics
 
 (t/deftest t-monadic-set-get
   (t/testing "monadic setting and getting works"
@@ -219,7 +219,7 @@
 
 ;; DESTRUCTIVE
 
-;; -- DATA
+;; -- DATA: raw metrics
 
 (t/deftest t-d-make-metric-key
   (t/testing "No metric-key field must be nil"
@@ -250,6 +250,15 @@
 
 ;; active-quickcheck?
 (t/deftest t-d-inc-raw-metric!
+  (t/testing "Metric value may be negative."
+    (let [raw-metric-store       (m/fresh-raw-metric-store)
+          example-metric-key     (m/make-metric-key "test-metric" {:label-1 :value-1})
+          example-metric-value-1 (m/make-metric-value 23 1)
+          example-metric-value-2 (m/make-metric-value -33 2)]
+      (m/inc-raw-metric! raw-metric-store example-metric-key example-metric-value-1)
+      (m/inc-raw-metric! raw-metric-store example-metric-key example-metric-value-2)
+      (t/is (= (m/make-metric-sample "test-metric" {:label-1 :value-1} -10 2)
+               (m/get-raw-metric-sample! raw-metric-store example-metric-key)))))
   (t/testing "Increasing raw metric with included nils."
     (let [raw-metric-store     nil
           example-metric-key   (m/make-metric-key "test-metric" {:label-1 :value-1})
