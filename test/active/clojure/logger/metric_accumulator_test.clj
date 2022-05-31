@@ -26,8 +26,21 @@
       (t/is (= "test-metric" (m/metric-key-name example-metric-key)))
       (t/is (= {:label-1 :value-1} (m/metric-key-labels example-metric-key))))))
 
-(t/deftest t-make-metric-value)
-(t/deftest t-make-metric-sample)
+(t/deftest t-make-metric-value
+  (t/testing "All fields of a metric-value are set correct."
+    (let [example-metric-value (m/make-metric-value 23 1)]
+      (t/is (m/metric-value? example-metric-value))
+      (t/is (= 23 (m/metric-value-value example-metric-value)))
+      (t/is (= 1 (m/metric-value-timestamp example-metric-value))))))
+
+(t/deftest t-make-metric-sample
+  (t/testing "All fields of a metric-sample are set correct."
+    (let [example-metric-sample (m/make-metric-sample "test-sample" {:label-1 :value-1} 23 1)]
+      (t/is (m/metric-sample? example-metric-sample))
+      (t/is "test-sample" (m/metric-sample-name example-metric-sample))
+      (t/is {:label-1 :value-1} (m/metric-sample-labels example-metric-sample))
+      (t/is 23 (m/metric-sample-value example-metric-sample))
+      (t/is 1 (m/metric-sample-timestamp example-metric-sample)))))
 
 (t/deftest t-set-metric!
   (t/testing "basic setting and getting of one metric works"
@@ -190,6 +203,19 @@
       (t/is (= (m/make-metric-sample "test-metric" {:label-1 :value-1} 23 1)
                result)))))
 
+(t/deftest t-monadic-set-inc-get
+  (t/testing "monadic setting, incrementing and getting works"
+    (let [result
+          (mock-monad/mock-run-monad
+           (m/monad-command-config)
+           []
+           (let [example-metric-key (m/make-metric-key "test-metric" {:label-1 :value-1})]
+             (monad/monadic
+              (m/set-metric example-metric-key (m/make-metric-value 23 1))
+              (m/inc-metric example-metric-key (m/make-metric-value 10 2))
+              (m/get-metric-sample example-metric-key))))]
+      (t/is (= (m/make-metric-sample "test-metric" {:label-1 :value-1} 33 2)
+               result)))))
 
 ;; DESTRUCTIVE
 
