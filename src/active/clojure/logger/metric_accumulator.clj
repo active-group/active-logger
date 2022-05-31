@@ -60,9 +60,9 @@ where `value` must be a number and ``timestamp` must be a number or nil."}
 
 (defn set-raw-metric!
   "Sets a `metric-value` (`MetricValue`) for the given `metric-key`
-  (`MetricKey`) in `a-raw-metric-store` (`Map`). If `metric-key` is not in `a-raw-metric-store`
-  key and value are added, otherwise the value of `metric-key` will be
-  overwritten."
+  (`MetricKey`) in `a-raw-metric-store` (`Map`). If `metric-key` is not in
+  `a-raw-metric-store` key and value are added, otherwise the value of
+  `metric-key` will be overwritten."
   [a-raw-metric-store metric-key metric-value]
   (swap! a-raw-metric-store assoc metric-key metric-value))
 
@@ -81,15 +81,17 @@ where `value` must be a number and ``timestamp` must be a number or nil."}
 (def sum-metric-value (partial update-metric-value +))
 
 (defn inc-raw-metric!
-  "Find a metric with `metric-key` (`MetricKey`) in the `a-raw-metric-store` (`Map`) and
-  update this metric's value (`MetricValue`) by adding `metric-value` to the
-  current metric's `value` and setting the `timestamp` of `metric-value`. If the
-  metric is not in `a-raw-metric-store` it will be added as `metric-key` with
-  `metric-value`."
+  "Find a raw-metric with `metric-key` (`MetricKey`) in `a-raw-metric-store`
+  (`Map`) and update this metric's value (`MetricValue`) by adding
+  `metric-value` to the current metric's `value` and setting the `timestamp` of
+  `metric-value`. If the metric is not in `a-raw-metric-store` it will be added
+  as `metric-key` with `metric-value`."
   [a-raw-metric-store metric-key metric-value]
   (swap! a-raw-metric-store update metric-key sum-metric-value metric-value))
 
 (defn get-raw-metric-sample!
+  "Find a raw-metric with `metric-key` (`MetricKey`) in `a-raw-metric-store`
+  (`Map`) and return it as a `MetricSample`."
   [a-raw-metric-store metric-key]
   (when-let [metric-value (get @a-raw-metric-store metric-key)]
     (make-metric-sample (metric-key-name metric-key)
@@ -98,6 +100,7 @@ where `value` must be a number and ``timestamp` must be a number or nil."}
                         (metric-value-timestamp metric-value))))
 
 (defn get-raw-metric-samples!
+  "Return all raw-metrics in `a-raw-metric-store` as `MetricSample`s."
   [a-raw-metric-store]
   (reduce-kv (fn [r metric-key metric-value]
                (concat r
