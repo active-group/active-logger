@@ -91,9 +91,6 @@
       (t/is (= example-metric-value-2
                (m/sum-metric-value nil example-metric-value-2))
             "If there is no base value, just take the second.")
-      (t/is (thrown? NullPointerException
-                     (m/sum-metric-value example-metric-value-1 nil))
-            "metric-value-2 must not be nil")
       (t/is (= (m/make-metric-value 24 2)
                (m/sum-metric-value example-metric-value-1 example-metric-value-2))
             "Add value-1 and value-2. Take timestamp from 2."))))
@@ -146,7 +143,6 @@
       (m/inc-metric! metrics example-metric-key-4 example-metric-value-3)
       (t/is (= (m/make-metric-sample "test-metric-4" {:label-4 :value-4} 69 3)
                (m/get-metric-sample! metrics example-metric-key-4))))))
-
 
 (t/deftest t-get-metric-samples!
   (t/testing "Getting all metrics after simple set and inc operations works."
@@ -219,6 +215,14 @@
         (t/is (thrown? NullPointerException
                        (m/update-metric-value nil example-metric-value-1 example-metric-value-2)))))))
 
+(t/deftest t-d-sum-metric-value
+  (t/testing "Adds metric-values and nothing else."
+    (let [example-metric-value-1 (m/make-metric-value 23 1)]
+      (t/is (thrown? NullPointerException
+                     (m/sum-metric-value example-metric-value-1 nil))
+            "metric-value-2 must not be nil"))))
+
+;; active-quickcheck?
 (t/deftest t-d-inc-metric!
   (t/testing "Increasing metric with included nils."
     (let [metrics              nil
