@@ -239,8 +239,9 @@ where `value` must be a number and ``timestamp` must be a number or nil."}
         (record-metric! raw-metric-store (histogram-metric-total-sum metric) value timestamp)
         (record-metric! raw-metric-store (histogram-metric-bucket-le-inf metric) 1 timestamp)
         (record-metric! raw-metric-store (histogram-metric-total-count metric) 1 timestamp)
-        (when (<= value (histogram-metric-threshold metric))
-          (record-metric! raw-metric-store (histogram-metric-bucket-le-threshold metric) 1 timestamp))))))
+        (if (<= value (histogram-metric-threshold metric))
+          (record-metric! raw-metric-store (histogram-metric-bucket-le-threshold metric) 1 timestamp)
+          (record-metric! raw-metric-store (histogram-metric-bucket-le-threshold metric) 0 timestamp))))))
 
 (defn record-metric
   [metric & [value timestamp]]

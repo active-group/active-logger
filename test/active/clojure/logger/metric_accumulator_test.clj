@@ -268,8 +268,8 @@
       (t/is (= [[(m/make-metric-sample "test-histogram_sum" {:label-1 :value-1} 88 5)]
                 [(m/make-metric-sample "test-histogram_bucket" {:label-1 :value-1 :le "+Inf"} 4 5)]
                 [(m/make-metric-sample "test-histogram_count" {:label-1 :value-1} 4 5)]
-                ;; Timestamp not updated?
-                [(m/make-metric-sample "test-histogram_bucket" {:label-1 :value-1 :le "25"} 3 3)]]
+                ;; Timestamp gets updated, counter remains the same
+                [(m/make-metric-sample "test-histogram_bucket" {:label-1 :value-1 :le "25"} 3 5)]]
                (m/get-metrics! raw-metric-store example-histogram-metric))))
     (let [raw-metric-store      (m/fresh-raw-metric-store)
           example-histogram-metric (m/make-histogram-metric "test-histogram" 20 nil {:label-1 :value-1})]
@@ -277,8 +277,8 @@
       (t/is (= [[(m/make-metric-sample "test-histogram_sum" {:label-1 :value-1} 23 1)]
                 [(m/make-metric-sample "test-histogram_bucket" {:label-1 :value-1 :le "+Inf"} 1 1)]
                 [(m/make-metric-sample "test-histogram_count" {:label-1 :value-1} 1 1)]
-                ;; Bucket not available
-                [nil]]
+                ;; Bucket available but count is 0
+                [(m/make-metric-sample "test-histogram_bucket" {:label-1 :value-1 :le "20"} 0 1)]]
                 (m/get-metrics! raw-metric-store example-histogram-metric))))))
 
 ;; DESTRUCTIVE
