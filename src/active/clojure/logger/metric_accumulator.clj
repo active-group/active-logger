@@ -4,9 +4,9 @@
             [active.clojure.lens :as lens]
             [active.clojure.monad :as monad]))
 
-;; DATA
+;; DATA: raw metrics
 
-(defn ^:no-doc fresh-metrics
+(defn ^:no-doc fresh-raw-metric-store
   []
   (atom {}))
 
@@ -58,13 +58,13 @@ where `value` must be a number and ``timestamp` must be a number or nil."}
           "timestamp must be a number or nil")
   (really-make-metric-sample name labels value timestamp))
 
-(defn set-metric!
+(defn set-raw-metric!
   "Sets a `metric-value` (`MetricValue`) for the given `metric-key`
-  (`MetricKey`) in `a-metrics` (`Map`). If `metric-key` is not in `a-metrics`
+  (`MetricKey`) in `a-raw-metric-store` (`Map`). If `metric-key` is not in `a-raw-metric-store`
   key and value are added, otherwise the value of `metric-key` will be
   overwritten."
-  [a-metrics metric-key metric-value]
-  (swap! a-metrics assoc metric-key metric-value))
+  [a-raw-metric-store metric-key metric-value]
+  (swap! a-raw-metric-store assoc metric-key metric-value))
 
 ;; Update a metric-value (`MetricValue`) by applying a function `f` to the
 ;; `value`s of `metric-value-1` (`MetricValue`) and `metric-value-2`
@@ -80,57 +80,57 @@ where `value` must be a number and ``timestamp` must be a number or nil."}
 
 (def sum-metric-value (partial update-metric-value +))
 
-(defn inc-metric!
-  "Find a metric with `metric-key` (`MetricKey`) in the `a-metrics` (`Map`) and
+(defn inc-raw-metric!
+  "Find a metric with `metric-key` (`MetricKey`) in the `a-raw-metric-store` (`Map`) and
   update this metric's value (`MetricValue`) by adding `metric-value` to the
   current metric's `value` and setting the `timestamp` of `metric-value`. If the
-  metric is not in `a-metrics` it will be added as `metric-key` with
+  metric is not in `a-raw-metric-store` it will be added as `metric-key` with
   `metric-value`."
-  [a-metrics metric-key metric-value]
-  (swap! a-metrics update metric-key sum-metric-value metric-value))
+  [a-raw-metric-store metric-key metric-value]
+  (swap! a-raw-metric-store update metric-key sum-metric-value metric-value))
 
-(defn get-metric-sample!
-  [a-metrics metric-key]
-  (when-let [metric-value (get @a-metrics metric-key)]
+(defn get-raw-metric-sample!
+  [a-raw-metric-store metric-key]
+  (when-let [metric-value (get @a-raw-metric-store metric-key)]
     (make-metric-sample (metric-key-name metric-key)
                         (metric-key-labels metric-key)
                         (metric-value-value metric-value)
                         (metric-value-timestamp metric-value))))
 
-(defn get-metric-samples!
-  [a-metrics]
+(defn get-raw-metric-samples!
+  [a-raw-metric-store]
   (reduce-kv (fn [r metric-key metric-value]
                (concat r
                        [(make-metric-sample (metric-key-name metric-key)
                                             (metric-key-labels metric-key)
                                             (metric-value-value metric-value)
                                             (metric-value-timestamp metric-value))]))
-              []
-              @a-metrics))
+             []
+             @a-raw-metric-store))
 
-;; COMMANDS
+;; COMMANDS on raw metrics
 
 (define-record-type ^{:doc "Monadic command for setting metrics."}
-  SetMetric
-  (make-set-metric metric-key value timestamp)
-  set-metric?
-  [metric-key set-metric-metric-key
-   value set-metric-value
-   timestamp set-metric-timestamp])
+  SetRawMetric
+  (make-set-raw-metric metric-key value timestamp)
+  set-raw-metric?
+  [metric-key set-raw-metric-metric-key
+   value set-raw-metric-value
+   timestamp set-raw-metric-timestamp])
 
 (define-record-type ^{:doc "Monadic command for incrementing metrics."}
-  IncrementMetric
-  (make-inc-metric metric-key value timestamp)
-  inc-metric?
-  [metric-key inc-metric-metric-key
-   value inc-metric-value
-   timestamp inc-metric-timestamp])
+  IncrementRawMetric
+  (make-inc-raw-metric metric-key value timestamp)
+  inc-raw-metric?
+  [metric-key inc-raw-metric-metric-key
+   value inc-raw-metric-value
+   timestamp inc-raw-metric-timestamp])
 
 (define-record-type ^{:doc "Monadic command for getting metrics."}
-  GetMetricSample
-  (get-metric-sample metric-key)
-  get-metric-sample?
-  [metric-key get-metric-sample-metric-key])
+  GetRawMetricSample
+  (get-raw-metric-sample metric-key)
+  get-raw-metric-sample?
+  [metric-key get-raw-metric-sample-metric-key])
 
 (defn with-maybe-timestamp
   [f metric-key metric-value & [timestamp]]
@@ -143,98 +143,174 @@ where `value` must be a number and ``timestamp` must be a number or nil."}
                    (timeout/get-milli-time))]
     (f metric-key metric-value timestamp)))
 
-(def set-metric (partial with-maybe-timestamp make-set-metric))
+(def set-raw-metric (partial with-maybe-timestamp make-set-raw-metric))
 
-(def inc-metric (partial with-maybe-timestamp make-inc-metric))
+(def inc-raw-metric (partial with-maybe-timestamp make-inc-raw-metric))
 
 (defn run-metrics
   [_run-any env state m]
-  (let [metrics (::metrics env)]
+  (let [raw-metric-store (::raw-metric-store env)]
     (cond
-      (set-metric? m)
-      [(set-metric! metrics
-                    (set-metric-metric-key m)
-                    (set-metric-value m))
+      (set-raw-metric? m)
+      [(set-raw-metric! raw-metric-store
+                        (set-raw-metric-metric-key m)
+                        (set-raw-metric-value m))
        state]
 
-      (inc-metric? m)
-      [(inc-metric! metrics
-                    (inc-metric-metric-key m)
-                    (inc-metric-value m))
+      (inc-raw-metric? m)
+      [(inc-raw-metric! raw-metric-store
+                        (inc-raw-metric-metric-key m)
+                        (inc-raw-metric-value m))
        state]
 
-      (get-metric-sample? m)
-      [(get-metric-sample! metrics
-                           (get-metric-sample-metric-key m))
+      (get-raw-metric-sample? m)
+      [(get-raw-metric-sample! raw-metric-store
+                               (get-raw-metric-sample-metric-key m))
        state]
 
       :else
       monad/unknown-command)))
 
 ;; METRICS
+;; prometheus-style:
+;; - counter
+;; - gauge
+;; - histogram
 
-;; active-logger log-metric
-
-(define-record-type ^{:doc "Metric."}
-  Metric
-  make-metric
-  metric?
-  [help metric-help
-   ;; value timestamp -> m
-   record-fn metric-record-fn
-   get-fn metric-get-fn])
-
-(defn record-metric
-  [metric & [value timestamp]]
-  ((metric-record-fn metric) value timestamp))
-
-(defn get-metric
-  [metric]
-  (partial (metric-get-fn metric)))
-
-(defn m-get-metrics
-  [& ms]
-  (monad/monadic
-    [samples (monad/sequ (map get-metric-sample ms))]
-    (monad/return (remove nil? samples))))
-
-(defn make-gauge-metric
-  [name & [help labels]]
-  (let [mkey (make-metric-key name labels)]
-    (make-metric help
-                 (fn [value & [timestamp]]
-                   (set-metric mkey value timestamp))
-                 (constantly (m-get-metrics mkey)))))
+(define-record-type ^{:doc "Counter metric."}
+  CounterMetric
+  really-make-counter-metric
+  counter-metric?
+  [help counter-metric-help
+   mkey counter-metric-key])
 
 (defn make-counter-metric
   [name & [help labels]]
-  (let [mkey (make-metric-key name labels)]
-    (make-metric help
-                 (fn [& [value timestamp]]
-                   (inc-metric mkey (or value 1) timestamp))
-                 (constantly (m-get-metrics mkey)))))
+  (let [metric-key (make-metric-key name labels)]
+    (really-make-counter-metric help metric-key)))
+
+(define-record-type ^{:doc "Gauge metric."}
+  GaugeMetric
+  really-make-gauge-metric
+  gauge-metric?
+  [help gauge-metric-help
+   mkey gauge-metric-key])
+
+(defn make-gauge-metric
+  [name & [help labels]]
+  (let [metric-key (make-metric-key name labels)]
+    (really-make-gauge-metric help metric-key)))
+
+(define-record-type ^{:doc "Histogram metric."}
+  HistogramMetric
+  really-make-histogram-metric
+  histogram-metric?
+  [help histogram-metric-help
+   threshold histogram-metric-threshold
+   total-sum histogram-metric-total-sum
+   bucket-le-threshold histogram-metric-bucket-le-threshold
+   total-count histogram-metric-total-count
+   bucket-le-inf histogram-metric-bucket-le-inf])
 
 (defn make-histogram-metric
   [basename threshold & [help labels]]
-  (let [total-sum (make-counter-metric (str basename "_sum") nil labels)
+  (let [total-sum           (make-counter-metric (str basename "_sum") nil labels)
         bucket-le-threshold (make-counter-metric (str basename "_bucket") nil (assoc labels :le (str threshold)))
-        total-count (make-counter-metric (str basename "_count") nil labels)
-        bucket-le-inf (make-counter-metric (str basename "_bucket") nil (assoc labels :le "+Inf"))] ;; counter
-    (make-metric
-      help
-      (fn [value & [timestamp]]
-        (monad/monadic
-          (record-metric total-sum value timestamp)
-          (record-metric bucket-le-inf 1 timestamp)
-          (record-metric total-count 1 timestamp)
-          (if (<= value threshold)
-            (monad/monadic
-              (record-metric bucket-le-threshold 1 timestamp))
-            (monad/return nil))))
-      (constantly (m-get-metrics total-sum total-count bucket-le-threshold bucket-le-inf)))))
+        total-count         (make-counter-metric (str basename "_count") nil labels)
+        bucket-le-inf       (make-counter-metric (str basename "_bucket") nil (assoc labels :le "+Inf"))]
+    (really-make-histogram-metric help threshold total-sum bucket-le-threshold total-count bucket-le-inf)))
+
+
+(defn record-metric!
+  [raw-metric-store metric & [value timestamp]]
+  (let [metric-value (make-metric-value value timestamp)]
+    (cond
+      (counter-metric? metric)
+      (inc-raw-metric! raw-metric-store (counter-metric-key metric) metric-value)
+
+      (gauge-metric? metric)
+      (set-raw-metric! raw-metric-store (gauge-metric-key metric) metric-value)
+
+      (histogram-metric? metric)
+      (let [inc-by-1-metric-value (make-metric-value 1 timestamp)]
+        (record-metric! (histogram-metric-total-sum metric) metric-value)
+        (record-metric! (histogram-metric-bucket-le-inf metric) inc-by-1-metric-value)
+        (record-metric! (histogram-metric-total-count metric) inc-by-1-metric-value)
+        (when (<= value (histogram-metric-threshold metric))
+          (record-metric! (histogram-metric-bucket-le-threshold metric) inc-by-1-metric-value))))))
+
+(defn record-metric
+  [metric & [value timestamp]]
+  (let [metric-value (make-metric-value value timestamp)]
+    (cond
+      (counter-metric? metric)
+      (inc-raw-metric (counter-metric-key metric) metric-value)
+
+      (gauge-metric? metric)
+      (inc-raw-metric (gauge-metric-key metric) metric-value)
+
+      (histogram-metric? metric)
+      (monad/monadic
+        (let [inc-by-1-metric-value (make-metric-value 1 timestamp)])
+        (record-metric (histogram-metric-total-sum metric) metric-value)
+        (record-metric (histogram-metric-bucket-le-inf metric) inc-by-1-metric-value)
+        (record-metric (histogram-metric-total-count metric) inc-by-1-metric-value)
+        (if (<= value (histogram-metric-threshold metric))
+          (record-metric (histogram-metric-bucket-le-threshold metric) inc-by-1-metric-value)
+          (monad/return nil))))))
+
+
+(defn get-metrics!
+  "Returns a collection of metric samples."
+  [raw-metric-store metric]
+  (cond
+    (counter-metric? metric)
+    [(get-raw-metric-sample! raw-metric-store (counter-metric-key metric))]
+
+    (gauge-metric? metric)
+    [(get-raw-metric-sample! raw-metric-store (gauge-metric-key metric))]
+
+    (histogram-metric? metric)
+    (mapv (partial get-metrics! raw-metric-store)
+          [(histogram-metric-total-sum metric)
+           (histogram-metric-bucket-le-inf metric)
+           (histogram-metric-total-count metric)
+           (histogram-metric-bucket-le-threshold metric)])))
+
+(defn get-metrics
+  "Returns a collection of metric samples."
+  [metric]
+  (cond
+    (counter-metric? metric)
+    (monad/return [(get-raw-metric-sample (counter-metric-key metric))])
+
+    (gauge-metric? metric)
+    (monad/return [(get-raw-metric-sample (gauge-metric-key metric))])
+
+    (histogram-metric? metric)
+    (monad/sequ
+      (mapv get-metrics [(histogram-metric-total-sum metric)
+                         (histogram-metric-bucket-le-inf metric)
+                         (histogram-metric-total-count metric)
+                         (histogram-metric-bucket-le-threshold metric)]))))
+
+
+(defn record-and-get!
+  [metrics metric & [value timestamp]]
+  (do
+    (record-metric! metrics metric value timestamp)
+    (get-metrics! metrics metric)))
+
+(defn record-and-get
+  [metric & [value timestamp]]
+  (monad/monadic
+    (record-metric metric value timestamp)
+    (get-metrics metric)))
+
 
 (defn monad-command-config
   [& [metrics]]
   (monad/make-monad-command-config
     run-metrics
-    {::metrics (or metrics (fresh-metrics))} {}))
+    {::raw-metric-store (or metrics (fresh-raw-metric-store))} {}))
+
