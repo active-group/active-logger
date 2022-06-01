@@ -2,7 +2,10 @@
   (:require [active.clojure.logger.metric-accumulator :as m]
             [clojure.test :as t]
             [active.clojure.monad :as monad]
-            [active.clojure.mock-monad :as mock-monad]))
+            [active.clojure.mock-monad :as mock-monad]
+
+            [clojure.spec.alpha :as s])
+  (:use [active.quickcheck]))
 
 ;; Note: For the moment we split the tests into
 ;; - constructive use: we use the functions as expected
@@ -663,3 +666,17 @@
 (t/deftest t-d-get-raw-metric-samples!
   (t/testing "Nil as arguments."
     (t/is (thrown? NullPointerException (m/get-raw-metric-samples! nil)))))
+
+;; Testing-Quickcheck
+
+(t/deftest t-qc-make-metric-sample
+  (t/is (quickcheck
+         (property [m-name   (spec :active.clojure.logger.metric-accumulator/m-name)
+                    m-labels (spec :active.clojure.logger.metric-accumulator/m-labels)
+                    m-value  (spec :active.clojure.logger.metric-accumulator/m-value)
+                    m-time   (spec :active.clojure.logger.metric-accumulator/m-timestamp)]
+                   (let [metric-sample (m/make-metric-sample m-name m-labels m-value m-time)]
+                     (t/is (= m-name   (m/metric-sample-name      metric-sample)))
+                     (t/is (= m-labels (m/metric-sample-labels    metric-sample)))
+                     (t/is (= m-value  (m/metric-sample-value     metric-sample)))
+                     (t/is (= m-time   (m/metric-sample-timestamp metric-sample))))))))
