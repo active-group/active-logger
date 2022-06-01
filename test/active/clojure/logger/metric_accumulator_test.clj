@@ -559,8 +559,8 @@
 
 (t/deftest t-d-make-metric-key
   (t/testing "No metric-key field must be nil"
-    (t/is (thrown? AssertionError (m/make-metric-key nil {:label-1 :value-1})))
-    (t/is (thrown? AssertionError (m/make-metric-key "test-metric" nil)))))
+    (t/is (thrown? Exception (m/make-metric-key nil {:label-1 :value-1})))
+    (t/is (thrown? Exception (m/make-metric-key "test-metric" nil)))))
 
 (t/deftest t-d-make-metric-value)
 (t/deftest t-d-make-metric-sample)

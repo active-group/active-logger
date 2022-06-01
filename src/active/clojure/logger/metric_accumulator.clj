@@ -2,7 +2,11 @@
   "Metrics."
   (:require [active.clojure.record :refer [define-record-type]]
             [active.clojure.lens :as lens]
-            [active.clojure.monad :as monad]))
+            [active.clojure.monad :as monad]
+
+            [clojure.spec.alpha :as s]))
+
+(s/check-asserts true)
 
 ;; DATA: raw metrics
 
@@ -15,48 +19,59 @@
   MetricKey
   really-make-metric-key
   metric-key?
-  [name metric-key-name
-   labels metric-key-labels])
+  [m-name   metric-key-name
+   m-labels metric-key-labels])
 
 (defn make-metric-key
   [name labels]
-  (assert (string? name) "name must be a string")
-  (assert (map? labels) "labels must be a map")
-  (really-make-metric-key name labels))
+  (s/assert ::metric-key (really-make-metric-key name labels)))
+
+(s/def ::m-name   string?)
+(s/def ::m-labels map?)
+(s/def ::metric-key
+  (s/and
+   #(instance? MetricKey %)
+   (s/keys :req-un [::m-name ::m-labels])))
 
 (define-record-type ^{:doc "Metric value with it's `value` and `timestamp`,
 where `value` must be a number and ``timestamp` must be a number or nil."}
   MetricValue
   really-make-metric-value
   metric-value?
-  [value metric-value-value
-   timestamp metric-value-timestamp])
+  [m-value     metric-value-value
+   m-timestamp metric-value-timestamp])
 
 (defn make-metric-value
   [value timestamp]
-  (assert (number? value) "value must be a number")
-  (assert (or (number? timestamp) (nil? timestamp))
-          "timestamp must be a number or nil")
-  (really-make-metric-value value timestamp))
+  (s/assert ::metric-value (really-make-metric-value value timestamp)))
+
+(s/def ::m-value number?)
+(s/def ::m-timestamp
+  (s/or :m-timestamp-number number?
+        :m-timestamp-nil    nil?))
+(s/def ::metric-value
+  (s/and
+   #(instance? MetricValue %)
+   (s/keys :req-un [::m-value ::m-timestamp])))
 
 (define-record-type ^{:doc "Metric sample with the sum of the fields of
 `MetricKey` and `MetricValue` and the same constraints."}
   MetricSample
   really-make-metric-sample
   metric-sample?
-  [name metric-sample-name
-   labels metric-sample-labels
-   value metric-sample-value
-   timestamp metric-sample-timestamp])
+  [m-name      metric-sample-name
+   m-labels    metric-sample-labels
+   m-value     metric-sample-value
+   m-timestamp metric-sample-timestamp])
 
 (defn make-metric-sample
   [name labels value timestamp]
-  (assert (string? name) "name must be a string")
-  (assert (map? labels) "labels must be a map")
-  (assert (number? value) "value must be a number")
-  (assert (or (number? timestamp) (nil? timestamp))
-          "timestamp must be a number or nil")
-  (really-make-metric-sample name labels value timestamp))
+  (s/assert ::metric-sample (really-make-metric-sample name labels value timestamp)))
+
+(s/def ::metric-sample
+  (s/and
+   #(instance? MetricSample %)
+   (s/keys :req-un [::m-name ::m-labels ::m-value ::m-timestamp])))
 
 (defn set-raw-metric!
   "Sets a `metric-value` (`MetricValue`) for the given `metric-key`
