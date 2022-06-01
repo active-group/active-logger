@@ -251,17 +251,16 @@ where `value` must be a number and ``timestamp` must be a number or nil."}
       (inc-raw-metric (counter-metric-key metric) metric-value)
 
       (gauge-metric? metric)
-      (inc-raw-metric (gauge-metric-key metric) metric-value)
+      (set-raw-metric (gauge-metric-key metric) metric-value)
 
       (histogram-metric? metric)
       (monad/monadic
-        (let [inc-by-1-metric-value (make-metric-value 1 timestamp)])
-        (record-metric (histogram-metric-total-sum metric) metric-value)
-        (record-metric (histogram-metric-bucket-le-inf metric) inc-by-1-metric-value)
-        (record-metric (histogram-metric-total-count metric) inc-by-1-metric-value)
+        (record-metric (histogram-metric-total-sum metric) value timestamp)
+        (record-metric (histogram-metric-bucket-le-inf metric) 1 timestamp)
+        (record-metric (histogram-metric-total-count metric) 1 timestamp)
         (if (<= value (histogram-metric-threshold metric))
-          (record-metric (histogram-metric-bucket-le-threshold metric) inc-by-1-metric-value)
-          (monad/return nil))))))
+          (record-metric (histogram-metric-bucket-le-threshold metric) 1 timestamp)
+          (record-metric (histogram-metric-bucket-le-threshold metric) 0 timestamp))))))
 
 
 (defn get-metrics!
