@@ -4,7 +4,8 @@
             [active.clojure.lens :as lens]
             [active.clojure.monad :as monad]
 
-            [clojure.spec.alpha :as s]))
+            [clojure.spec.alpha :as s]
+            [clojure.spec.gen.alpha :as sgen]))
 
 (s/check-asserts true)
 
@@ -17,61 +18,98 @@
 (define-record-type ^{:doc "Metric key with it's `name` and `labels`, where
 `name` must be a string and `labels` must be a map."}
   MetricKey
-  really-make-metric-key
+  ^:private really-make-metric-key
   metric-key?
-  [m-name   metric-key-name
-   m-labels metric-key-labels])
+  [name   metric-key-name
+   labels metric-key-labels])
 
+(s/def ::m-name   string?)  ; can be thought of as
+                            ; `type Mname = String`
+(s/def ::m-labels map?)
+
+(declare make-metric-key)  ; We want to refer to the specced
+                           ; constructor in `::metric-key` but defined
+                           ; it before `make-metric-key` for
+                           ; readability.
+(s/def ::metric-key
+  (s/spec #(instance? MetricKey %)  ; We assume every instance of
+                                    ; `MetricKey` is constructed via
+                                    ; `make-metric-key` and therefore
+                                    ; must be valid -- so we don't
+                                    ; check the keys again.
+
+          :gen (fn []  ; The generator for `::metric-key` just
+                       ; generates a map of specced values (1), takes
+                       ; the result of the generator and applies the
+                       ; constructor (2) and returns it.
+                 (sgen/fmap (fn [{:keys [m-name m-labels]}]
+                              ;; (2)
+                              (make-metric-key m-name m-labels))
+                            ;; (1)
+                            (s/gen (s/keys :req-un [::m-name ::m-labels]))))))
+
+(s/fdef make-metric-key
+  :args (s/cat :name ::m-name :labels ::m-labels)
+  :ret  ::metric-key)
 (defn make-metric-key
   [name labels]
-  (s/assert ::metric-key (really-make-metric-key name labels)))
-
-(s/def ::m-name   string?)
-(s/def ::m-labels map?)
-(s/def ::metric-key
-  (s/and
-   #(instance? MetricKey %)
-   (s/keys :req-un [::m-name ::m-labels])))
+  ;; maybe do some error checking here if you need validations in
+  ;; production runtime.  During testing,
+  ;; `clojure.spec.test.alpha/instrument` the specced functions and
+  ;; you'll get spec feedback (calling with wrong args, etc.).
+  (really-make-metric-key name labels))
 
 (define-record-type ^{:doc "Metric value with it's `value` and `timestamp`,
 where `value` must be a number and ``timestamp` must be a number or nil."}
   MetricValue
   really-make-metric-value
   metric-value?
-  [m-value     metric-value-value
-   m-timestamp metric-value-timestamp])
-
-(defn make-metric-value
-  [value timestamp]
-  (s/assert ::metric-value (really-make-metric-value value timestamp)))
+  [value     metric-value-value
+   timestamp metric-value-timestamp])
 
 (s/def ::m-value number?)
-(s/def ::m-timestamp
-  (s/or :m-timestamp-number number?
-        :m-timestamp-nil    nil?))
+(s/def ::m-timestamp (s/nilable number?))
+
+(declare make-metric-value)
 (s/def ::metric-value
-  (s/and
-   #(instance? MetricValue %)
-   (s/keys :req-un [::m-value ::m-timestamp])))
+  (s/spec #(instance? MetricValue %)
+          :gen (fn []
+                 (sgen/fmap (fn [{:keys [m-value m-timestamp]}]
+                              (make-metric-value m-value m-timestamp))
+                            (s/gen (s/keys :req-un [::m-value ::m-timestamp]))))))
+
+(s/fdef make-metric-value
+  :args (s/cat :value ::m-value :timestamp ::m-timestamp)
+  :ret  ::metric-value)
+(defn make-metric-value
+  [value timestamp]
+  (really-make-metric-value value timestamp))
 
 (define-record-type ^{:doc "Metric sample with the sum of the fields of
 `MetricKey` and `MetricValue` and the same constraints."}
   MetricSample
-  really-make-metric-sample
+  ^:private really-make-metric-sample
   metric-sample?
   [m-name      metric-sample-name
    m-labels    metric-sample-labels
    m-value     metric-sample-value
    m-timestamp metric-sample-timestamp])
 
+(declare make-metric-sample)
+(s/def ::metric-sample
+  (s/spec
+   (partial instance? MetricSample)
+   :gen (fn []
+          (sgen/fmap (fn [{:keys [m-name m-labels m-value m-timestamp]}]
+                       (make-metric-sample m-name m-labels m-value m-timestamp))
+                     (s/gen (s/keys :req-un [::m-name ::m-labels ::m-value ::m-timestamp]))))))
+
+(s/fdef make-metric-sample
+  :args (s/cat :name ::m-name :labels ::m-labels :value ::m-value :timestamp ::m-timestamp)
+  :ret ::metric-sample)
 (defn make-metric-sample
   [name labels value timestamp]
-  (s/assert ::metric-sample (really-make-metric-sample name labels value timestamp)))
-
-(s/def ::metric-sample
-  (s/and
-   #(instance? MetricSample %)
-   (s/keys :req-un [::m-name ::m-labels ::m-value ::m-timestamp])))
+  (really-make-metric-sample name labels value timestamp))
 
 (defn set-raw-metric!
   "Sets a `metric-value` (`MetricValue`) for the given `metric-key`

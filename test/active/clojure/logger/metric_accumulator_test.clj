@@ -4,7 +4,8 @@
             [active.clojure.monad :as monad]
             [active.clojure.mock-monad :as mock-monad]
 
-            [clojure.spec.alpha :as s])
+            [clojure.spec.alpha :as s]
+            [clojure.spec.test.alpha :as stest])
   (:use [active.quickcheck]))
 
 ;; Note: For the moment we split the tests into
@@ -680,3 +681,24 @@
                      (t/is (= m-labels (m/metric-sample-labels    metric-sample)))
                      (t/is (= m-value  (m/metric-sample-value     metric-sample)))
                      (t/is (= m-time   (m/metric-sample-timestamp metric-sample))))))))
+
+;; Just some dummy test showing off the generators.
+(t/deftest t-make-metric-key
+  (t/is (quickcheck
+         (property [metric-key (spec ::m/metric-key)]
+                   (t/is (map? (m/metric-key-labels metric-key)))
+                   (t/is (string? (m/metric-key-name metric-key)))))))
+
+(t/deftest t-make-metric-value
+  (t/is (quickcheck
+         (property [metric-value (spec ::m/metric-value)]
+                   (t/is (number? (m/metric-value-value metric-value)))
+                   (t/is ((some-fn number? nil?) (m/metric-value-timestamp metric-value)))))))
+
+(t/deftest t-make-metric-sample
+  (t/is (quickcheck
+         (property [metric-sample (spec ::m/metric-sample)]
+                   (t/is (map? (m/metric-sample-labels metric-sample)))
+                   (t/is (string? (m/metric-sample-name metric-sample)))
+                   (t/is (number? (m/metric-sample-value metric-sample)))
+                   (t/is ((some-fn number? nil?) (m/metric-sample-timestamp metric-sample)))))))
