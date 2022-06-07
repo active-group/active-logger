@@ -4,9 +4,10 @@
             [active.clojure.monad :as monad]
             [active.clojure.mock-monad :as mock-monad]
 
-            [clojure.spec.alpha :as s]
             [clojure.spec.test.alpha :as stest])
   (:use [active.quickcheck]))
+
+(stest/instrument)
 
 ;; Note: For the moment we split the tests into
 ;; - constructive use: we use the functions as expected
@@ -572,21 +573,18 @@
 (t/deftest t-d-update-metric-value
   (t/testing "Nil as arguments."
     (let [example-metric-value-1 (m/make-metric-value 23 1)]
-      (t/is (thrown? NullPointerException
-                     (m/update-metric-value + example-metric-value-1 nil))
-            "metric-value-2 must not be nil"))
-    (t/testing "The function may not be nil."
+      (t/is (thrown? Exception (m/update-metric-value + example-metric-value-1 nil))
+            "metric-value-2 must not be nil by spec."))
+    (t/testing "The function may not be nil by spec."
       (let [example-metric-value-1 (m/make-metric-value 23 1)
             example-metric-value-2 (m/make-metric-value 1 2)]
-        (t/is (thrown? NullPointerException
-                       (m/update-metric-value nil example-metric-value-1 example-metric-value-2)))))))
+        (t/is (thrown? Exception (m/update-metric-value nil example-metric-value-1 example-metric-value-2)))))))
 
 (t/deftest t-d-sum-metric-value
   (t/testing "Adds metric-values and nothing else."
     (let [example-metric-value-1 (m/make-metric-value 23 1)]
-      (t/is (thrown? NullPointerException
-                     (m/sum-metric-value example-metric-value-1 nil))
-            "metric-value-2 must not be nil"))))
+      (t/is (thrown? Exception (m/sum-metric-value example-metric-value-1 nil))
+            "metric-value-2 must not be nil by spec."))))
 
 ;; active-quickcheck?
 (t/deftest t-d-inc-raw-metric!
@@ -613,7 +611,8 @@
     (let [raw-metric-store     (m/fresh-raw-metric-store)
           example-metric-key   (m/make-metric-key "test-metric" {:label-1 :value-1})
           example-metric-value nil]
-      (m/inc-raw-metric! raw-metric-store example-metric-key example-metric-value)
+      ;; TODO: What is the expected behaviour here?
+      (t/is (thrown? Exception (m/inc-raw-metric! raw-metric-store example-metric-key example-metric-value)))
       (t/is (empty? (m/get-raw-metric-samples! (m/fresh-raw-metric-store)))))
     (let [raw-metric-store       (m/fresh-raw-metric-store)
           example-metric-key     (m/make-metric-key "test-metric" {nil nil})
@@ -657,12 +656,11 @@
                (m/get-raw-metric-sample! raw-metric-store example-metric-key))))))
 
 (t/deftest t-d-get-raw-metric-sample!
-  (t/testing "Nil as arguments."
+  (t/testing "Nil as arguments is against the specs."
     (let [example-metric-key (m/make-metric-key "test-metric" {:label-1 :value-1})]
-      (t/is (thrown? NullPointerException
-                     (m/get-raw-metric-sample! nil example-metric-key))))
+      (t/is (thrown? Exception (m/get-raw-metric-sample! nil example-metric-key))))
     (let [raw-metric-store (m/fresh-raw-metric-store)]
-      (t/is (nil? (m/get-raw-metric-sample! raw-metric-store nil))))))
+      (t/is (thrown? Exception (m/get-raw-metric-sample! raw-metric-store nil))))))
 
 (t/deftest t-d-get-raw-metric-samples!
   (t/testing "Nil as arguments."
@@ -672,10 +670,10 @@
 
 (t/deftest t-qc-make-metric-sample
   (t/is (quickcheck
-         (property [m-name   (spec :active.clojure.logger.metric-accumulator/m-name)
-                    m-labels (spec :active.clojure.logger.metric-accumulator/m-labels)
-                    m-value  (spec :active.clojure.logger.metric-accumulator/m-value)
-                    m-time   (spec :active.clojure.logger.metric-accumulator/m-timestamp)]
+         (property [m-name   (spec ::m/m-name)
+                    m-labels (spec ::m/m-labels)
+                    m-value  (spec ::m/m-value)
+                    m-time   (spec ::m/m-timestamp)]
                    (let [metric-sample (m/make-metric-sample m-name m-labels m-value m-time)]
                      (t/is (= m-name   (m/metric-sample-name      metric-sample)))
                      (t/is (= m-labels (m/metric-sample-labels    metric-sample)))

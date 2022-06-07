@@ -11,6 +11,11 @@
 
 ;; DATA: raw metrics
 
+;; TODO: What is the type of the metric-store?
+(s/def ::metric-store (partial instance? clojure.lang.Atom))
+
+(s/fdef fresh-raw-metric-store
+  :ret ::metric-store)
 (defn ^:no-doc fresh-raw-metric-store
   []
   (atom {}))
@@ -32,11 +37,12 @@
                            ; it before `make-metric-key` for
                            ; readability.
 (s/def ::metric-key
-  (s/spec #(instance? MetricKey %)  ; We assume every instance of
-                                    ; `MetricKey` is constructed via
-                                    ; `make-metric-key` and therefore
-                                    ; must be valid -- so we don't
-                                    ; check the keys again.
+  (s/spec
+   (partial instance? MetricKey)  ; We assume every instance of
+                                  ; `MetricKey` is constructed via
+                                  ; `make-metric-key` and therefore
+                                  ; must be valid -- so we don't
+                                  ; check the keys again.
 
           :gen (fn []  ; The generator for `::metric-key` just
                        ; generates a map of specced values (1), takes
@@ -62,7 +68,7 @@
 (define-record-type ^{:doc "Metric value with it's `value` and `timestamp`,
 where `value` must be a number and ``timestamp` must be a number or nil."}
   MetricValue
-  really-make-metric-value
+  ^:private really-make-metric-value
   metric-value?
   [value     metric-value-value
    timestamp metric-value-timestamp])
@@ -72,7 +78,8 @@ where `value` must be a number and ``timestamp` must be a number or nil."}
 
 (declare make-metric-value)
 (s/def ::metric-value
-  (s/spec #(instance? MetricValue %)
+  (s/spec
+   (partial instance? MetricValue)
           :gen (fn []
                  (sgen/fmap (fn [{:keys [m-value m-timestamp]}]
                               (make-metric-value m-value m-timestamp))
@@ -90,10 +97,10 @@ where `value` must be a number and ``timestamp` must be a number or nil."}
   MetricSample
   ^:private really-make-metric-sample
   metric-sample?
-  [m-name      metric-sample-name
-   m-labels    metric-sample-labels
-   m-value     metric-sample-value
-   m-timestamp metric-sample-timestamp])
+  [name      metric-sample-name
+   labels    metric-sample-labels
+   value     metric-sample-value
+   timestamp metric-sample-timestamp])
 
 (declare make-metric-sample)
 (s/def ::metric-sample
@@ -111,6 +118,9 @@ where `value` must be a number and ``timestamp` must be a number or nil."}
   [name labels value timestamp]
   (really-make-metric-sample name labels value timestamp))
 
+;; TODO: Returns the value that was swapped in. - That is --- metric-value?
+(s/fdef set-raw-metric!
+  :args (s/cat :metric-store ::metric-store :metric-key ::metric-key :metric-value ::metric-value))
 (defn set-raw-metric!
   "Sets a `metric-value` (`MetricValue`) for the given `metric-key`
   (`MetricKey`) in `a-raw-metric-store` (`Map`). If `metric-key` is not in
@@ -119,6 +129,13 @@ where `value` must be a number and ``timestamp` must be a number or nil."}
   [a-raw-metric-store metric-key metric-value]
   (swap! a-raw-metric-store assoc metric-key metric-value))
 
+;; TODO: Returns the value that was swapped in. - That is --- metric-value?
+;; TODO: Can you really use twice the same name?
+(s/fdef update-metric-value
+  :args (s/cat
+         :update-function (partial instance? clojure.lang.IFn)
+         :metric-value (s/nilable ::metric-value)
+         :metric-value ::metric-value))
 ;; Update a metric-value (`MetricValue`) by applying a function `f` to the
 ;; `value`s of `metric-value-1` (`MetricValue`) and `metric-value-2`
 ;; (`MetricValue`) and setting the `timestamp` to `metric-value-2`s timestamp.
@@ -131,6 +148,10 @@ where `value` must be a number and ``timestamp` must be a number or nil."}
         (metric-value-timestamp (metric-value-timestamp metric-value-2)))
     metric-value-2))
 
+(s/fdef sum-metric-value
+  :args (s/cat
+         :metric-value (s/nilable ::metric-value)
+         :metric-value ::metric-value))
 (def sum-metric-value (partial update-metric-value +))
 
 (defn inc-raw-metric!
@@ -142,6 +163,9 @@ where `value` must be a number and ``timestamp` must be a number or nil."}
   [a-raw-metric-store metric-key metric-value]
   (swap! a-raw-metric-store update metric-key sum-metric-value metric-value))
 
+(s/fdef get-raw-metric-sample!
+  :args (s/cat :metric-store ::metric-store :metric-key ::metric-key)
+  :ret ::metric-sample)
 (defn get-raw-metric-sample!
   "Find a raw-metric with `metric-key` (`MetricKey`) in `a-raw-metric-store`
   (`Map`) and return it as a `MetricSample`."
