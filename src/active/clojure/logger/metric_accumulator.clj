@@ -28,9 +28,8 @@
   [name   metric-key-name
    labels metric-key-labels])
 
-(s/def ::m-name   string?)  ; can be thought of as
-                            ; `type Mname = String`
-(s/def ::m-labels map?)
+(s/def ::m-name   string?)
+(s/def ::m-labels map?   )
 
 (declare make-metric-key)  ; We want to refer to the specced
                            ; constructor in `::metric-key` but defined
@@ -55,7 +54,8 @@
                             (s/gen (s/keys :req-un [::m-name ::m-labels]))))))
 
 (s/fdef make-metric-key
-  :args (s/cat :name ::m-name :labels ::m-labels)
+  :args (s/cat :name   ::m-name
+               :labels ::m-labels)
   :ret  ::metric-key)
 (defn make-metric-key
   [name labels]
@@ -73,7 +73,7 @@ where `value` must be a number and ``timestamp` must be a number or nil."}
   [value     metric-value-value
    timestamp metric-value-timestamp])
 
-(s/def ::m-value number?)
+(s/def ::m-value                number? )
 (s/def ::m-timestamp (s/nilable number?))
 
 (declare make-metric-value)
@@ -112,7 +112,10 @@ where `value` must be a number and ``timestamp` must be a number or nil."}
                      (s/gen (s/keys :req-un [::m-name ::m-labels ::m-value ::m-timestamp]))))))
 
 (s/fdef make-metric-sample
-  :args (s/cat :name ::m-name :labels ::m-labels :value ::m-value :timestamp ::m-timestamp)
+  :args (s/cat :name      ::m-name
+               :labels    ::m-labels
+               :value     ::m-value
+               :timestamp ::m-timestamp)
   :ret ::metric-sample)
 (defn make-metric-sample
   [name labels value timestamp]
@@ -120,7 +123,9 @@ where `value` must be a number and ``timestamp` must be a number or nil."}
 
 ;; TODO: Returns the value that was swapped in. - That is --- metric-value?
 (s/fdef set-raw-metric!
-  :args (s/cat :metric-store ::metric-store :metric-key ::metric-key :metric-value ::metric-value))
+  :args (s/cat :metric-store ::metric-store
+               :metric-key   ::metric-key
+               :metric-value ::metric-value))
 (defn set-raw-metric!
   "Sets a `metric-value` (`MetricValue`) for the given `metric-key`
   (`MetricKey`) in `a-raw-metric-store` (`Map`). If `metric-key` is not in
@@ -129,13 +134,13 @@ where `value` must be a number and ``timestamp` must be a number or nil."}
   [a-raw-metric-store metric-key metric-value]
   (swap! a-raw-metric-store assoc metric-key metric-value))
 
-;; TODO: Returns the value that was swapped in. - That is --- metric-value?
 ;; TODO: Can you really use twice the same name?
 (s/fdef update-metric-value
   :args (s/cat
          :update-function (partial instance? clojure.lang.IFn)
-         :metric-value (s/nilable ::metric-value)
-         :metric-value ::metric-value))
+         :metric-value    (s/nilable ::metric-value)
+         :metric-value    ::metric-value)
+  :ret ::metric-value)
 ;; Update a metric-value (`MetricValue`) by applying a function `f` to the
 ;; `value`s of `metric-value-1` (`MetricValue`) and `metric-value-2`
 ;; (`MetricValue`) and setting the `timestamp` to `metric-value-2`s timestamp.
@@ -151,9 +156,15 @@ where `value` must be a number and ``timestamp` must be a number or nil."}
 (s/fdef sum-metric-value
   :args (s/cat
          :metric-value (s/nilable ::metric-value)
-         :metric-value ::metric-value))
+         :metric-value ::metric-value)
+  :ret ::metric-value)
 (def sum-metric-value (partial update-metric-value +))
 
+;; TODO: Returns the value that was swapped in. - That is --- metric-value?
+(s/fdef inc-raw-metric!
+  :args (s/cat :metric-store ::metric-store
+               :metric-key   ::metric-key
+               :metric-value ::metric-value))
 (defn inc-raw-metric!
   "Find a raw-metric with `metric-key` (`MetricKey`) in `a-raw-metric-store`
   (`Map`) and update this metric's value (`MetricValue`) by adding
@@ -164,7 +175,8 @@ where `value` must be a number and ``timestamp` must be a number or nil."}
   (swap! a-raw-metric-store update metric-key sum-metric-value metric-value))
 
 (s/fdef get-raw-metric-sample!
-  :args (s/cat :metric-store ::metric-store :metric-key ::metric-key)
+  :args (s/cat :metric-store ::metric-store
+               :metric-key   ::metric-key)
   :ret ::metric-sample)
 (defn get-raw-metric-sample!
   "Find a raw-metric with `metric-key` (`MetricKey`) in `a-raw-metric-store`
@@ -176,6 +188,9 @@ where `value` must be a number and ``timestamp` must be a number or nil."}
                         (metric-value-value metric-value)
                         (metric-value-timestamp metric-value))))
 
+(s/fdef get-raw-metric-samples!
+  :args (s/cat :metric-store ::metric-store)
+  :ret  [::metric-sample])
 (defn get-raw-metric-samples!
   "Return all raw-metrics in `a-raw-metric-store` as `MetricSample`s."
   [a-raw-metric-store]
@@ -190,40 +205,86 @@ where `value` must be a number and ``timestamp` must be a number or nil."}
 
 ;; COMMANDS on raw metrics
 
+;; TODO: Why is it metric-key and value timestamp and not
+;; - metric-key metric-value
+;; - name labels value timestamp
 (define-record-type ^{:doc "Monadic command for setting metrics."}
   SetRawMetric
-  (make-set-raw-metric metric-key value timestamp)
+  ^:private really-make-set-raw-metric
   set-raw-metric?
   [metric-key set-raw-metric-metric-key
-   value set-raw-metric-value
-   timestamp set-raw-metric-timestamp])
+   value      set-raw-metric-value
+   timestamp  set-raw-metric-timestamp])
+
+(s/def ::set-raw-metric
+  (s/spec
+   (partial instance? SetRawMetric)))
+
+(s/fdef make-set-raw-metric
+  :args (s/cat :metric-key  ::metric-key
+               :m-value     ::m-value
+               :m-timestamp ::m-timestamp)
+  :ret ::set-raw-metric)
+(defn make-set-raw-metric
+  [metric-key m-value m-timestamp]
+  (really-make-set-raw-metric metric-key m-value m-timestamp))
 
 (define-record-type ^{:doc "Monadic command for incrementing metrics."}
   IncrementRawMetric
-  (make-inc-raw-metric metric-key value timestamp)
+  ^:private really-make-inc-raw-metric
   inc-raw-metric?
   [metric-key inc-raw-metric-metric-key
    value inc-raw-metric-value
    timestamp inc-raw-metric-timestamp])
 
+(s/def ::inc-raw-metric
+  (s/spec
+   (partial instance? IncrementRawMetric)))
+
+(s/fdef make-inc-raw-metric
+  :args (s/cat :metric-key  ::metric-key
+               :m-value     ::m-value
+               :m-timestamp ::m-timestamp)
+  :ret ::inc-raw-metric)
+(defn make-inc-raw-metric
+  [metric-key m-value m-timestamp]
+  (really-make-inc-raw-metric metric-key m-value m-timestamp))
+
 (define-record-type ^{:doc "Monadic command for getting metrics."}
   GetRawMetricSample
-  (get-raw-metric-sample metric-key)
+  ^:private really-get-raw-metric-sample
   get-raw-metric-sample?
   [metric-key get-raw-metric-sample-metric-key])
 
+(s/def ::get-raw-metric-sample
+  (s/spec
+   (partial instance? GetRawMetricSample)))
+
+(s/fdef get-raw-metric-sample
+  :args (s/cat :metric-key ::metric-key)
+  :ret ::get-raw-metric-sample)
+(defn get-raw-metric-sample
+  [metric-key]
+  (really-get-raw-metric-sample metric-key))
+
 (defn with-maybe-timestamp
-  [f metric-key metric-value & [timestamp]]
+  [f metric-key m-value & [m-timestamp]]
   (monad/monadic
     ;; https://prometheus.io/docs/instrumenting/writing_exporters/
     ;; "You should not set timestamps on the metrics you expose, let Prometheus
     ;; take care of that."
-    #_[timestamp (if timestamp
-                   (monad/return timestamp)
-                   (timeout/get-milli-time))]
-    (f metric-key metric-value timestamp)))
+    #_[m-timestamp (if m-timestamp
+                     (monad/return m-timestamp)
+                     (timeout/get-milli-time))]
+    (f metric-key m-value m-timestamp)))
 
+;; TODO: ret: monad-wrapped ::set-raw-metric
+;; FIXME: this is odd - why `::metric-value`?
+(s/fdef set-raw-metric
+  :args (s/cat :metric-key   ::metric-key
+               :metric-value ::metric-value))
 (def set-raw-metric (partial with-maybe-timestamp make-set-raw-metric))
+
 
 (def inc-raw-metric (partial with-maybe-timestamp make-inc-raw-metric))
 

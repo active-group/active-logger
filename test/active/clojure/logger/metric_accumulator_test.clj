@@ -601,13 +601,17 @@
     (let [raw-metric-store     nil
           example-metric-key   (m/make-metric-key "test-metric" {:label-1 :value-1})
           example-metric-value (m/make-metric-value 23 1)]
-      (t/is (thrown? NullPointerException
+      ;; By specs
+      (t/is (thrown? Exception
                      (m/inc-raw-metric! raw-metric-store example-metric-key example-metric-value))))
     (let [raw-metric-store     (m/fresh-raw-metric-store)
           example-metric-key   nil
           example-metric-value (m/make-metric-value 23 1)]
-      (m/inc-raw-metric! raw-metric-store example-metric-key example-metric-value)
-      (t/is (empty? (m/get-raw-metric-samples! (m/fresh-raw-metric-store)))))
+      ;; TODO: Is there a reason why empty metric-keys should be accepted?
+      ;; TODO: The behaviour that we are testing is not the behaviour that will be seen?
+      (t/is (thrown? Exception
+                     (m/inc-raw-metric! raw-metric-store example-metric-key example-metric-value)))
+      #_(t/is (empty? (m/get-raw-metric-samples! (m/fresh-raw-metric-store)))))
     (let [raw-metric-store     (m/fresh-raw-metric-store)
           example-metric-key   (m/make-metric-key "test-metric" {:label-1 :value-1})
           example-metric-value nil]
@@ -663,8 +667,8 @@
       (t/is (thrown? Exception (m/get-raw-metric-sample! raw-metric-store nil))))))
 
 (t/deftest t-d-get-raw-metric-samples!
-  (t/testing "Nil as arguments."
-    (t/is (thrown? NullPointerException (m/get-raw-metric-samples! nil)))))
+  (t/testing "Nil as argument is against the specs."
+    (t/is (thrown? Exception (m/get-raw-metric-samples! nil)))))
 
 ;; Testing-Quickcheck
 
