@@ -266,6 +266,7 @@ where `value` must be a number and ``timestamp` must be a number or nil."}
   [metric-key]
   (really-get-raw-metric-sample metric-key))
 
+;; TODO: spec?
 (defn run-metrics
   [_run-any env state m]
   (let [raw-metric-store (::raw-metric-store env)]
@@ -296,13 +297,27 @@ where `value` must be a number and ``timestamp` must be a number or nil."}
 ;; - gauge
 ;; - histogram
 
-(define-record-type ^{:doc "Counter metric."}
+(define-record-type ^{:doc "Counter metric with it's `help` and `metric-key`,
+where `help` must be a string or nil and `metric-key` must be a `MetricKey`."}
   CounterMetric
-  really-make-counter-metric
+  ^:private really-make-counter-metric
   counter-metric?
   [help counter-metric-help
    mkey counter-metric-key])
 
+(s/def ::counter-metric
+  (s/spec
+   (partial instance? CounterMetric)))
+
+(s/def ::help (s/nilable string?))
+
+;; TODO: https://blog.taylorwood.io/2017/10/15/fspec.html
+;; TODO: m-labels must be a map! cannot be nil!
+;; (s/fdef make-counter-metric
+;;   :args (s/cat :name   ::m-name
+;;                :help   ::help
+;;                :labels ::m-labels)
+;;   :ret ::counter-metric)
 (defn make-counter-metric
   [name & [help labels]]
   (let [metric-key (make-metric-key name labels)]
