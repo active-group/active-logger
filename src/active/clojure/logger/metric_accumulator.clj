@@ -74,6 +74,9 @@ where `value` must be a number and ``timestamp` must be a number or nil."}
    timestamp metric-value-timestamp])
 
 (s/def ::m-value                number? )
+;; https://prometheus.io/docs/instrumenting/writing_exporters/
+;; "You should not set timestamps on the metrics you expose, let Prometheus
+;; take care of that."
 (s/def ::m-timestamp (s/nilable number?))
 
 (declare make-metric-value)
@@ -135,6 +138,8 @@ where `value` must be a number and ``timestamp` must be a number or nil."}
   (swap! a-raw-metric-store assoc metric-key metric-value))
 
 ;; TODO: Can you really use twice the same name?
+;; TODO: s/fspec -- update-function -- args and ret --- results
+;; https://clojure.org/guides/spec#_higher_order_functions
 (s/fdef update-metric-value
   :args (s/cat
          :update-function (partial instance? clojure.lang.IFn)
@@ -205,50 +210,43 @@ where `value` must be a number and ``timestamp` must be a number or nil."}
 
 ;; COMMANDS on raw metrics
 
-;; TODO: Why is it metric-key and value timestamp and not
-;; - metric-key metric-value
-;; - name labels value timestamp
 (define-record-type ^{:doc "Monadic command for setting metrics."}
   SetRawMetric
-  ^:private really-make-set-raw-metric
+  ^:private really-set-raw-metric
   set-raw-metric?
-  [metric-key set-raw-metric-metric-key
-   value      set-raw-metric-value
-   timestamp  set-raw-metric-timestamp])
+  [metric-key   set-raw-metric-metric-key
+   metric-value set-raw-metric-metric-value])
 
 (s/def ::set-raw-metric
   (s/spec
    (partial instance? SetRawMetric)))
 
-(s/fdef make-set-raw-metric
-  :args (s/cat :metric-key  ::metric-key
-               :m-value     ::m-value
-               :m-timestamp ::m-timestamp)
+(s/fdef set-raw-metric
+  :args (s/cat :metric-key   ::metric-key
+               :metric-value ::metric-value)
   :ret ::set-raw-metric)
-(defn make-set-raw-metric
-  [metric-key m-value m-timestamp]
-  (really-make-set-raw-metric metric-key m-value m-timestamp))
+(defn set-raw-metric
+  [metric-key metric-value]
+  (really-set-raw-metric metric-key metric-value))
 
 (define-record-type ^{:doc "Monadic command for incrementing metrics."}
   IncrementRawMetric
-  ^:private really-make-inc-raw-metric
+  ^:private really-inc-raw-metric
   inc-raw-metric?
-  [metric-key inc-raw-metric-metric-key
-   value inc-raw-metric-value
-   timestamp inc-raw-metric-timestamp])
+  [metric-key   inc-raw-metric-metric-key
+   metric-value inc-raw-metric-metric-value])
 
 (s/def ::inc-raw-metric
   (s/spec
    (partial instance? IncrementRawMetric)))
 
-(s/fdef make-inc-raw-metric
-  :args (s/cat :metric-key  ::metric-key
-               :m-value     ::m-value
-               :m-timestamp ::m-timestamp)
+(s/fdef inc-raw-metric
+  :args (s/cat :metric-key   ::metric-key
+               :metric-value ::metric-value)
   :ret ::inc-raw-metric)
-(defn make-inc-raw-metric
-  [metric-key m-value m-timestamp]
-  (really-make-inc-raw-metric metric-key m-value m-timestamp))
+(defn inc-raw-metric
+  [metric-key metric-value]
+  (really-inc-raw-metric metric-key metric-value))
 
 (define-record-type ^{:doc "Monadic command for getting metrics."}
   GetRawMetricSample
@@ -267,41 +265,20 @@ where `value` must be a number and ``timestamp` must be a number or nil."}
   [metric-key]
   (really-get-raw-metric-sample metric-key))
 
-(defn with-maybe-timestamp
-  [f metric-key m-value & [m-timestamp]]
-  (monad/monadic
-    ;; https://prometheus.io/docs/instrumenting/writing_exporters/
-    ;; "You should not set timestamps on the metrics you expose, let Prometheus
-    ;; take care of that."
-    #_[m-timestamp (if m-timestamp
-                     (monad/return m-timestamp)
-                     (timeout/get-milli-time))]
-    (f metric-key m-value m-timestamp)))
-
-;; TODO: ret: monad-wrapped ::set-raw-metric
-;; FIXME: this is odd - why `::metric-value`?
-(s/fdef set-raw-metric
-  :args (s/cat :metric-key   ::metric-key
-               :metric-value ::metric-value))
-(def set-raw-metric (partial with-maybe-timestamp make-set-raw-metric))
-
-
-(def inc-raw-metric (partial with-maybe-timestamp make-inc-raw-metric))
-
 (defn run-metrics
   [_run-any env state m]
   (let [raw-metric-store (::raw-metric-store env)]
     (cond
       (set-raw-metric? m)
       [(set-raw-metric! raw-metric-store
-                        (set-raw-metric-metric-key m)
-                        (set-raw-metric-value m))
+                        (set-raw-metric-metric-key   m)
+                        (set-raw-metric-metric-value m))
        state]
 
       (inc-raw-metric? m)
       [(inc-raw-metric! raw-metric-store
-                        (inc-raw-metric-metric-key m)
-                        (inc-raw-metric-value m))
+                        (inc-raw-metric-metric-key   m)
+                        (inc-raw-metric-metric-value m))
        state]
 
       (get-raw-metric-sample? m)
@@ -353,52 +330,61 @@ where `value` must be a number and ``timestamp` must be a number or nil."}
    total-count histogram-metric-total-count
    bucket-le-inf histogram-metric-bucket-le-inf])
 
+;; TODO: Why are labels optional?
 (defn make-histogram-metric
   [basename threshold & [help labels]]
-  (let [total-sum           (make-counter-metric (str basename "_sum") nil labels)
+  (let [total-sum           (make-counter-metric (str basename "_sum"   ) nil labels)
         bucket-le-threshold (make-counter-metric (str basename "_bucket") nil (assoc labels :le (str threshold)))
-        total-count         (make-counter-metric (str basename "_count") nil labels)
+        total-count         (make-counter-metric (str basename "_count" ) nil labels)
         bucket-le-inf       (make-counter-metric (str basename "_bucket") nil (assoc labels :le "+Inf"))]
     (really-make-histogram-metric help threshold total-sum bucket-le-threshold total-count bucket-le-inf)))
 
 
+;; TODO: Why is metric-value optional?
 (defn record-metric!
-  [raw-metric-store metric & [value timestamp]]
-  (let [metric-value (make-metric-value value timestamp)]
+  [raw-metric-store metric & [metric-value]]
+  (let [value          (metric-value-value     metric-value)
+        timestamp      (metric-value-timestamp metric-value)
+        metric-value-1 (make-metric-value 1 timestamp)
+        metric-value-0 (make-metric-value 0 timestamp)]
     (cond
       (counter-metric? metric)
       (inc-raw-metric! raw-metric-store (counter-metric-key metric) metric-value)
 
       (gauge-metric? metric)
-      (set-raw-metric! raw-metric-store (gauge-metric-key metric) metric-value)
+      (set-raw-metric! raw-metric-store (gauge-metric-key metric  ) metric-value)
 
       (histogram-metric? metric)
       (do
-        (record-metric! raw-metric-store (histogram-metric-total-sum metric) value timestamp)
-        (record-metric! raw-metric-store (histogram-metric-bucket-le-inf metric) 1 timestamp)
-        (record-metric! raw-metric-store (histogram-metric-total-count metric) 1 timestamp)
+        (record-metric! raw-metric-store (histogram-metric-total-sum     metric) metric-value  )
+        (record-metric! raw-metric-store (histogram-metric-bucket-le-inf metric) metric-value-1)
+        (record-metric! raw-metric-store (histogram-metric-total-count   metric) metric-value-1)
         (if (<= value (histogram-metric-threshold metric))
-          (record-metric! raw-metric-store (histogram-metric-bucket-le-threshold metric) 1 timestamp)
-          (record-metric! raw-metric-store (histogram-metric-bucket-le-threshold metric) 0 timestamp))))))
+          (record-metric! raw-metric-store (histogram-metric-bucket-le-threshold metric) metric-value-1)
+          (record-metric! raw-metric-store (histogram-metric-bucket-le-threshold metric) metric-value-0))))))
 
+;; TODO: Why is metric-value optional?
 (defn record-metric
-  [metric & [value timestamp]]
-  (let [metric-value (make-metric-value value timestamp)]
+  [metric & [metric-value]]
+  (let [value          (metric-value-value     metric-value)
+        timestamp      (metric-value-timestamp metric-value)
+        metric-value-1 (make-metric-value 1 timestamp)
+        metric-value-0 (make-metric-value 0 timestamp)]
     (cond
       (counter-metric? metric)
       (inc-raw-metric (counter-metric-key metric) metric-value)
 
       (gauge-metric? metric)
-      (set-raw-metric (gauge-metric-key metric) metric-value)
+      (set-raw-metric (gauge-metric-key metric  ) metric-value)
 
       (histogram-metric? metric)
       (monad/monadic
-        (record-metric (histogram-metric-total-sum metric) value timestamp)
-        (record-metric (histogram-metric-bucket-le-inf metric) 1 timestamp)
-        (record-metric (histogram-metric-total-count metric) 1 timestamp)
+        (record-metric (histogram-metric-total-sum     metric) metric-value  )
+        (record-metric (histogram-metric-bucket-le-inf metric) metric-value-1)
+        (record-metric (histogram-metric-total-count   metric) metric-value-1)
         (if (<= value (histogram-metric-threshold metric))
-          (record-metric (histogram-metric-bucket-le-threshold metric) 1 timestamp)
-          (record-metric (histogram-metric-bucket-le-threshold metric) 0 timestamp))))))
+          (record-metric (histogram-metric-bucket-le-threshold metric) metric-value-1)
+          (record-metric (histogram-metric-bucket-le-threshold metric) metric-value-0))))))
 
 
 (defn get-metrics!
@@ -435,21 +421,21 @@ where `value` must be a number and ``timestamp` must be a number or nil."}
     (histogram-metric? metric)
     (monad/monadic
      [metrics (monad/sequ
-               (mapv get-metrics [(histogram-metric-total-sum metric)
-                                  (histogram-metric-bucket-le-inf metric)
-                                  (histogram-metric-total-count metric)
+               (mapv get-metrics [(histogram-metric-total-sum           metric)
+                                  (histogram-metric-bucket-le-inf       metric)
+                                  (histogram-metric-total-count         metric)
                                   (histogram-metric-bucket-le-threshold metric)]))]
      (monad/return (apply concat metrics)))))
 
 (defn record-and-get!
-  [metrics metric & [value timestamp]]
-  (record-metric! metrics metric value timestamp)
+  [metrics metric & [metric-value]]
+  (record-metric! metrics metric metric-value)
   (get-metrics! metrics metric))
 
 (defn record-and-get
-  [metric & [value timestamp]]
+  [metric & [metric-value]]
   (monad/monadic
-    (record-metric metric value timestamp)
+    (record-metric metric metric-value)
     (get-metrics metric)))
 
 
