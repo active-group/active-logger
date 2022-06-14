@@ -126,9 +126,9 @@ where `value` must be a number and ``timestamp` must be a number or nil."}
 
 ;; TODO: Returns the value that was swapped in. - That is --- metric-value?
 (s/fdef set-raw-metric!
-  :args (s/cat :metric-store ::metric-store
-               :metric-key   ::metric-key
-               :metric-value ::metric-value))
+  :args (s/cat :a-raw-metric-store ::metric-store
+               :metric-key         ::metric-key
+               :metric-value       ::metric-value))
 (defn set-raw-metric!
   "Sets a `metric-value` (`MetricValue`) for the given `metric-key`
   (`MetricKey`) in `a-raw-metric-store` (`Map`). If `metric-key` is not in
@@ -137,14 +137,13 @@ where `value` must be a number and ``timestamp` must be a number or nil."}
   [a-raw-metric-store metric-key metric-value]
   (swap! a-raw-metric-store assoc metric-key metric-value))
 
-;; TODO: Can you really use twice the same name?
 ;; TODO: s/fspec -- update-function -- args and ret --- results
 ;; https://clojure.org/guides/spec#_higher_order_functions
 (s/fdef update-metric-value
   :args (s/cat
-         :update-function (partial instance? clojure.lang.IFn)
-         :metric-value    (s/nilable ::metric-value)
-         :metric-value    ::metric-value)
+         :f              (partial instance? clojure.lang.IFn)
+         :metric-value-1 (s/nilable ::metric-value)
+         :metric-value-2 ::metric-value)
   :ret ::metric-value)
 ;; Update a metric-value (`MetricValue`) by applying a function `f` to the
 ;; `value`s of `metric-value-1` (`MetricValue`) and `metric-value-2`
@@ -160,16 +159,16 @@ where `value` must be a number and ``timestamp` must be a number or nil."}
 
 (s/fdef sum-metric-value
   :args (s/cat
-         :metric-value (s/nilable ::metric-value)
-         :metric-value ::metric-value)
+         :metric-value-1 (s/nilable ::metric-value)
+         :metric-value-2 ::metric-value)
   :ret ::metric-value)
 (def sum-metric-value (partial update-metric-value +))
 
 ;; TODO: Returns the value that was swapped in. - That is --- metric-value?
 (s/fdef inc-raw-metric!
-  :args (s/cat :metric-store ::metric-store
-               :metric-key   ::metric-key
-               :metric-value ::metric-value))
+  :args (s/cat :a-raw-metric-store ::metric-store
+               :metric-key         ::metric-key
+               :metric-value       ::metric-value))
 (defn inc-raw-metric!
   "Find a raw-metric with `metric-key` (`MetricKey`) in `a-raw-metric-store`
   (`Map`) and update this metric's value (`MetricValue`) by adding
@@ -179,9 +178,10 @@ where `value` must be a number and ``timestamp` must be a number or nil."}
   [a-raw-metric-store metric-key metric-value]
   (swap! a-raw-metric-store update metric-key sum-metric-value metric-value))
 
+;; TODO: Maybe ret nil?
 (s/fdef get-raw-metric-sample!
-  :args (s/cat :metric-store ::metric-store
-               :metric-key   ::metric-key)
+  :args (s/cat :a-raw-metric-store ::metric-store
+               :metric-key         ::metric-key)
   :ret ::metric-sample)
 (defn get-raw-metric-sample!
   "Find a raw-metric with `metric-key` (`MetricKey`) in `a-raw-metric-store`
@@ -193,8 +193,9 @@ where `value` must be a number and ``timestamp` must be a number or nil."}
                         (metric-value-value metric-value)
                         (metric-value-timestamp metric-value))))
 
+;; TODO: Maybe ret nil?
 (s/fdef get-raw-metric-samples!
-  :args (s/cat :metric-store ::metric-store)
+  :args (s/cat :a-raw-metric-store ::metric-store)
   :ret  [::metric-sample])
 (defn get-raw-metric-samples!
   "Return all raw-metrics in `a-raw-metric-store` as `MetricSample`s."
