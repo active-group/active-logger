@@ -124,11 +124,11 @@ where `value` must be a number and ``timestamp` must be a number or nil."}
   [name labels value timestamp]
   (really-make-metric-sample name labels value timestamp))
 
-;; TODO: Returns the value that was swapped in. - That is --- metric-value?
 (s/fdef set-raw-metric!
   :args (s/cat :a-raw-metric-store ::metric-store
                :metric-key         ::metric-key
-               :metric-value       ::metric-value))
+               :metric-value       ::metric-value)
+  :ret ::metric-value)
 (defn set-raw-metric!
   "Sets a `metric-value` (`MetricValue`) for the given `metric-key`
   (`MetricKey`) in `a-raw-metric-store` (`Map`). If `metric-key` is not in
@@ -164,11 +164,11 @@ where `value` must be a number and ``timestamp` must be a number or nil."}
   :ret ::metric-value)
 (def sum-metric-value (partial update-metric-value +))
 
-;; TODO: Returns the value that was swapped in. - That is --- metric-value?
 (s/fdef inc-raw-metric!
   :args (s/cat :a-raw-metric-store ::metric-store
                :metric-key         ::metric-key
-               :metric-value       ::metric-value))
+               :metric-value       ::metric-value)
+  :ret ::metric-value)
 (defn inc-raw-metric!
   "Find a raw-metric with `metric-key` (`MetricKey`) in `a-raw-metric-store`
   (`Map`) and update this metric's value (`MetricValue`) by adding
@@ -178,11 +178,10 @@ where `value` must be a number and ``timestamp` must be a number or nil."}
   [a-raw-metric-store metric-key metric-value]
   (swap! a-raw-metric-store update metric-key sum-metric-value metric-value))
 
-;; TODO: Maybe ret nil?
 (s/fdef get-raw-metric-sample!
   :args (s/cat :a-raw-metric-store ::metric-store
                :metric-key         ::metric-key)
-  :ret ::metric-sample)
+  :ret (s/nilable ::metric-sample))
 (defn get-raw-metric-sample!
   "Find a raw-metric with `metric-key` (`MetricKey`) in `a-raw-metric-store`
   (`Map`) and return it as a `MetricSample`."
@@ -196,7 +195,7 @@ where `value` must be a number and ``timestamp` must be a number or nil."}
 ;; TODO: Maybe ret nil?
 (s/fdef get-raw-metric-samples!
   :args (s/cat :a-raw-metric-store ::metric-store)
-  :ret  [::metric-sample])
+  :ret [::metric-sample])
 (defn get-raw-metric-samples!
   "Return all raw-metrics in `a-raw-metric-store` as `MetricSample`s."
   [a-raw-metric-store]
@@ -380,11 +379,11 @@ where `help` must be a string or nil and `metric-key` must be a `MetricKey`."}
                       :histogram-metric ::histogram-metric))
 
 ;; TODO: Why is it raw-metric-store and not a-raw-metric-store?
-;; TODO: Returns --- metric-value?
 (s/fdef record-metric!
   :args (s/cat :raw-metric-store ::metric-store
                :metric           ::metric
-               :metric-value     ::metric-value))
+               :metric-value     ::metric-value)
+  :ret ::metric-value)
 (defn record-metric!
   [raw-metric-store metric metric-value]
   (let [value          (metric-value-value     metric-value)
@@ -408,7 +407,7 @@ where `help` must be a string or nil and `metric-key` must be a `MetricKey`."}
           (record-metric! raw-metric-store (histogram-metric-bucket-le-threshold metric) metric-value-0))))))
 
 ;; TODO: Why is it raw-metric-store and not a-raw-metric-store?
-;; TODO: Returns --- metric-value?
+;; TODO: Returns --- monad metric-value?
 (s/fdef record-metric
   :args (s/cat :metric       ::metric
                :metric-value ::metric-value))
