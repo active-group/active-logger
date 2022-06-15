@@ -28,11 +28,8 @@
   [name   metric-key-name
    labels metric-key-labels])
 
-(s/def ::m-name   string?)
-;; TODO: label-name nil?
-;; TODO: label-value any (currently keyword or string)
-(s/def ::m-labels (s/map-of (s/nilable keyword?)
-                            any?))
+(s/def ::metric-key-name   string?)
+(s/def ::metric-key-labels (s/map-of keyword? any?))
 
 (declare make-metric-key)  ; We want to refer to the specced
                            ; constructor in `::metric-key` but defined
@@ -50,15 +47,15 @@
                        ; generates a map of specced values (1), takes
                        ; the result of the generator and applies the
                        ; constructor (2) and returns it.
-                 (sgen/fmap (fn [{:keys [m-name m-labels]}]
+                 (sgen/fmap (fn [{:keys [metric-key-name metric-key-labels]}]
                               ;; (2)
-                              (make-metric-key m-name m-labels))
+                              (make-metric-key metric-key-name metric-key-labels))
                             ;; (1)
-                            (s/gen (s/keys :req-un [::m-name ::m-labels]))))))
+                            (s/gen (s/keys :req-un [::metric-key-name ::metric-key-labels]))))))
 
 (s/fdef make-metric-key
-  :args (s/cat :name   ::m-name
-               :labels ::m-labels)
+  :args (s/cat :name   ::metric-key-name
+               :labels ::metric-key-labels)
   :ret  ::metric-key)
 (defn make-metric-key
   [name labels]
@@ -76,23 +73,23 @@ where `value` must be a number and ``timestamp` must be a number or nil."}
   [value     metric-value-value
    timestamp metric-value-timestamp])
 
-(s/def ::m-value                number? )
+(s/def ::metric-value-value                number? )
 ;; https://prometheus.io/docs/instrumenting/writing_exporters/
 ;; "You should not set timestamps on the metrics you expose, let Prometheus
 ;; take care of that."
-(s/def ::m-timestamp (s/nilable number?))
+(s/def ::metric-value-timestamp (s/nilable number?))
 
 (declare make-metric-value)
 (s/def ::metric-value
   (s/spec
    (partial instance? MetricValue)
           :gen (fn []
-                 (sgen/fmap (fn [{:keys [m-value m-timestamp]}]
-                              (make-metric-value m-value m-timestamp))
-                            (s/gen (s/keys :req-un [::m-value ::m-timestamp]))))))
+                 (sgen/fmap (fn [{:keys [metric-value-value metric-value-timestamp]}]
+                              (make-metric-value metric-value-value metric-value-timestamp))
+                            (s/gen (s/keys :req-un [::metric-value-value ::metric-value-timestamp]))))))
 
 (s/fdef make-metric-value
-  :args (s/cat :value ::m-value :timestamp ::m-timestamp)
+  :args (s/cat :value ::metric-value-value :timestamp ::metric-value-timestamp)
   :ret  ::metric-value)
 (defn make-metric-value
   [value timestamp]
@@ -113,15 +110,15 @@ where `value` must be a number and ``timestamp` must be a number or nil."}
   (s/spec
    (partial instance? MetricSample)
    :gen (fn []
-          (sgen/fmap (fn [{:keys [m-name m-labels m-value m-timestamp]}]
-                       (make-metric-sample m-name m-labels m-value m-timestamp))
-                     (s/gen (s/keys :req-un [::m-name ::m-labels ::m-value ::m-timestamp]))))))
+          (sgen/fmap (fn [{:keys [metric-key-name metric-key-labels metric-value-value metric-value-timestamp]}]
+                       (make-metric-sample metric-key-name metric-key-labels metric-value-value metric-value-timestamp))
+                     (s/gen (s/keys :req-un [::metric-key-name ::metric-key-labels ::metric-value-value ::metric-value-timestamp]))))))
 
 (s/fdef make-metric-sample
-  :args (s/cat :name      ::m-name
-               :labels    ::m-labels
-               :value     ::m-value
-               :timestamp ::m-timestamp)
+  :args (s/cat :name      ::metric-key-name
+               :labels    ::metric-key-labels
+               :value     ::metric-value-value
+               :timestamp ::metric-value-timestamp)
   :ret ::metric-sample)
 (defn make-metric-sample
   [name labels value timestamp]
@@ -267,25 +264,24 @@ where `value` must be a number and ``timestamp` must be a number or nil."}
   [metric-key]
   (really-get-raw-metric-sample metric-key))
 
-;; TODO: spec?
 (defn run-metrics
   [_run-any env state m]
-  (let [raw-metric-store (::raw-metric-store env)]
+  (let [a-raw-metric-store (::a-raw-metric-store env)]
     (cond
       (set-raw-metric? m)
-      [(set-raw-metric! raw-metric-store
+      [(set-raw-metric! a-raw-metric-store
                         (set-raw-metric-metric-key   m)
                         (set-raw-metric-metric-value m))
        state]
 
       (inc-raw-metric? m)
-      [(inc-raw-metric! raw-metric-store
+      [(inc-raw-metric! a-raw-metric-store
                         (inc-raw-metric-metric-key   m)
                         (inc-raw-metric-metric-value m))
        state]
 
       (get-raw-metric-sample? m)
-      [(get-raw-metric-sample! raw-metric-store
+      [(get-raw-metric-sample! a-raw-metric-store
                                (get-raw-metric-sample-metric-key m))
        state]
 
@@ -313,9 +309,9 @@ where `help` must be a string or nil and `metric-key` must be a `MetricKey`."}
 (s/def ::help (s/nilable string?))
 
 (s/fdef make-counter-metric
-  :args (s/cat :name ::m-name
+  :args (s/cat :name ::metric-key-name
                :optional (s/? (s/cat :help   ::help
-                                     :labels ::m-labels)))
+                                     :labels ::metric-key-labels)))
   :ret ::counter-metric)
 (defn make-counter-metric
   [name & [help labels]]
@@ -334,9 +330,9 @@ where `help` must be a string or nil and `metric-key` must be a `MetricKey`."}
    (partial instance? GaugeMetric)))
 
 (s/fdef make-gauge-metric
-  :args (s/cat :name ::m-name
+  :args (s/cat :name ::metric-key-name
                :optional (s/? (s/cat :help   ::help
-                                     :labels ::m-labels)))
+                                     :labels ::metric-key-labels)))
   :ret ::gauge-metric)
 (defn make-gauge-metric
   [name & [help labels]]
@@ -354,19 +350,15 @@ where `help` must be a string or nil and `metric-key` must be a `MetricKey`."}
    total-count histogram-metric-total-count
    bucket-le-inf histogram-metric-bucket-le-inf])
 
-;; TODO: naming (m-threshold; metric-threshold; ...)
-;; TODO: nilable?
-(s/def ::threshold number?)
-
 (s/def ::histogram-metric
   (s/spec
    (partial instance? HistogramMetric)))
 
 (s/fdef make-histogram-metric
-  :args (s/cat :basename  ::m-name
-               :threshold ::threshold
+  :args (s/cat :basename  ::metric-key-name
+               :threshold ::metric-value-value
                :optional (s/? (s/cat :help   ::help
-                                     :labels ::m-labels)))
+                                     :labels ::metric-key-labels)))
   :ret ::histogram-metric)
 (defn make-histogram-metric
   [basename threshold & [help labels]]
@@ -380,35 +372,33 @@ where `help` must be a string or nil and `metric-key` must be a `MetricKey`."}
                       :gauge-metric     ::gauge-metric
                       :histogram-metric ::histogram-metric))
 
-;; TODO: Why is it raw-metric-store and not a-raw-metric-store?
 (s/fdef record-metric!
-  :args (s/cat :raw-metric-store ::metric-store
-               :metric           ::metric
-               :metric-value     ::metric-value)
+  :args (s/cat :a-raw-metric-store ::metric-store
+               :metric             ::metric
+               :metric-value       ::metric-value)
   :ret ::metric-value)
 (defn record-metric!
-  [raw-metric-store metric metric-value]
+  [a-raw-metric-store metric metric-value]
   (let [value          (metric-value-value     metric-value)
         timestamp      (metric-value-timestamp metric-value)
         metric-value-1 (make-metric-value 1 timestamp)
         metric-value-0 (make-metric-value 0 timestamp)]
     (cond
       (counter-metric? metric)
-      (inc-raw-metric! raw-metric-store (counter-metric-key metric) metric-value)
+      (inc-raw-metric! a-raw-metric-store (counter-metric-key metric) metric-value)
 
       (gauge-metric? metric)
-      (set-raw-metric! raw-metric-store (gauge-metric-key metric  ) metric-value)
+      (set-raw-metric! a-raw-metric-store (gauge-metric-key metric  ) metric-value)
 
       (histogram-metric? metric)
       (do
-        (record-metric! raw-metric-store (histogram-metric-total-sum     metric) metric-value  )
-        (record-metric! raw-metric-store (histogram-metric-bucket-le-inf metric) metric-value-1)
-        (record-metric! raw-metric-store (histogram-metric-total-count   metric) metric-value-1)
+        (record-metric! a-raw-metric-store (histogram-metric-total-sum     metric) metric-value  )
+        (record-metric! a-raw-metric-store (histogram-metric-bucket-le-inf metric) metric-value-1)
+        (record-metric! a-raw-metric-store (histogram-metric-total-count   metric) metric-value-1)
         (if (<= value (histogram-metric-threshold metric))
-          (record-metric! raw-metric-store (histogram-metric-bucket-le-threshold metric) metric-value-1)
-          (record-metric! raw-metric-store (histogram-metric-bucket-le-threshold metric) metric-value-0))))))
+          (record-metric! a-raw-metric-store (histogram-metric-bucket-le-threshold metric) metric-value-1)
+          (record-metric! a-raw-metric-store (histogram-metric-bucket-le-threshold metric) metric-value-0))))))
 
-;; TODO: Why is it raw-metric-store and not a-raw-metric-store?
 ;; TODO: Returns --- monad metric-value?
 (s/fdef record-metric
   :args (s/cat :metric       ::metric
@@ -435,23 +425,22 @@ where `help` must be a string or nil and `metric-key` must be a `MetricKey`."}
           (record-metric (histogram-metric-bucket-le-threshold metric) metric-value-1)
           (record-metric (histogram-metric-bucket-le-threshold metric) metric-value-0))))))
 
-;; TODO: Why is it raw-metric-store and not a-raw-metric-store?
 (s/fdef get-metrics!
-  :args (s/cat :raw-metric-store ::metric-store
-               :metric           ::metric)
+  :args (s/cat :a-raw-metric-store ::metric-store
+               :metric             ::metric)
   :ret (s/coll-of ::metric-sample))
 (defn get-metrics!
   "Returns a collection of metric samples."
-  [raw-metric-store metric]
+  [a-raw-metric-store metric]
   (cond
     (counter-metric? metric)
-    [(get-raw-metric-sample! raw-metric-store (counter-metric-key metric))]
+    [(get-raw-metric-sample! a-raw-metric-store (counter-metric-key metric))]
 
     (gauge-metric? metric)
-    [(get-raw-metric-sample! raw-metric-store (gauge-metric-key metric))]
+    [(get-raw-metric-sample! a-raw-metric-store (gauge-metric-key metric))]
 
     (histogram-metric? metric)
-    (mapcat (partial get-metrics! raw-metric-store)
+    (mapcat (partial get-metrics! a-raw-metric-store)
             [(histogram-metric-total-sum metric)
              (histogram-metric-bucket-le-inf metric)
              (histogram-metric-total-count metric)
@@ -483,16 +472,15 @@ where `help` must be a string or nil and `metric-key` must be a `MetricKey`."}
                                   (histogram-metric-bucket-le-threshold metric)]))]
      (monad/return (apply concat metrics)))))
 
-;; TODO: metrics?
 ;; TODO: return
 (s/fdef record-and-get!
-  :args (s/cat :metrics      ::metric-store
-               :metric       ::metric
-               :metric-value ::metric-value))
+  :args (s/cat :a-raw-metric-store ::metric-store
+               :metric             ::metric
+               :metric-value       ::metric-value))
 (defn record-and-get!
-  [metrics metric metric-value]
-  (record-metric! metrics metric metric-value)
-  (get-metrics! metrics metric))
+  [a-raw-metric-store metric metric-value]
+  (record-metric! a-raw-metric-store metric metric-value)
+  (get-metrics! a-raw-metric-store metric))
 
 (s/fdef record-and-get
   :args (s/cat :metric       ::metric
@@ -503,12 +491,8 @@ where `help` must be a string or nil and `metric-key` must be a `MetricKey`."}
     (record-metric metric metric-value)
     (get-metrics metric)))
 
-;; TODO: Check me.
-(s/fdef monad-command-config
-  :args (s/cat :optional
-               (s/cat :metrics (s/* ::metric-store))))
 (defn monad-command-config
-  [& [metrics]]
+  [& [a-raw-metric-store]]
   (monad/make-monad-command-config
     run-metrics
-    {::raw-metric-store (or metrics (fresh-raw-metric-store))} {}))
+    {::a-raw-metric-store (or a-raw-metric-store (fresh-raw-metric-store))} {}))

@@ -619,28 +619,12 @@
       (t/is (thrown? Exception (m/inc-raw-metric! raw-metric-store example-metric-key example-metric-value)))
       (t/is (empty? (m/get-raw-metric-samples! (m/fresh-raw-metric-store)))))
     (let [raw-metric-store       (m/fresh-raw-metric-store)
-          example-metric-key     (m/make-metric-key "test-metric" {nil nil})
-          example-metric-value-1 (m/make-metric-value 23 1)
-          example-metric-value-2 (m/make-metric-value 10 2)]
-      (m/inc-raw-metric! raw-metric-store example-metric-key example-metric-value-1)
-      (m/inc-raw-metric! raw-metric-store example-metric-key example-metric-value-2)
-      (t/is (= (m/make-metric-sample "test-metric" {nil nil} 33 2)
-               (m/get-raw-metric-sample! raw-metric-store example-metric-key))))
-    (let [raw-metric-store       (m/fresh-raw-metric-store)
           example-metric-key     (m/make-metric-key "test-metric" {:label-1 nil})
           example-metric-value-1 (m/make-metric-value 23 1)
           example-metric-value-2 (m/make-metric-value 10 2)]
       (m/inc-raw-metric! raw-metric-store example-metric-key example-metric-value-1)
       (m/inc-raw-metric! raw-metric-store example-metric-key example-metric-value-2)
       (t/is (= (m/make-metric-sample "test-metric" {:label-1 nil} 33 2)
-               (m/get-raw-metric-sample! raw-metric-store example-metric-key))))
-    (let [raw-metric-store       (m/fresh-raw-metric-store)
-          example-metric-key     (m/make-metric-key "test-metric" {nil :value-1})
-          example-metric-value-1 (m/make-metric-value 23 1)
-          example-metric-value-2 (m/make-metric-value 10 2)]
-      (m/inc-raw-metric! raw-metric-store example-metric-key example-metric-value-1)
-      (m/inc-raw-metric! raw-metric-store example-metric-key example-metric-value-2)
-      (t/is (= (m/make-metric-sample "test-metric" {nil :value-1} 33 2)
                (m/get-raw-metric-sample! raw-metric-store example-metric-key))))
     (let [raw-metric-store       (m/fresh-raw-metric-store)
           example-metric-key     (m/make-metric-key "test-metric" {:label-1 :value-1})
@@ -674,10 +658,10 @@
 
 (t/deftest t-qc-make-metric-sample
   (t/is (quickcheck
-         (property [m-name   (spec ::m/m-name)
-                    m-labels (spec ::m/m-labels)
-                    m-value  (spec ::m/m-value)
-                    m-time   (spec ::m/m-timestamp)]
+         (property [m-name   (spec ::m/metric-key-name)
+                    m-labels (spec ::m/metric-key-labels)
+                    m-value  (spec ::m/metric-value-value)
+                    m-time   (spec ::m/metric-value-timestamp)]
                    (let [metric-sample (m/make-metric-sample m-name m-labels m-value m-time)]
                      (t/is (= m-name   (m/metric-sample-name      metric-sample)))
                      (t/is (= m-labels (m/metric-sample-labels    metric-sample)))
