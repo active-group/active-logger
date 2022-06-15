@@ -29,7 +29,10 @@
    labels metric-key-labels])
 
 (s/def ::m-name   string?)
-(s/def ::m-labels map?   )
+;; TODO: label-name nil?
+;; TODO: label-value any (currently keyword or string)
+(s/def ::m-labels (s/map-of (s/nilable keyword?)
+                            any?))
 
 (declare make-metric-key)  ; We want to refer to the specced
                            ; constructor in `::metric-key` but defined
@@ -192,10 +195,9 @@ where `value` must be a number and ``timestamp` must be a number or nil."}
                         (metric-value-value metric-value)
                         (metric-value-timestamp metric-value))))
 
-;; TODO: Maybe ret nil?
 (s/fdef get-raw-metric-samples!
   :args (s/cat :a-raw-metric-store ::metric-store)
-  :ret [::metric-sample])
+  :ret (s/coll-of ::metric-sample))
 (defn get-raw-metric-samples!
   "Return all raw-metrics in `a-raw-metric-store` as `MetricSample`s."
   [a-raw-metric-store]
@@ -434,10 +436,10 @@ where `help` must be a string or nil and `metric-key` must be a `MetricKey`."}
           (record-metric (histogram-metric-bucket-le-threshold metric) metric-value-0))))))
 
 ;; TODO: Why is it raw-metric-store and not a-raw-metric-store?
-;; TODO: Return: nilable? map?
 (s/fdef get-metrics!
   :args (s/cat :raw-metric-store ::metric-store
-               :metric           ::metric))
+               :metric           ::metric)
+  :ret (s/coll-of ::metric-sample))
 (defn get-metrics!
   "Returns a collection of metric samples."
   [raw-metric-store metric]
