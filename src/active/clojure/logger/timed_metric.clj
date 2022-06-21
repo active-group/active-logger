@@ -88,7 +88,8 @@
 (defmacro start-metric-timer
   "Starts a metric timer, identified by `metric` and `more`.
 
-  `more` must be a map from keywords listed in [[log/log-context-keys]] to strings.
+  `more` is a map that is merged with the log context that's already active,
+  if present.
 
   Returns a timer-name object that can be fed to
   [[cancel-metric-timer]] or [[stop-and-log-metric-timer]]."

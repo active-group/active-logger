@@ -36,7 +36,8 @@
   [namespace log-metric-namespace
    ^{:doc "String"} label log-metric-label
    ^{:doc "Scalar value"} value log-metric-value
-   ^{:doc "Map with more data or `nil`, see [[log-context-keys]]."}
+   ^{:doc "Map with more data or `nil`. The context is a map that is merged
+  with the log context that's already active, if present."}
    map log-metric-map])
 
 (define-record-type ^{:doc "Get the system time in milliseconds"} GetMilliTime

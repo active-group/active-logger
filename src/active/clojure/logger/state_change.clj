@@ -44,7 +44,8 @@
    state log-state-change-state
    ^{:doc "Floating-point number in seconds or `nil`."}
    ttl log-state-change-ttl
-   ^{:doc "Map with more data or `nil`, see [[log-context-keys]]."}
+   ^{:doc "Map with more data or `nil`. The context is a map that is merged
+  with the log context that's already active, if present."}
     map log-state-change-map])
 
 ;;; Actions

@@ -24,7 +24,8 @@
    origin log-event-origin
    ^{:doc "Delayed seq of arguments to log; throwable may be first."}
    vargs-delay log-event-vargs-delay
-   ^{:doc "Map with more data or `nil`, see [[log-context-keys]]."}
+   ^{:doc "Map with more data or `nil`. The context is a map that is merged
+  with the log context that's already active, if present."}
    map log-event-map])
 
 (define-record-type ^:no-doc LogExceptionEvent
@@ -38,7 +39,8 @@
    ^{:doc "Delayed seq of arguments to log; throwable may be first."}
    vargs-delay log-exception-event-vargs-delay
    exception log-exception-event-exception
-   ^{:doc "Map with more data or `nil`, see [[log-context-keys]]."}
+   ^{:doc "Map with more data or `nil`. The context is a map that is merged
+  with the log context that's already active, if present."}
    map log-exception-event-map])
 
 (define-record-type ^{:doc "Execute a command within
