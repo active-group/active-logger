@@ -513,3 +513,21 @@ where `help` must be a string or nil and `metric-key` must be a `MetricKey`."}
   (monad/make-monad-command-config
     run-metrics
     {::a-raw-metric-store (or a-raw-metric-store (fresh-raw-metric-store))} {}))
+
+
+;; TESTING
+
+;; TODO return? new-metric-store?
+(s/fdef prune-stale-metrics!
+  :args (s/cat :a-raw-metric-store ::metric-store
+               :time-ms            ::metric-value-last-update-time-ms))
+(defn prune-stale-metrics!
+  [a-raw-metric-store time-ms]
+  (swap! a-raw-metric-store
+         (fn [old-store]
+           (reduce-kv (fn [new-store metric-key metric-value]
+                        (if (< (metric-value-last-update-time-ms metric-value) time-ms)
+                          new-store
+                          (assoc new-store metric-key metric-value)))
+                      {}
+                      old-store))))

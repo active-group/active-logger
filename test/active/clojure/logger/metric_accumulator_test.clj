@@ -790,3 +790,23 @@
                    (t/is (string?                (m/metric-sample-name      metric-sample)))
                    (t/is (number?                (m/metric-sample-value     metric-sample)))
                    (t/is ((some-fn number? nil?) (m/metric-sample-timestamp metric-sample)))))))
+
+
+;; TESTING
+
+(t/deftest prune-stale-metrics!
+  (let [ms  (m/fresh-raw-metric-store)
+        mk1 (m/make-metric-key "t1" {:l1 :v1})
+        mv1 (m/make-metric-value 1 2 100)
+        mk2 (m/make-metric-key "t2" {:l2 :v2})
+        mv2 (m/make-metric-value 2 3 200)
+        mk3 (m/make-metric-key "t3" {:l3 :v3})
+        mv3 (m/make-metric-value 3 4 300)]
+    (m/set-raw-metric! ms mk1 mv1)
+    (m/set-raw-metric! ms mk2 mv2)
+    (m/set-raw-metric! ms mk3 mv3)
+    (m/prune-stale-metrics! ms 200)
+
+    (t/is (= [(m/make-metric-sample "t2" {:l2 :v2} 2 3 200)
+              (m/make-metric-sample "t3" {:l3 :v3} 3 4 300)]
+             (m/get-raw-metric-samples! ms)))))
