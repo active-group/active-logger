@@ -11,7 +11,7 @@
 
 ;; DATA: raw metrics
 
-;; TODO: What is the type of the metric-store?
+;; TODO: Can we improve the type of the metric-store?
 (s/def ::metric-store (partial instance? clojure.lang.Atom))
 
 (s/fdef fresh-raw-metric-store
@@ -137,11 +137,15 @@ where `value` must be a number and ``timestamp` must be a number or nil."}
   [a-raw-metric-store metric-key metric-value]
   (swap! a-raw-metric-store assoc metric-key metric-value))
 
-;; TODO: s/fspec -- update-function -- args and ret --- results
-;; https://clojure.org/guides/spec#_higher_order_functions
+(s/def ::update-function
+  (s/fspec
+   :args (s/cat :metric-value-value-1 ::metric-value-value
+                :metric-value-value-2 ::metric-value-value)
+   :ret ::metric-value-value))
+
 (s/fdef update-metric-value
   :args (s/cat
-         :f              (partial instance? clojure.lang.IFn)
+         :f              ::update-function
          :metric-value-1 (s/nilable ::metric-value)
          :metric-value-2 ::metric-value)
   :ret ::metric-value)
@@ -181,7 +185,7 @@ where `value` must be a number and ``timestamp` must be a number or nil."}
 (s/fdef get-raw-metric-sample!
   :args (s/cat :a-raw-metric-store ::metric-store
                :metric-key         ::metric-key)
-  :ret (s/nilable ::metric-sample))
+  :ret  (s/nilable ::metric-sample))
 (defn get-raw-metric-sample!
   "Find a raw-metric with `metric-key` (`MetricKey`) in `a-raw-metric-store`
   (`Map`) and return it as a `MetricSample`."
@@ -194,7 +198,7 @@ where `value` must be a number and ``timestamp` must be a number or nil."}
 
 (s/fdef get-raw-metric-samples!
   :args (s/cat :a-raw-metric-store ::metric-store)
-  :ret (s/coll-of ::metric-sample))
+  :ret  (s/coll-of ::metric-sample))
 (defn get-raw-metric-samples!
   "Return all raw-metrics in `a-raw-metric-store` as `MetricSample`s."
   [a-raw-metric-store]
@@ -446,7 +450,7 @@ where `help` must be a string or nil and `metric-key` must be a `MetricKey`."}
              (histogram-metric-total-count metric)
              (histogram-metric-bucket-le-threshold metric)])))
 
-;; TODO: Return --- monad.
+;; TODO: Return --- monad ::metric-sample.
 (s/fdef get-metrics
   :args (s/cat :metric ::metric))
 (defn get-metrics
@@ -472,16 +476,17 @@ where `help` must be a string or nil and `metric-key` must be a `MetricKey`."}
                                   (histogram-metric-bucket-le-threshold metric)]))]
      (monad/return (apply concat metrics)))))
 
-;; TODO: return
 (s/fdef record-and-get!
   :args (s/cat :a-raw-metric-store ::metric-store
                :metric             ::metric
-               :metric-value       ::metric-value))
+               :metric-value       ::metric-value)
+  :ret  (s/coll-of ::metric-sample))
 (defn record-and-get!
   [a-raw-metric-store metric metric-value]
   (record-metric! a-raw-metric-store metric metric-value)
   (get-metrics! a-raw-metric-store metric))
 
+;; TODO: Return -- monad coll-of ::metric-sample
 (s/fdef record-and-get
   :args (s/cat :metric       ::metric
                :metric-value ::metric-value))
