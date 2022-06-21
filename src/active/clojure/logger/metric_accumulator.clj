@@ -66,63 +66,70 @@
   (really-make-metric-key name labels))
 
 (define-record-type ^{:doc "Metric value with it's `value` and `timestamp`,
-where `value` must be a number and ``timestamp` must be a number or nil."}
+where `value` must be a number, `timestamp` must be a number or nil and
+`last-update-time-ms` must be a number."}
   MetricValue
   ^:private really-make-metric-value
   metric-value?
-  [value     metric-value-value
-   timestamp metric-value-timestamp])
+  [value               metric-value-value
+   timestamp           metric-value-timestamp
+   last-update-time-ms metric-value-last-update-time-ms])
 
 (s/def ::metric-value-value                number? )
 ;; https://prometheus.io/docs/instrumenting/writing_exporters/
 ;; "You should not set timestamps on the metrics you expose, let Prometheus
 ;; take care of that."
 (s/def ::metric-value-timestamp (s/nilable number?))
+(s/def ::metric-value-last-update-time-ms  number?)
 
 (declare make-metric-value)
 (s/def ::metric-value
   (s/spec
    (partial instance? MetricValue)
           :gen (fn []
-                 (sgen/fmap (fn [{:keys [metric-value-value metric-value-timestamp]}]
-                              (make-metric-value metric-value-value metric-value-timestamp))
-                            (s/gen (s/keys :req-un [::metric-value-value ::metric-value-timestamp]))))))
+                 (sgen/fmap (fn [{:keys [metric-value-value metric-value-timestamp metric-value-last-update-time-ms]}]
+                              (make-metric-value metric-value-value metric-value-timestamp metric-value-last-update-time-ms))
+                            (s/gen (s/keys :req-un [::metric-value-value ::metric-value-timestamp ::metric-value-last-update-time-ms]))))))
 
 (s/fdef make-metric-value
-  :args (s/cat :value ::metric-value-value :timestamp ::metric-value-timestamp)
+  :args (s/cat :value       ::metric-value-value
+               :timestamp   ::metric-value-timestamp
+               :update-time ::metric-value-last-update-time-ms)
   :ret  ::metric-value)
 (defn make-metric-value
-  [value timestamp]
-  (really-make-metric-value value timestamp))
+  [value timestamp update-time]
+  (really-make-metric-value value timestamp update-time))
 
 (define-record-type ^{:doc "Metric sample with the sum of the fields of
 `MetricKey` and `MetricValue` and the same constraints."}
   MetricSample
   ^:private really-make-metric-sample
   metric-sample?
-  [name      metric-sample-name
-   labels    metric-sample-labels
-   value     metric-sample-value
-   timestamp metric-sample-timestamp])
+  [name                metric-sample-name
+   labels              metric-sample-labels
+   value               metric-sample-value
+   timestamp           metric-sample-timestamp
+   last-update-time-ms metric-sample-last-update-time-ms])
 
 (declare make-metric-sample)
 (s/def ::metric-sample
   (s/spec
    (partial instance? MetricSample)
    :gen (fn []
-          (sgen/fmap (fn [{:keys [metric-key-name metric-key-labels metric-value-value metric-value-timestamp]}]
-                       (make-metric-sample metric-key-name metric-key-labels metric-value-value metric-value-timestamp))
-                     (s/gen (s/keys :req-un [::metric-key-name ::metric-key-labels ::metric-value-value ::metric-value-timestamp]))))))
+          (sgen/fmap (fn [{:keys [metric-key-name metric-key-labels metric-value-value metric-value-timestamp metric-value-last-update-time-ms]}]
+                       (make-metric-sample metric-key-name metric-key-labels metric-value-value metric-value-timestamp metric-value-last-update-time-ms))
+                     (s/gen (s/keys :req-un [::metric-key-name ::metric-key-labels ::metric-value-value ::metric-value-timestamp ::metric-value-last-update-time-ms]))))))
 
 (s/fdef make-metric-sample
-  :args (s/cat :name      ::metric-key-name
-               :labels    ::metric-key-labels
-               :value     ::metric-value-value
-               :timestamp ::metric-value-timestamp)
+  :args (s/cat :name        ::metric-key-name
+               :labels      ::metric-key-labels
+               :value       ::metric-value-value
+               :timestamp   ::metric-value-timestamp
+               :update-time ::metric-value-last-update-time-ms)
   :ret ::metric-sample)
 (defn make-metric-sample
-  [name labels value timestamp]
-  (really-make-metric-sample name labels value timestamp))
+  [name labels value timestamp update-time]
+  (really-make-metric-sample name labels value timestamp update-time))
 
 (s/fdef set-raw-metric!
   :args (s/cat :a-raw-metric-store ::metric-store
@@ -158,7 +165,8 @@ where `value` must be a number and ``timestamp` must be a number or nil."}
   (if metric-value-1
     (-> metric-value-1
         (lens/overhaul metric-value-value f (metric-value-value metric-value-2))
-        (metric-value-timestamp (metric-value-timestamp metric-value-2)))
+        (metric-value-timestamp           (metric-value-timestamp           metric-value-2))
+        (metric-value-last-update-time-ms (metric-value-last-update-time-ms metric-value-2)))
     metric-value-2))
 
 (s/fdef sum-metric-value
@@ -191,10 +199,11 @@ where `value` must be a number and ``timestamp` must be a number or nil."}
   (`Map`) and return it as a `MetricSample`."
   [a-raw-metric-store metric-key]
   (when-let [metric-value (get @a-raw-metric-store metric-key)]
-    (make-metric-sample (metric-key-name metric-key)
-                        (metric-key-labels metric-key)
-                        (metric-value-value metric-value)
-                        (metric-value-timestamp metric-value))))
+    (make-metric-sample (metric-key-name                  metric-key)
+                        (metric-key-labels                metric-key)
+                        (metric-value-value               metric-value)
+                        (metric-value-timestamp           metric-value)
+                        (metric-value-last-update-time-ms metric-value))))
 
 (s/fdef get-raw-metric-samples!
   :args (s/cat :a-raw-metric-store ::metric-store)
@@ -204,10 +213,11 @@ where `value` must be a number and ``timestamp` must be a number or nil."}
   [a-raw-metric-store]
   (reduce-kv (fn [r metric-key metric-value]
                (concat r
-                       [(make-metric-sample (metric-key-name metric-key)
-                                            (metric-key-labels metric-key)
-                                            (metric-value-value metric-value)
-                                            (metric-value-timestamp metric-value))]))
+                       [(make-metric-sample (metric-key-name                  metric-key)
+                                            (metric-key-labels                metric-key)
+                                            (metric-value-value               metric-value)
+                                            (metric-value-timestamp           metric-value)
+                                            (metric-value-last-update-time-ms metric-value))]))
              []
              @a-raw-metric-store))
 
@@ -383,10 +393,11 @@ where `help` must be a string or nil and `metric-key` must be a `MetricKey`."}
   :ret ::metric-value)
 (defn record-metric!
   [a-raw-metric-store metric metric-value]
-  (let [value          (metric-value-value     metric-value)
-        timestamp      (metric-value-timestamp metric-value)
-        metric-value-1 (make-metric-value 1 timestamp)
-        metric-value-0 (make-metric-value 0 timestamp)]
+  (let [value          (metric-value-value               metric-value)
+        timestamp      (metric-value-timestamp           metric-value)
+        last-update    (metric-value-last-update-time-ms metric-value)
+        metric-value-1 (make-metric-value 1 timestamp last-update)
+        metric-value-0 (make-metric-value 0 timestamp last-update)]
     (cond
       (counter-metric? metric)
       (inc-raw-metric! a-raw-metric-store (counter-metric-key metric) metric-value)
@@ -409,10 +420,11 @@ where `help` must be a string or nil and `metric-key` must be a `MetricKey`."}
                :metric-value ::metric-value))
 (defn record-metric
   [metric metric-value]
-  (let [value          (metric-value-value     metric-value)
-        timestamp      (metric-value-timestamp metric-value)
-        metric-value-1 (make-metric-value 1 timestamp)
-        metric-value-0 (make-metric-value 0 timestamp)]
+  (let [value          (metric-value-value               metric-value)
+        timestamp      (metric-value-timestamp           metric-value)
+        last-update    (metric-value-last-update-time-ms metric-value)
+        metric-value-1 (make-metric-value 1 timestamp last-update)
+        metric-value-0 (make-metric-value 0 timestamp last-update)]
     (cond
       (counter-metric? metric)
       (inc-raw-metric (counter-metric-key metric) metric-value)
