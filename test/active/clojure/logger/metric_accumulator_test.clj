@@ -26,48 +26,79 @@
 
 (t/deftest t-make-metric-key
   (t/testing "All fields of a metric-key are set correct."
-    (let [example-metric-key (m/make-metric-key "test-metric" {:label-1 :value-1})]
-      (t/is                     (m/metric-key?       example-metric-key))
-      (t/is "test-metric"       (m/metric-key-name   example-metric-key))
-      (t/is {:label-1 :value-1} (m/metric-key-labels example-metric-key)))))
+    (t/is (quickcheck
+           (property [name   (spec ::m/metric-key-name)
+                      labels (spec ::m/metric-key-labels)]
+                     (let [example-metric-key (m/make-metric-key name labels)]
+                       (t/is           (m/metric-key?       example-metric-key))
+                       (t/is (= name   (m/metric-key-name   example-metric-key)))
+                       (t/is (= labels (m/metric-key-labels example-metric-key)))))))))
 
 (t/deftest t-make-metric-value
   (t/testing "All fields of a metric-value are set correct."
-    (let [example-metric-value (m/make-metric-value 23 1 500)]
-      (t/is     (m/metric-value?                    example-metric-value))
-      (t/is  23 (m/metric-value-value               example-metric-value))
-      (t/is   1 (m/metric-value-timestamp           example-metric-value))
-      (t/is 500 (m/metric-value-last-update-time-ms example-metric-value)))))
+    (t/is (quickcheck
+           (property [value       (spec ::m/metric-value-value)
+                      timestamp   (spec ::m/metric-value-timestamp)
+                      update-time (spec ::m/metric-value-last-update-time-ms)]
+                     (let [example-metric-value (m/make-metric-value value timestamp update-time)]
+                       (t/is                (m/metric-value?                    example-metric-value))
+                       (t/is (= value       (m/metric-value-value               example-metric-value)))
+                       (t/is (= timestamp   (m/metric-value-timestamp           example-metric-value)))
+                       (t/is (= update-time (m/metric-value-last-update-time-ms example-metric-value)))))))))
 
 (t/deftest t-make-metric-sample
   (t/testing "All fields of a metric-sample are set correct."
-    (let [example-metric-sample (m/make-metric-sample "test-sample" {:label-1 :value-1} 23 1 500)]
-      (t/is                     (m/metric-sample?                    example-metric-sample))
-      (t/is "test-sample"       (m/metric-sample-name                example-metric-sample))
-      (t/is {:label-1 :value-1} (m/metric-sample-labels              example-metric-sample))
-      (t/is  23                 (m/metric-sample-value               example-metric-sample))
-      (t/is   1                 (m/metric-sample-timestamp           example-metric-sample))
-      (t/is 500                 (m/metric-sample-last-update-time-ms example-metric-sample)))))
+    (t/is (quickcheck
+           (property [name        (spec ::m/metric-key-name)
+                      labels      (spec ::m/metric-key-labels)
+                      value       (spec ::m/metric-value-value)
+                      timestamp   (spec ::m/metric-value-timestamp)
+                      update-time (spec ::m/metric-value-last-update-time-ms)]
+                     (let [example-metric-sample (m/make-metric-sample name labels value timestamp update-time)]
+                       (t/is (= name        (m/metric-sample-name                example-metric-sample)))
+                       (t/is (= labels      (m/metric-sample-labels              example-metric-sample)))
+                       (t/is (= value       (m/metric-sample-value               example-metric-sample)))
+                       (t/is (= timestamp   (m/metric-sample-timestamp           example-metric-sample)))
+                       (t/is (= update-time (m/metric-sample-last-update-time-ms example-metric-sample)))))))))
 
 (t/deftest t-set-raw-metric!
   (t/testing "basic setting and getting of one raw metric works"
-    (let [raw-metric-store   (m/fresh-raw-metric-store)
-          example-metric-key (m/make-metric-key "test-metric" {:label-1 :value-1})]
-      (m/set-raw-metric! raw-metric-store example-metric-key (m/make-metric-value 23 1 500))
-      (t/is (= (m/make-metric-sample "test-metric" {:label-1 :value-1} 23 1 500)
-               (m/get-raw-metric-sample! raw-metric-store example-metric-key)))))
+    (t/is (quickcheck
+           (property [example-metric-key   (spec ::m/metric-key)
+                      example-metric-value (spec ::m/metric-value)]
+                     (let [raw-metric-store (m/fresh-raw-metric-store)
+                           name        (m/metric-key-name                  example-metric-key)
+                           labels      (m/metric-key-labels                example-metric-key)
+                           value       (m/metric-value-value               example-metric-value)
+                           timestamp   (m/metric-value-timestamp           example-metric-value)
+                           update-time (m/metric-value-last-update-time-ms example-metric-value)]
+                       (m/set-raw-metric! raw-metric-store example-metric-key example-metric-value)
+                       (t/is (= (m/make-metric-sample name labels value timestamp update-time)
+                                (m/get-raw-metric-sample! raw-metric-store example-metric-key))))))))
 
-  (t/testing "basic setting and resetting and getting of one raw metric works"
-    (let [raw-metric-store   (m/fresh-raw-metric-store)
-          example-metric-key (m/make-metric-key "test-metric" {:label-1 :value-1})]
-      (m/set-raw-metric! raw-metric-store example-metric-key (m/make-metric-value 23 1 500))
-      (t/is (m/make-metric-sample "test-metric" {:label-1 :value-1} 23 1 500)
-            (m/get-raw-metric-sample! raw-metric-store example-metric-key))
-      (m/set-raw-metric! raw-metric-store example-metric-key (m/make-metric-value 42 2 600))
-      (t/is (m/make-metric-sample "test-metric" {:label-1 :value-1} 42 2 600)
-            (m/get-raw-metric-sample! raw-metric-store example-metric-key))))
+  (t/testing "basic setting and getting of one raw metric works"
+    (t/is (quickcheck
+           (property [example-metric-key     (spec ::m/metric-key)
+                      example-metric-value-1 (spec ::m/metric-value)
+                      example-metric-value-2 (spec ::m/metric-value)]
+                     (let [raw-metric-store (m/fresh-raw-metric-store)
+                           name          (m/metric-key-name                  example-metric-key)
+                           labels        (m/metric-key-labels                example-metric-key)
+                           value-1       (m/metric-value-value               example-metric-value-1)
+                           timestamp-1   (m/metric-value-timestamp           example-metric-value-1)
+                           update-time-1 (m/metric-value-last-update-time-ms example-metric-value-1)
+                           value-2       (m/metric-value-value               example-metric-value-2)
+                           timestamp-2   (m/metric-value-timestamp           example-metric-value-2)
+                           update-time-2 (m/metric-value-last-update-time-ms example-metric-value-2)]
+                       (m/set-raw-metric! raw-metric-store example-metric-key example-metric-value-1)
+                       (t/is (= (m/make-metric-sample name labels value-1 timestamp-1 update-time-1)
+                                (m/get-raw-metric-sample! raw-metric-store example-metric-key)))
+                       (m/set-raw-metric! raw-metric-store example-metric-key example-metric-value-2)
+                       (t/is (= (m/make-metric-sample name labels value-2 timestamp-2 update-time-2)
+                                (m/get-raw-metric-sample! raw-metric-store example-metric-key))))))))
 
-  (t/testing "Raw metrics are different: Same metric name, but different labels."
+  ;; TODO: keep? comment? delete?
+  (t/testing "MetricKeys are different: Same metric name, but different labels."
     (let [raw-metric-store     (m/fresh-raw-metric-store)
           example-metric-key-1 (m/make-metric-key "same-name" {:label-1 :value-1})
           example-metric-key-2 (m/make-metric-key "same-name" {:label-1 :value-2})]
@@ -80,7 +111,7 @@
       (t/is (m/make-metric-sample "same-name" {:label-1 :value-2} 28 1 600)
             (m/get-raw-metric-sample! raw-metric-store example-metric-key-2))))
 
-  (t/testing "Metrics are different: Different metric names, but same labels."
+  (t/testing "MetricKeys are different: Different metric names, but same labels."
     (let [raw-metric-store     (m/fresh-raw-metric-store)
           example-metric-key-1 (m/make-metric-key "test-metric-1" {:label-1 :value-1})
           example-metric-key-2 (m/make-metric-key "test-metric-2" {:label-1 :value-1})]
@@ -93,46 +124,126 @@
       (t/is (m/make-metric-sample "test-metric-2" {:label-1 :value-1} 28 1 600)
             (m/get-raw-metric-sample! raw-metric-store example-metric-key-2)))))
 
+;; TODO: we do not enforce that timestamp-2 and update-time-2 is larger than the one from value-1
 (t/deftest t-update-metric-value
+  ;; TODO: More functions? Not only '+'?
   (t/testing "Basic update raw metric works"
-    (let [example-metric-value-1 (m/make-metric-value 23 1 500)
-          example-metric-value-2 (m/make-metric-value  1 2 600)]
-      (t/is (= example-metric-value-2
-               (m/update-metric-value + nil example-metric-value-2))
-            "If there is no base value, just take the second.")
-      (t/is (= (m/make-metric-value 24 2 600)
-               (m/update-metric-value + example-metric-value-1 example-metric-value-2))
-            "Add value-1 and value-2. Take timestamp from 2."))))
+    (t/is (quickcheck
+           (property [example-metric-value-1 (spec ::m/metric-value)
+                      example-metric-value-2 (spec ::m/metric-value)]
+                     ;; TODO: Can we add the nil to the specs? (s/or nil? (spec ::m/metric-value))
+                     ;; If there is no base value, just take the second.
+                     (t/is (= example-metric-value-2
+                              (m/update-metric-value + nil example-metric-value-2)))
+                     ;; Add value-1 and value-2. Take timestamp and update-time from 2.
+                     (let [value-1       (m/metric-value-value               example-metric-value-1)
+                           value-2       (m/metric-value-value               example-metric-value-2)
+                           timestamp-2   (m/metric-value-timestamp           example-metric-value-2)
+                           update-time-2 (m/metric-value-last-update-time-ms example-metric-value-2)]
+                     (t/is (= (m/make-metric-value (+ value-1 value-2) timestamp-2 update-time-2)
+                              (m/update-metric-value + example-metric-value-1 example-metric-value-2)))))))))
 
+;; TODO: we do not enforce that timestamp-2 and update-time-2 is larger than the one from value-1
 (t/deftest t-sum-metric-value
   (t/testing "Adds metric-values and nothing else."
-    (let [example-metric-value-1 (m/make-metric-value 23 1 500)
-          example-metric-value-2 (m/make-metric-value  1 2 600)]
-      (t/is (= example-metric-value-2
-               (m/sum-metric-value nil example-metric-value-2))
-            "If there is no base value, just take the second.")
-      (t/is (= (m/make-metric-value 24 2 600)
-               (m/sum-metric-value example-metric-value-1 example-metric-value-2))
-            "Add value-1 and value-2. Take timestamp from 2."))))
+    (t/is (quickcheck
+           (property [example-metric-value-1 (spec ::m/metric-value)
+                      example-metric-value-2 (spec ::m/metric-value)]
+                     ;; TODO: Can we add the nil to the specs? (s/or nil? (spec ::m/metric-value))
+                     ;; If there is no base value, just take the second.
+                     (t/is (= example-metric-value-2
+                              (m/sum-metric-value nil example-metric-value-2)))
+                     ;; Add value-1 and value-2. Take timestamp and update-time from 2.
+                     (let [value-1       (m/metric-value-value               example-metric-value-1)
+                           value-2       (m/metric-value-value               example-metric-value-2)
+                           timestamp-2   (m/metric-value-timestamp           example-metric-value-2)
+                           update-time-2 (m/metric-value-last-update-time-ms example-metric-value-2)]
+                     (t/is (= (m/make-metric-value (+ value-1 value-2) timestamp-2 update-time-2)
+                              (m/sum-metric-value example-metric-value-1 example-metric-value-2)))))))))
 
 (t/deftest t-inc-raw-metric!
   (t/testing "Basic increasing raw metric works"
-    (let [raw-metric-store     (m/fresh-raw-metric-store)
-          example-metric-key   (m/make-metric-key "test-metric" {:label-1 :value-1})
-          example-metric-value (m/make-metric-value 23 1 500)]
-      (m/inc-raw-metric! raw-metric-store example-metric-key example-metric-value)
-      (t/is (= (m/make-metric-sample "test-metric" {:label-1 :value-1} 23 1 500)
-               (m/get-raw-metric-sample! raw-metric-store example-metric-key))
-            "If the raw metric is not in raw-metric-store, just add it."))
-    (let [raw-metric-store       (m/fresh-raw-metric-store)
-          example-metric-key     (m/make-metric-key "test-metric" {:label-1 :value-1})
-          example-metric-value-1 (m/make-metric-value 23 1 500)
-          example-metric-value-2 (m/make-metric-value 23 2 600)]
-      (m/set-raw-metric! raw-metric-store example-metric-key example-metric-value-1)
-      (m/inc-raw-metric! raw-metric-store example-metric-key example-metric-value-2)
-      (t/is (= (m/make-metric-sample "test-metric" {:label-1 :value-1} 46 2 600)
-               (m/get-raw-metric-sample! raw-metric-store example-metric-key))
-            "Update raw metric in raw-metric-store, if available."))))
+    (t/is (quickcheck
+           (property [example-metric-key   (spec ::m/metric-key)
+                      example-metric-value (spec ::m/metric-value)]
+                     (let [raw-metric-store (m/fresh-raw-metric-store)
+                           name        (m/metric-key-name                  example-metric-key)
+                           labels      (m/metric-key-labels                example-metric-key)
+                           value       (m/metric-value-value               example-metric-value)
+                           timestamp   (m/metric-value-timestamp           example-metric-value)
+                           update-time (m/metric-value-last-update-time-ms example-metric-value)]
+                       ;; If the metric is not in raw-metric-store, just add it.
+                       (m/inc-raw-metric! raw-metric-store example-metric-key example-metric-value)
+                       (t/is (= (m/make-metric-sample name labels value timestamp update-time)
+                                (m/get-raw-metric-sample! raw-metric-store example-metric-key)))))))
+    (t/is (quickcheck
+           (property [example-metric-key     (spec ::m/metric-key)
+                      example-metric-value-1 (spec ::m/metric-value)
+                      example-metric-value-2 (spec ::m/metric-value)]
+                     (let [raw-metric-store (m/fresh-raw-metric-store)
+                           name          (m/metric-key-name                  example-metric-key)
+                           labels        (m/metric-key-labels                example-metric-key)
+                           value-1       (m/metric-value-value               example-metric-value-1)
+                           value-2       (m/metric-value-value               example-metric-value-2)
+                           timestamp-2   (m/metric-value-timestamp           example-metric-value-2)
+                           update-time-2 (m/metric-value-last-update-time-ms example-metric-value-2)]
+                       ;; Update metric in raw-metric-store, if available.
+                       (m/set-raw-metric! raw-metric-store example-metric-key example-metric-value-1)
+                       (m/inc-raw-metric! raw-metric-store example-metric-key example-metric-value-2)
+                       (t/is (= (m/make-metric-sample name labels
+                                                      (+ value-1 value-2) timestamp-2 update-time-2)
+                                (m/get-raw-metric-sample! raw-metric-store example-metric-key)))))))))
+
+(t/deftest t-q-get-raw-metric-sample!
+  (t/testing "Getting metrics after simple set and inc operations works."
+    (t/is (quickcheck
+           (property [example-metric-key (spec ::m/metric-key)]
+                     (let [raw-metric-store (m/fresh-raw-metric-store)]
+                       (t/is (nil? (m/get-raw-metric-sample! raw-metric-store example-metric-key)))))))
+    ;; TODO: unique keys!
+    #_(t/is (quickcheck
+           (property [example-metric-key-1   (spec ::m/metric-key)
+                      example-metric-key-2   (spec ::m/metric-key)
+                      example-metric-key-3   (spec ::m/metric-key)
+                      example-metric-key-4   (spec ::m/metric-key)
+                      example-metric-value-1 (spec ::m/metric-value)
+                      example-metric-value-2 (spec ::m/metric-value)
+                      example-metric-value-3 (spec ::m/metric-value)
+                      example-metric-value-4 (spec ::m/metric-value)]
+                     (let [raw-metric-store (m/fresh-raw-metric-store)]
+                       (m/set-raw-metric! raw-metric-store example-metric-key-1 example-metric-value-1)
+                       (m/set-raw-metric! raw-metric-store example-metric-key-2 example-metric-value-1)
+                       (m/set-raw-metric! raw-metric-store example-metric-key-3 example-metric-value-2)
+                       (m/inc-raw-metric! raw-metric-store example-metric-key-4 example-metric-value-1)
+
+                       (t/is (= (m/make-metric-sample (m/metric-key-name                  example-metric-key-1)
+                                                      (m/metric-key-labels                example-metric-key-1)
+                                                      (m/metric-value-value               example-metric-value-1)
+                                                      (m/metric-value-timestamp           example-metric-value-1)
+                                                      (m/metric-value-last-update-time-ms example-metric-value-1))
+                                (m/get-raw-metric-sample! raw-metric-store example-metric-key-1)))
+
+                       (t/is (= (m/make-metric-sample (m/metric-key-name                  example-metric-key-2)
+                                                      (m/metric-key-labels                example-metric-key-2)
+                                                      (m/metric-value-value               example-metric-value-2)
+                                                      (m/metric-value-timestamp           example-metric-value-2)
+                                                      (m/metric-value-last-update-time-ms example-metric-value-2))
+                                (m/get-raw-metric-sample! raw-metric-store example-metric-key-2)))
+
+                       (t/is (= (m/make-metric-sample (m/metric-key-name                  example-metric-key-3)
+                                                      (m/metric-key-labels                example-metric-key-3)
+                                                      (m/metric-value-value               example-metric-value-3)
+                                                      (m/metric-value-timestamp           example-metric-value-3)
+                                                      (m/metric-value-last-update-time-ms example-metric-value-3))
+                                (m/get-raw-metric-sample! raw-metric-store example-metric-key-3)))
+
+                       (t/is (= (m/make-metric-sample (m/metric-key-name                  example-metric-key-4)
+                                                      (m/metric-key-labels                example-metric-key-4)
+                                                      (m/metric-value-value               example-metric-value-4)
+                                                      (m/metric-value-timestamp           example-metric-value-4)
+                                                      (m/metric-value-last-update-time-ms example-metric-value-4))
+                                (m/get-raw-metric-sample! raw-metric-store example-metric-key-4)))))))
+    ))
 
 (t/deftest t-get-raw-metric-sample!
   (t/testing "Getting metrics after simple set and inc operations works."
@@ -658,37 +769,24 @@
 
 ;; Testing-Quickcheck
 
-(t/deftest t-qc-make-metric-sample
-  (t/is (quickcheck
-         (property [m-name        (spec ::m/metric-key-name)
-                    m-labels      (spec ::m/metric-key-labels)
-                    m-value       (spec ::m/metric-value-value)
-                    m-time        (spec ::m/metric-value-timestamp)
-                    m-update-time (spec ::m/metric-value-last-update-time-ms)]
-                   (let [metric-sample (m/make-metric-sample m-name m-labels m-value m-time m-update-time)]
-                     (t/is (= m-name        (m/metric-sample-name                metric-sample)))
-                     (t/is (= m-labels      (m/metric-sample-labels              metric-sample)))
-                     (t/is (= m-value       (m/metric-sample-value               metric-sample)))
-                     (t/is (= m-time        (m/metric-sample-timestamp           metric-sample)))
-                     (t/is (= m-update-time (m/metric-sample-last-update-time-ms metric-sample))))))))
 
 ;; Just some dummy test showing off the generators.
 (t/deftest t-make-metric-key
   (t/is (quickcheck
          (property [metric-key (spec ::m/metric-key)]
-                   (t/is (map? (m/metric-key-labels metric-key)))
-                   (t/is (string? (m/metric-key-name metric-key)))))))
+                   (t/is (map?    (m/metric-key-labels metric-key)))
+                   (t/is (string? (m/metric-key-name   metric-key)))))))
 
 (t/deftest t-make-metric-value
   (t/is (quickcheck
          (property [metric-value (spec ::m/metric-value)]
-                   (t/is (number? (m/metric-value-value metric-value)))
+                   (t/is (number?                (m/metric-value-value     metric-value)))
                    (t/is ((some-fn number? nil?) (m/metric-value-timestamp metric-value)))))))
 
 (t/deftest t-make-metric-sample
   (t/is (quickcheck
          (property [metric-sample (spec ::m/metric-sample)]
-                   (t/is (map? (m/metric-sample-labels metric-sample)))
-                   (t/is (string? (m/metric-sample-name metric-sample)))
-                   (t/is (number? (m/metric-sample-value metric-sample)))
+                   (t/is (map?                   (m/metric-sample-labels    metric-sample)))
+                   (t/is (string?                (m/metric-sample-name      metric-sample)))
+                   (t/is (number?                (m/metric-sample-value     metric-sample)))
                    (t/is ((some-fn number? nil?) (m/metric-sample-timestamp metric-sample)))))))
