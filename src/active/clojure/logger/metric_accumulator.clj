@@ -190,6 +190,21 @@ where `value` must be a number, `timestamp` must be a number or nil and
   [a-raw-metric-store metric-key metric-value]
   (swap! a-raw-metric-store update metric-key sum-metric-value metric-value))
 
+;; TODO return? new-metric-store?
+(s/fdef prune-stale-raw-metrics!
+  :args (s/cat :a-raw-metric-store ::metric-store
+               :time-ms            ::metric-value-last-update-time-ms))
+(defn prune-stale-raw-metrics!
+  [a-raw-metric-store time-ms]
+  (swap! a-raw-metric-store
+         (fn [old-store]
+           (reduce-kv (fn [new-store metric-key metric-value]
+                        (if (< (metric-value-last-update-time-ms metric-value) time-ms)
+                          new-store
+                          (assoc new-store metric-key metric-value)))
+                      {}
+                      old-store))))
+
 (s/fdef get-raw-metric-sample!
   :args (s/cat :a-raw-metric-store ::metric-store
                :metric-key         ::metric-key)
@@ -261,6 +276,23 @@ where `value` must be a number, `timestamp` must be a number or nil and
   [metric-key metric-value]
   (really-inc-raw-metric metric-key metric-value))
 
+(define-record-type ^{:doc "Monadic command for pruning stale metrics."}
+  PruneStaleRawMetrics
+  ^:private really-prune-stale-raw-metrics
+  prune-stale-raw-metrics?
+  [time-ms prune-stale-raw-metrics-time-ms])
+
+(s/def ::prune-stale-raw-metrics
+  (s/spec
+   (partial instance? PruneStaleRawMetrics)))
+
+(s/fdef prune-stale-raw-metrics
+  :args (s/cat :time-ms ::metric-value-last-update-time-ms)
+  :ret ::prune-stale-raw-metrics)
+(defn prune-stale-metrics
+  [time-ms]
+  (really-prune-stale-raw-metrics time-ms))
+
 (define-record-type ^{:doc "Monadic command for getting metrics."}
   GetRawMetricSample
   ^:private really-get-raw-metric-sample
@@ -292,6 +324,11 @@ where `value` must be a number, `timestamp` must be a number or nil and
       [(inc-raw-metric! a-raw-metric-store
                         (inc-raw-metric-metric-key   m)
                         (inc-raw-metric-metric-value m))
+       state]
+
+      (prune-stale-raw-metrics? m)
+      [(prune-stale-raw-metrics! a-raw-metric-store
+                                 (prune-stale-raw-metrics-time-ms m))
        state]
 
       (get-raw-metric-sample? m)
@@ -513,21 +550,3 @@ where `help` must be a string or nil and `metric-key` must be a `MetricKey`."}
   (monad/make-monad-command-config
     run-metrics
     {::a-raw-metric-store (or a-raw-metric-store (fresh-raw-metric-store))} {}))
-
-
-;; TESTING
-
-;; TODO return? new-metric-store?
-(s/fdef prune-stale-metrics!
-  :args (s/cat :a-raw-metric-store ::metric-store
-               :time-ms            ::metric-value-last-update-time-ms))
-(defn prune-stale-metrics!
-  [a-raw-metric-store time-ms]
-  (swap! a-raw-metric-store
-         (fn [old-store]
-           (reduce-kv (fn [new-store metric-key metric-value]
-                        (if (< (metric-value-last-update-time-ms metric-value) time-ms)
-                          new-store
-                          (assoc new-store metric-key metric-value)))
-                      {}
-                      old-store))))
