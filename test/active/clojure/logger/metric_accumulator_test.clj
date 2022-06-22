@@ -196,21 +196,34 @@
 
 ;; TODO more Tests!
 (t/deftest prune-stale-raw-metrics!
-  (let [ms  (m/fresh-raw-metric-store)
-        mk1 (m/make-metric-key "t1" {:l1 :v1})
-        mv1 (m/make-metric-value 1 2 100)
-        mk2 (m/make-metric-key "t2" {:l2 :v2})
-        mv2 (m/make-metric-value 2 3 200)
-        mk3 (m/make-metric-key "t3" {:l3 :v3})
-        mv3 (m/make-metric-value 3 4 300)]
-    (m/set-raw-metric! ms mk1 mv1)
-    (m/set-raw-metric! ms mk2 mv2)
-    (m/set-raw-metric! ms mk3 mv3)
-    (m/prune-stale-raw-metrics! ms 200)
+  (t/testing "Simple pruning of metrics works."
+  (let [raw-metric-store       (m/fresh-raw-metric-store)
+        example-metric-key-1   (m/make-metric-key "t1" {:l1 :v1})
+        example-metric-value-1 (m/make-metric-value 1 2 100)
+        example-metric-key-2   (m/make-metric-key "t2" {:l2 :v2})
+        example-metric-value-2 (m/make-metric-value 2 3 200)
+        example-metric-key-3   (m/make-metric-key "t3" {:l3 :v3})
+        example-metric-value-3 (m/make-metric-value 3 4 300)]
+    ;; empty nothing to prune
+    (m/prune-stale-raw-metrics! raw-metric-store 200)
+    (t/is (= [] (m/get-raw-metric-samples! raw-metric-store)))
 
+    (m/set-raw-metric! raw-metric-store example-metric-key-1 example-metric-value-1)
+    (m/set-raw-metric! raw-metric-store example-metric-key-2 example-metric-value-2)
+    (m/set-raw-metric! raw-metric-store example-metric-key-3 example-metric-value-3)
+
+    ;; there is no value smaller than 50
+    (m/prune-stale-raw-metrics! raw-metric-store 50)
+    (t/is (= [(m/make-metric-sample "t1" {:l1 :v1} 1 2 100)
+              (m/make-metric-sample "t2" {:l2 :v2} 2 3 200)
+              (m/make-metric-sample "t3" {:l3 :v3} 3 4 300)]
+             (m/get-raw-metric-samples! raw-metric-store)))
+
+    ;; there is one value smaller than 200
+    (m/prune-stale-raw-metrics! raw-metric-store 200)
     (t/is (= [(m/make-metric-sample "t2" {:l2 :v2} 2 3 200)
               (m/make-metric-sample "t3" {:l3 :v3} 3 4 300)]
-             (m/get-raw-metric-samples! ms)))))
+             (m/get-raw-metric-samples! raw-metric-store))))))
 
 (t/deftest t-q-get-raw-metric-sample!
   (t/testing "Getting metrics after simple set and inc operations works."

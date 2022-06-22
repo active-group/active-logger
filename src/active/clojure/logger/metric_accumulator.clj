@@ -191,19 +191,23 @@ where `value` must be a number, `timestamp` must be a number or nil and
   (swap! a-raw-metric-store update metric-key sum-metric-value metric-value))
 
 ;; TODO return? new-metric-store?
+;; TODO are we sure that {} will stay? - related to fresh-metric-store
+;; TODO < or <= ?
 (s/fdef prune-stale-raw-metrics!
   :args (s/cat :a-raw-metric-store ::metric-store
                :time-ms            ::metric-value-last-update-time-ms))
 (defn prune-stale-raw-metrics!
+  "Prune all metrics in the `a-raw-metric-store` that are older than `time-ms`. That is,
+  the last update time in ms of the metric value is smaller than `time-ms`."
   [a-raw-metric-store time-ms]
   (swap! a-raw-metric-store
-         (fn [old-store]
-           (reduce-kv (fn [new-store metric-key metric-value]
+         (fn [old-metric-store]
+           (reduce-kv (fn [new-metric-store metric-key metric-value]
                         (if (< (metric-value-last-update-time-ms metric-value) time-ms)
-                          new-store
-                          (assoc new-store metric-key metric-value)))
+                          new-metric-store
+                          (assoc new-metric-store metric-key metric-value)))
                       {}
-                      old-store))))
+                      old-metric-store))))
 
 (s/fdef get-raw-metric-sample!
   :args (s/cat :a-raw-metric-store ::metric-store
