@@ -5,7 +5,8 @@
             [active.clojure.monad :as monad]
 
             [clojure.spec.alpha :as s]
-            [clojure.spec.gen.alpha :as sgen]))
+            [clojure.spec.gen.alpha :as sgen]
+            [clojure.test.check.generators]))
 
 (s/check-asserts true)
 
@@ -52,6 +53,14 @@
                               (make-metric-key metric-key-name metric-key-labels))
                             ;; (1)
                             (s/gen (s/keys :req-un [::metric-key-name ::metric-key-labels]))))))
+
+;; TODO: clean up
+;; - this introduces a test-library in src - should this go into test instead?
+(defn gen-metric-keys
+  [num-elems]
+  (s/spec (s/coll-of ::metric-key :into [])
+          :gen (fn []
+                 (clojure.test.check.generators/list-distinct (s/gen ::metric-key) {:num-elements num-elems}))))
 
 (s/fdef make-metric-key
   :args (s/cat :name   ::metric-key-name

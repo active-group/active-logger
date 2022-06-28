@@ -231,21 +231,23 @@
            (property [example-metric-key (spec ::m/metric-key)]
                      (let [raw-metric-store (m/fresh-raw-metric-store)]
                        (t/is (nil? (m/get-raw-metric-sample! raw-metric-store example-metric-key)))))))
-    ;; TODO: unique keys!
-    #_(t/is (quickcheck
-           (property [example-metric-key-1   (spec ::m/metric-key)
-                      example-metric-key-2   (spec ::m/metric-key)
-                      example-metric-key-3   (spec ::m/metric-key)
-                      example-metric-key-4   (spec ::m/metric-key)
+    (t/is (quickcheck
+           (property [[example-metric-key-1,
+                       example-metric-key-2,
+                       example-metric-key-3,
+                       example-metric-key-4] (spec (m/gen-metric-keys 4))
+
                       example-metric-value-1 (spec ::m/metric-value)
                       example-metric-value-2 (spec ::m/metric-value)
                       example-metric-value-3 (spec ::m/metric-value)
-                      example-metric-value-4 (spec ::m/metric-value)]
+                      example-metric-value-4 (spec ::m/metric-value)
+                      example-metric-value-5 (spec ::m/metric-value)
+                      example-metric-value-6 (spec ::m/metric-value)]
                      (let [raw-metric-store (m/fresh-raw-metric-store)]
                        (m/set-raw-metric! raw-metric-store example-metric-key-1 example-metric-value-1)
-                       (m/set-raw-metric! raw-metric-store example-metric-key-2 example-metric-value-1)
-                       (m/set-raw-metric! raw-metric-store example-metric-key-3 example-metric-value-2)
-                       (m/inc-raw-metric! raw-metric-store example-metric-key-4 example-metric-value-1)
+                       (m/set-raw-metric! raw-metric-store example-metric-key-2 example-metric-value-2)
+                       (m/set-raw-metric! raw-metric-store example-metric-key-3 example-metric-value-3)
+                       (m/inc-raw-metric! raw-metric-store example-metric-key-4 example-metric-value-4)
 
                        (t/is (= (m/make-metric-sample (m/metric-key-name                  example-metric-key-1)
                                                       (m/metric-key-labels                example-metric-key-1)
@@ -273,38 +275,18 @@
                                                       (m/metric-value-value               example-metric-value-4)
                                                       (m/metric-value-timestamp           example-metric-value-4)
                                                       (m/metric-value-last-update-time-ms example-metric-value-4))
-                                (m/get-raw-metric-sample! raw-metric-store example-metric-key-4)))))))
-    ))
-
-(t/deftest t-get-raw-metric-sample!
-  (t/testing "Getting metrics after simple set and inc operations works."
-    (let [raw-metric-store   (m/fresh-raw-metric-store)
-          example-metric-key (m/make-metric-key "test-metric" {:label-1 :value-1})]
-      (t/is (nil? (m/get-raw-metric-sample! raw-metric-store example-metric-key))))
-    (let [raw-metric-store       (m/fresh-raw-metric-store)
-          example-metric-key-1   (m/make-metric-key "test-metric-1" {:label-1 :value-1})
-          example-metric-key-2   (m/make-metric-key "test-metric-2" {:label-1 :value-2})
-          example-metric-key-3   (m/make-metric-key "test-metric-3" {:label-3 :value-1})
-          example-metric-key-4   (m/make-metric-key "test-metric-4" {:label-4 :value-4})
-          example-metric-value-1 (m/make-metric-value 23 1 500)
-          example-metric-value-2 (m/make-metric-value 33 2 600)
-          example-metric-value-3 (m/make-metric-value 13 3 700)]
-      (m/set-raw-metric! raw-metric-store example-metric-key-1 example-metric-value-1)
-      (m/set-raw-metric! raw-metric-store example-metric-key-2 example-metric-value-1)
-      (m/set-raw-metric! raw-metric-store example-metric-key-3 example-metric-value-2)
-      (m/inc-raw-metric! raw-metric-store example-metric-key-4 example-metric-value-1)
-      (t/is (= (m/make-metric-sample "test-metric-1" {:label-1 :value-1} 23 1 500)
-               (m/get-raw-metric-sample! raw-metric-store example-metric-key-1)))
-      (t/is (= (m/make-metric-sample "test-metric-2" {:label-1 :value-2} 23 1 500)
-               (m/get-raw-metric-sample! raw-metric-store example-metric-key-2)))
-      (t/is (= (m/make-metric-sample "test-metric-3" {:label-3 :value-1} 33 2 600)
-               (m/get-raw-metric-sample! raw-metric-store example-metric-key-3)))
-      (t/is (= (m/make-metric-sample "test-metric-4" {:label-4 :value-4} 23 1 500)
-               (m/get-raw-metric-sample! raw-metric-store example-metric-key-4)))
-      (m/inc-raw-metric! raw-metric-store example-metric-key-4 example-metric-value-2)
-      (m/inc-raw-metric! raw-metric-store example-metric-key-4 example-metric-value-3)
-      (t/is (= (m/make-metric-sample "test-metric-4" {:label-4 :value-4} 69 3 700)
-               (m/get-raw-metric-sample! raw-metric-store example-metric-key-4))))))
+                                (m/get-raw-metric-sample! raw-metric-store example-metric-key-4)))
+                       (m/inc-raw-metric! raw-metric-store example-metric-key-4 example-metric-value-5)
+                       (m/inc-raw-metric! raw-metric-store example-metric-key-4 example-metric-value-6)
+                       (let [example-metric-value-inced (+ (m/metric-value-value example-metric-value-4)
+                                                           (m/metric-value-value example-metric-value-5)
+                                                           (m/metric-value-value example-metric-value-6))]
+                         (t/is (= (m/make-metric-sample (m/metric-key-name                  example-metric-key-4)
+                                                        (m/metric-key-labels                example-metric-key-4)
+                                                        example-metric-value-inced
+                                                        (m/metric-value-timestamp           example-metric-value-6)
+                                                        (m/metric-value-last-update-time-ms example-metric-value-6))
+                                  (m/get-raw-metric-sample! raw-metric-store example-metric-key-4))))))))))
 
 (t/deftest t-get-raw-metric-samples!
   (t/testing "Getting all raw-metric-store after simple set and inc operations works."
