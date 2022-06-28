@@ -734,15 +734,6 @@
 
 ;; active-quickcheck?
 (t/deftest t-d-inc-raw-metric!
-  (t/testing "Metric value may be negative."
-    (let [raw-metric-store       (m/fresh-raw-metric-store)
-          example-metric-key     (m/make-metric-key "test-metric" {:label-1 :value-1})
-          example-metric-value-1 (m/make-metric-value  23 1 500)
-          example-metric-value-2 (m/make-metric-value -33 2 600)]
-      (m/inc-raw-metric! raw-metric-store example-metric-key example-metric-value-1)
-      (m/inc-raw-metric! raw-metric-store example-metric-key example-metric-value-2)
-      (t/is (= (m/make-metric-sample "test-metric" {:label-1 :value-1} -10 2 600)
-               (m/get-raw-metric-sample! raw-metric-store example-metric-key)))))
   (t/testing "Increasing raw metric with included nils."
     (let [raw-metric-store     nil
           example-metric-key   (m/make-metric-key "test-metric" {:label-1 :value-1})

@@ -75,7 +75,12 @@ where `value` must be a number, `timestamp` must be a number or nil and
    timestamp           metric-value-timestamp
    last-update-time-ms metric-value-last-update-time-ms])
 
-(s/def ::metric-value-value                number? )
+;; By accepting only non negative numbers we make sure that counters can only be
+;; incremented when using `update-metric-value`.
+;; We accept 0 to initialize counters (e.g. histogram empty bucket).
+(s/def ::metric-value-value (s/and number?
+                                   (s/or :zero     zero?
+                                         :positive pos?)))
 ;; https://prometheus.io/docs/instrumenting/writing_exporters/
 ;; "You should not set timestamps on the metrics you expose, let Prometheus
 ;; take care of that."
@@ -355,7 +360,7 @@ where `help` must be a string or nil and `metric-key` must be a `MetricKey`."}
   ^:private really-make-counter-metric
   counter-metric?
   [help counter-metric-help
-   mkey counter-metric-key])
+   key  counter-metric-key])
 
 (s/def ::counter-metric
   (s/spec
@@ -378,7 +383,7 @@ where `help` must be a string or nil and `metric-key` must be a `MetricKey`."}
   ^:private really-make-gauge-metric
   gauge-metric?
   [help gauge-metric-help
-   mkey gauge-metric-key])
+   key  gauge-metric-key])
 
 (s/def ::gauge-metric
   (s/spec
