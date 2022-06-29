@@ -225,7 +225,7 @@
               (m/make-metric-sample "t3" {:l3 :v3} 3 4 300)]
              (m/get-raw-metric-samples! raw-metric-store))))))
 
-(t/deftest t-q-get-raw-metric-sample!
+(t/deftest t-get-raw-metric-sample!
   (t/testing "Getting metrics after simple set and inc operations works."
     (t/is (quickcheck
            (property [example-metric-key (spec ::m/metric-key)]
@@ -292,67 +292,263 @@
   (t/testing "Getting all raw-metric-store after simple set and inc operations works."
     (let [raw-metric-store (m/fresh-raw-metric-store)]
       (t/is (= [] (m/get-raw-metric-samples! raw-metric-store))))
-    (let [raw-metric-store       (m/fresh-raw-metric-store)
-          example-metric-key-1   (m/make-metric-key "test-metric-1" {:label-1 :value-1})
-          example-metric-key-2   (m/make-metric-key "test-metric-2" {:label-1 :value-2})
-          example-metric-key-3   (m/make-metric-key "test-metric-3" {:label-3 :value-1})
-          example-metric-key-4   (m/make-metric-key "test-metric-4" {:label-4 :value-4})
-          example-metric-value-1 (m/make-metric-value 23 1 500)
-          example-metric-value-2 (m/make-metric-value 33 2 600)
-          example-metric-value-3 (m/make-metric-value 13 3 700)]
-      (m/set-raw-metric! raw-metric-store example-metric-key-1 example-metric-value-1)
-      (t/is (= [(m/make-metric-sample "test-metric-1" {:label-1 :value-1} 23 1 500)]
-               (m/get-raw-metric-samples! raw-metric-store)))
-      (m/set-raw-metric! raw-metric-store example-metric-key-2 example-metric-value-1)
-      (m/set-raw-metric! raw-metric-store example-metric-key-3 example-metric-value-2)
-      (m/inc-raw-metric! raw-metric-store example-metric-key-4 example-metric-value-1)
-      (t/is (= [(m/make-metric-sample "test-metric-1" {:label-1 :value-1} 23 1 500),
-                (m/make-metric-sample "test-metric-2" {:label-1 :value-2} 23 1 500),
-                (m/make-metric-sample "test-metric-3" {:label-3 :value-1} 33 2 600),
-                (m/make-metric-sample "test-metric-4" {:label-4 :value-4} 23 1 500)]
-               (m/get-raw-metric-samples! raw-metric-store)))
-      (m/inc-raw-metric! raw-metric-store example-metric-key-4 example-metric-value-2)
-      (m/inc-raw-metric! raw-metric-store example-metric-key-4 example-metric-value-3)
-      (t/is (= [(m/make-metric-sample "test-metric-1" {:label-1 :value-1} 23 1 500),
-                (m/make-metric-sample "test-metric-2" {:label-1 :value-2} 23 1 500),
-                (m/make-metric-sample "test-metric-3" {:label-3 :value-1} 33 2 600),
-                (m/make-metric-sample "test-metric-4" {:label-4 :value-4} 69 3 700)]
-               (m/get-raw-metric-samples! raw-metric-store))))))
+    (t/is (quickcheck
+           (property [[example-metric-key-1,
+                       example-metric-key-2,
+                       example-metric-key-3,
+                       example-metric-key-4] (spec (m/gen-metric-keys 4))
+
+                      example-metric-value-1 (spec ::m/metric-value)
+                      example-metric-value-2 (spec ::m/metric-value)
+                      example-metric-value-3 (spec ::m/metric-value)
+                      example-metric-value-4 (spec ::m/metric-value)
+                      example-metric-value-5 (spec ::m/metric-value)
+                      example-metric-value-6 (spec ::m/metric-value)]
+                     (let [raw-metric-store (m/fresh-raw-metric-store)]
+                       (m/set-raw-metric! raw-metric-store example-metric-key-1 example-metric-value-1)
+
+                       (t/is (= [(m/make-metric-sample
+                                 (m/metric-key-name                  example-metric-key-1)
+                                 (m/metric-key-labels                example-metric-key-1)
+                                 (m/metric-value-value               example-metric-value-1)
+                                 (m/metric-value-timestamp           example-metric-value-1)
+                                 (m/metric-value-last-update-time-ms example-metric-value-1))]
+                                (m/get-raw-metric-samples! raw-metric-store)))
+
+                       (m/set-raw-metric! raw-metric-store example-metric-key-2 example-metric-value-2)
+                       (m/set-raw-metric! raw-metric-store example-metric-key-3 example-metric-value-3)
+                       (m/inc-raw-metric! raw-metric-store example-metric-key-4 example-metric-value-4)
+
+                       (t/is (= [(m/make-metric-sample
+                                  (m/metric-key-name                  example-metric-key-1)
+                                  (m/metric-key-labels                example-metric-key-1)
+                                  (m/metric-value-value               example-metric-value-1)
+                                  (m/metric-value-timestamp           example-metric-value-1)
+                                  (m/metric-value-last-update-time-ms example-metric-value-1)),
+
+                                 (m/make-metric-sample
+                                  (m/metric-key-name                  example-metric-key-2)
+                                  (m/metric-key-labels                example-metric-key-2)
+                                  (m/metric-value-value               example-metric-value-2)
+                                  (m/metric-value-timestamp           example-metric-value-2)
+                                  (m/metric-value-last-update-time-ms example-metric-value-2)),
+
+                                 (m/make-metric-sample
+                                  (m/metric-key-name                  example-metric-key-3)
+                                  (m/metric-key-labels                example-metric-key-3)
+                                  (m/metric-value-value               example-metric-value-3)
+                                  (m/metric-value-timestamp           example-metric-value-3)
+                                  (m/metric-value-last-update-time-ms example-metric-value-3)),
+
+                                 (m/make-metric-sample
+                                  (m/metric-key-name                  example-metric-key-4)
+                                  (m/metric-key-labels                example-metric-key-4)
+                                  (m/metric-value-value               example-metric-value-4)
+                                  (m/metric-value-timestamp           example-metric-value-4)
+                                  (m/metric-value-last-update-time-ms example-metric-value-4))]
+                                (m/get-raw-metric-samples! raw-metric-store)))
+
+                       (m/inc-raw-metric! raw-metric-store example-metric-key-4 example-metric-value-5)
+                       (m/inc-raw-metric! raw-metric-store example-metric-key-4 example-metric-value-6)
+                       (let [example-metric-value-inced (+ (m/metric-value-value example-metric-value-4)
+                                                           (m/metric-value-value example-metric-value-5)
+                                                           (m/metric-value-value example-metric-value-6))]
+
+                       (t/is (= [(m/make-metric-sample
+                                  (m/metric-key-name                  example-metric-key-1)
+                                  (m/metric-key-labels                example-metric-key-1)
+                                  (m/metric-value-value               example-metric-value-1)
+                                  (m/metric-value-timestamp           example-metric-value-1)
+                                  (m/metric-value-last-update-time-ms example-metric-value-1)),
+
+                                 (m/make-metric-sample
+                                  (m/metric-key-name                  example-metric-key-2)
+                                  (m/metric-key-labels                example-metric-key-2)
+                                  (m/metric-value-value               example-metric-value-2)
+                                  (m/metric-value-timestamp           example-metric-value-2)
+                                  (m/metric-value-last-update-time-ms example-metric-value-2)),
+
+                                 (m/make-metric-sample
+                                  (m/metric-key-name                  example-metric-key-3)
+                                  (m/metric-key-labels                example-metric-key-3)
+                                  (m/metric-value-value               example-metric-value-3)
+                                  (m/metric-value-timestamp           example-metric-value-3)
+                                  (m/metric-value-last-update-time-ms example-metric-value-3)),
+
+                                 (m/make-metric-sample
+                                  (m/metric-key-name                  example-metric-key-4)
+                                  (m/metric-key-labels                example-metric-key-4)
+                                  example-metric-value-inced
+                                  (m/metric-value-timestamp           example-metric-value-6)
+                                  (m/metric-value-last-update-time-ms example-metric-value-6))]
+                                (m/get-raw-metric-samples! raw-metric-store))))))))))
+
 
 ;; -- COMMANDS on raw metrics
 
+;; TODO missing empty get?
 (t/deftest t-monadic-set-get
   (t/testing "monadic setting and getting works"
-    (let [result
-          (mock-monad/mock-run-monad
-            (m/monad-command-config)
-            []
-            (let [example-metric-key (m/make-metric-key "test-metric" {:label-1 :value-1})]
-              (monad/monadic
-                (m/set-raw-metric example-metric-key (m/make-metric-value 23 1 500))
-                (m/get-raw-metric-sample example-metric-key))))]
-      (t/is (= (m/make-metric-sample "test-metric" {:label-1 :value-1} 23 1 500)
-               result)))))
+    (t/is (quickcheck
+           (property [example-metric-key   (spec ::m/metric-key)
+                      example-metric-value (spec ::m/metric-value)]
+                     (let [result
+                           (mock-monad/mock-run-monad
+                            (m/monad-command-config)
+                            []
+                            (monad/monadic
+                             (m/set-raw-metric example-metric-key example-metric-value)
+                             (m/get-raw-metric-sample example-metric-key)))]
 
-(t/deftest t-monadic-set-inc-get
+                       (t/is (= (m/make-metric-sample
+                                 (m/metric-key-name                  example-metric-key)
+                                 (m/metric-key-labels                example-metric-key)
+                                 (m/metric-value-value               example-metric-value)
+                                 (m/metric-value-timestamp           example-metric-value)
+                                 (m/metric-value-last-update-time-ms example-metric-value))
+                                result))))))))
+
+(t/deftest t-q-monadic-set-inc-get
   (t/testing "monadic setting, incrementing and getting works"
+    (t/is (quickcheck
+           (property [example-metric-key     (spec ::m/metric-key)
+                      example-metric-value-1 (spec ::m/metric-value)
+                      example-metric-value-2 (spec ::m/metric-value)]
+                     (let [result
+                           (mock-monad/mock-run-monad
+                            (m/monad-command-config)
+                            []
+                            (monad/monadic
+                             (m/set-raw-metric example-metric-key example-metric-value-1)
+                             (m/inc-raw-metric example-metric-key example-metric-value-2)
+                             (m/get-raw-metric-sample example-metric-key)))
+
+                           example-metric-value-inced (+ (m/metric-value-value example-metric-value-1)
+                                                         (m/metric-value-value example-metric-value-2))]
+
+                         (t/is (= (m/make-metric-sample
+                                   (m/metric-key-name                  example-metric-key)
+                                   (m/metric-key-labels                example-metric-key)
+                                   example-metric-value-inced
+                                   (m/metric-value-timestamp           example-metric-value-2)
+                                   (m/metric-value-last-update-time-ms example-metric-value-2))
+                                  result))))))))
+
+;; TODO more Tests!
+;; TODO quickcheck?
+(t/deftest t-monadic-prune-stale-metrics
+  (t/testing "Simple pruning of metrics works."
     (let [result
           (mock-monad/mock-run-monad
-            (m/monad-command-config)
-            []
-            (let [example-metric-key (m/make-metric-key "test-metric" {:label-1 :value-1})]
-              (monad/monadic
-                (m/set-raw-metric example-metric-key (m/make-metric-value 23 1 500))
-                (m/inc-raw-metric example-metric-key (m/make-metric-value 10 2 600))
-                (m/get-raw-metric-sample example-metric-key))))]
-      (t/is (= (m/make-metric-sample "test-metric" {:label-1 :value-1} 33 2 600)
+           (m/monad-command-config)
+           []
+           (monad/monadic
+            ;; empty nothing to prune
+            (m/prune-stale-raw-metrics 200)
+            (m/get-raw-metric-samples)
+            ))]
+      (t/is (= [] result)))
+
+    (let [example-metric-key-1   (m/make-metric-key "t1" {:l1 :v1})
+          example-metric-key-2   (m/make-metric-key "t2" {:l2 :v2})
+          example-metric-key-3   (m/make-metric-key "t3" {:l3 :v3})
+          example-metric-value-1 (m/make-metric-value 1 2 100)
+          example-metric-value-2 (m/make-metric-value 2 3 200)
+          example-metric-value-3 (m/make-metric-value 3 4 300)
+
+          result
+          (mock-monad/mock-run-monad
+           (m/monad-command-config)
+           []
+           (monad/monadic
+
+            (m/set-raw-metric example-metric-key-1 example-metric-value-1)
+            (m/set-raw-metric example-metric-key-2 example-metric-value-2)
+            (m/set-raw-metric example-metric-key-3 example-metric-value-3)
+
+            ;; there is no value smaller than 50
+            (m/prune-stale-raw-metrics 50)
+            (m/get-raw-metric-samples)
+            ))]
+      (t/is (= [(m/make-metric-sample
+                 (m/metric-key-name                  example-metric-key-1)
+                 (m/metric-key-labels                example-metric-key-1)
+                 (m/metric-value-value               example-metric-value-1)
+                 (m/metric-value-timestamp           example-metric-value-1)
+                 (m/metric-value-last-update-time-ms example-metric-value-1)),
+
+                (m/make-metric-sample
+                 (m/metric-key-name                  example-metric-key-2)
+                 (m/metric-key-labels                example-metric-key-2)
+                 (m/metric-value-value               example-metric-value-2)
+                 (m/metric-value-timestamp           example-metric-value-2)
+                 (m/metric-value-last-update-time-ms example-metric-value-2)),
+
+                (m/make-metric-sample
+                 (m/metric-key-name                  example-metric-key-3)
+                 (m/metric-key-labels                example-metric-key-3)
+                 (m/metric-value-value               example-metric-value-3)
+                 (m/metric-value-timestamp           example-metric-value-3)
+                 (m/metric-value-last-update-time-ms example-metric-value-3))]
+               result)))
+
+    (let [example-metric-key-1   (m/make-metric-key "t1" {:l1 :v1})
+          example-metric-key-2   (m/make-metric-key "t2" {:l2 :v2})
+          example-metric-key-3   (m/make-metric-key "t3" {:l3 :v3})
+          example-metric-value-1 (m/make-metric-value 1 2 100)
+          example-metric-value-2 (m/make-metric-value 2 3 200)
+          example-metric-value-3 (m/make-metric-value 3 4 300)
+
+          result
+          (mock-monad/mock-run-monad
+           (m/monad-command-config)
+           []
+           (monad/monadic
+
+            (m/set-raw-metric example-metric-key-1 example-metric-value-1)
+            (m/set-raw-metric example-metric-key-2 example-metric-value-2)
+            (m/set-raw-metric example-metric-key-3 example-metric-value-3)
+
+            ;; there is one value smaller than 200
+            (m/prune-stale-raw-metrics 200)
+            (m/get-raw-metric-samples)
+            ))]
+      (t/is (= [(m/make-metric-sample
+                 (m/metric-key-name                  example-metric-key-2)
+                 (m/metric-key-labels                example-metric-key-2)
+                 (m/metric-value-value               example-metric-value-2)
+                 (m/metric-value-timestamp           example-metric-value-2)
+                 (m/metric-value-last-update-time-ms example-metric-value-2)),
+
+                (m/make-metric-sample
+                 (m/metric-key-name                  example-metric-key-3)
+                 (m/metric-key-labels                example-metric-key-3)
+                 (m/metric-value-value               example-metric-value-3)
+                 (m/metric-value-timestamp           example-metric-value-3)
+                 (m/metric-value-last-update-time-ms example-metric-value-3))]
                result)))))
 
-(t/deftest t-monadic-prune-stale-metrics)
-
+;; TODO: indirectly tested?
 (t/deftest t-monadic-run-metrics)
 
 ;; -- METRICS
+
+(t/deftest t-q-record-get-metric!
+  (t/testing "Basic recording and getting counters works."
+    (t/is (quickcheck
+           (property [example-counter-metric (spec ::m/counter-metric)]
+                     (let [raw-metric-store (m/fresh-raw-metric-store)]
+                       ;; TODO: do we really want to have here nil?
+                       ;; empty metric store
+                       (t/is (= [nil]
+                                (m/get-metrics! raw-metric-store example-counter-metric)))))))
+    (t/is (quickcheck
+           (property [[example-counter-metric-1,
+                       example-counter-metric-2] (spec (m/gen-counter-metrics 2))]
+                     (let [raw-metric-store (m/fresh-raw-metric-store)]
+                       ;; empty metric store
+                       (t/is (= [nil]
+                                (m/get-metrics! raw-metric-store example-counter-metric-1)))))))))
 
 (t/deftest t-record-get-metric!
   (t/testing "Basic recording and getting counters works."

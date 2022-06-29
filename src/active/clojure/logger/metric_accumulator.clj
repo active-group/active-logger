@@ -307,11 +307,11 @@ where `value` must be a number, `timestamp` must be a number or nil and
 (s/fdef prune-stale-raw-metrics
   :args (s/cat :time-ms ::metric-value-last-update-time-ms)
   :ret ::prune-stale-raw-metrics)
-(defn prune-stale-metrics
+(defn prune-stale-raw-metrics
   [time-ms]
   (really-prune-stale-raw-metrics time-ms))
 
-(define-record-type ^{:doc "Monadic command for getting metrics."}
+(define-record-type ^{:doc "Monadic command for getting a metric sample."}
   GetRawMetricSample
   ^:private really-get-raw-metric-sample
   get-raw-metric-sample?
@@ -327,6 +327,23 @@ where `value` must be a number, `timestamp` must be a number or nil and
 (defn get-raw-metric-sample
   [metric-key]
   (really-get-raw-metric-sample metric-key))
+
+(define-record-type ^{:doc "Monadic command for getting metric samples."}
+  GetRawMetricSamples
+  ^:private really-get-raw-metric-samples
+  get-raw-metric-samples?
+  [])
+
+(s/def ::get-raw-metric-samples
+  (s/spec
+   (partial instance? GetRawMetricSamples)))
+
+;; TODO: args empty - clean up?
+(s/fdef get-raw-metric-samples
+  :ret ::get-raw-metric-samples)
+(defn get-raw-metric-samples
+  []
+  (really-get-raw-metric-samples))
 
 (defn run-metrics
   [_run-any env state m]
@@ -354,6 +371,10 @@ where `value` must be a number, `timestamp` must be a number or nil and
                                (get-raw-metric-sample-metric-key m))
        state]
 
+      (get-raw-metric-samples? m)
+      [(get-raw-metric-samples! a-raw-metric-store)
+       state]
+
       :else
       monad/unknown-command)))
 
@@ -371,11 +392,32 @@ where `help` must be a string or nil and `metric-key` must be a `MetricKey`."}
   [help counter-metric-help
    key  counter-metric-key])
 
+(s/def ::help (s/nilable string?))
+
+(declare make-counter-metric)
+
+;; TODO: help and labels optional
 (s/def ::counter-metric
   (s/spec
-   (partial instance? CounterMetric)))
+   (partial instance? CounterMetric)
+   :gen (fn []
+          (sgen/fmap (fn [{:keys [metric-key-name help metric-key-labels]}]
+                       (make-counter-metric metric-key-name help metric-key-labels))
+                       (s/gen (s/keys :req-un [::metric-key-name ::help ::metric-key-labels]))))))
 
-(s/def ::help (s/nilable string?))
+;; TODO: clean up
+;; - this introduces a test-library in src - should this go into test instead?
+(defn gen-counter-metrics
+  [num-elems]
+  (s/spec (s/coll-of ::counter-metric :into [])
+          :gen (fn []
+                 (clojure.test.check.generators/fmap (fn [[metric-keys helps]]
+                                                       (mapv (fn [metric-key help]
+                                                               (make-counter-metric (metric-key-name metric-key)
+                                                                                    help
+                                                                                    (metric-key-labels metric-key)))
+                                                             metric-keys helps))
+                                                     (s/gen (s/tuple (gen-metric-keys num-elems) (s/coll-of ::help :count num-elems)))))))
 
 (s/fdef make-counter-metric
   :args (s/cat :name ::metric-key-name
@@ -394,9 +436,16 @@ where `help` must be a string or nil and `metric-key` must be a `MetricKey`."}
   [help gauge-metric-help
    key  gauge-metric-key])
 
+(declare make-gauge-metric)
+
+;; TODO: help and labels optional
 (s/def ::gauge-metric
   (s/spec
-   (partial instance? GaugeMetric)))
+   (partial instance? GaugeMetric)
+   :gen (fn []
+          (sgen/fmap (fn [{:keys [name gauge-metric-help metric-key-labels]}]
+                       (make-gauge-metric name gauge-metric-help metric-key-labels))
+                       (s/gen (s/keys :req-un [::metric-key-name ::help ::metric-key-labels]))))))
 
 (s/fdef make-gauge-metric
   :args (s/cat :name ::metric-key-name
@@ -419,9 +468,16 @@ where `help` must be a string or nil and `metric-key` must be a `MetricKey`."}
    total-count histogram-metric-total-count
    bucket-le-inf histogram-metric-bucket-le-inf])
 
+(declare make-histogram-metric)
+
+;; TODO help and labels optional
 (s/def ::histogram-metric
   (s/spec
-   (partial instance? HistogramMetric)))
+   (partial instance? HistogramMetric)
+   :gen (fn []
+          (sgen/fmap (fn [{:keys [basename histogram-metric-threshold histogram-metric-help metric-key-labels]}]
+                       (make-histogram-metric basename histogram-metric-threshold histogram-metric-help metric-key-labels))
+                       (s/gen (s/keys :req-un [::metric-key-name ::metric-value-value ::help ::labels]))))))
 
 (s/fdef make-histogram-metric
   :args (s/cat :basename  ::metric-key-name
