@@ -1,7 +1,7 @@
 (ns active.clojure.logger.event
   "Facilities for logging events."
   (:require [clojure.string :as string]
-            [active.clojure.logger.config.timbre :as timbre]
+            [active.clojure.logger.timbre :as timbre]
             [active.clojure.logger.internal :as internal]
             [active.clojure.monad :as monad]
             [active.clojure.record :refer [define-record-type]]))
@@ -95,9 +95,6 @@
                                  ~?level
                                  nil
                                  (delay [~?msg])))
-
-(defn- -log-event! [level msg] ;; forward declared above
-  (log-event! level msg))
 
 (defmacro log-exception-event!
   "Log an exception event."

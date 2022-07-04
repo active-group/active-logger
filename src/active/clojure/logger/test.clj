@@ -1,5 +1,5 @@
 (ns active.clojure.logger.test
-  (:require [active.clojure.logger.config.timbre :as timbre-config]
+  (:require [active.clojure.logger.timbre :as timbre-config]
             [active.clojure.logger.event :as event]
             [active.clojure.logger.state-change :as state-change]
             [active.clojure.logger.metric :as metric]

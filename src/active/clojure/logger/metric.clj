@@ -1,12 +1,21 @@
 (ns active.clojure.logger.metric
   "Facilities for logging metrics."
-  (:require [active.clojure.logger.config.riemann :as riemann-config]
+  (:require [active.clojure.logger.riemann :as riemann-config]
             [active.clojure.logger.internal :as internal]
+            [active.clojure.logger.metric-accumulator :as metric-accumulator]
             [active.clojure.monad :as monad]
+            [active.clojure.config :as config]
             [active.clojure.record :refer [define-record-type]]))
 
 
 ;;;; Configuration
+
+(def log-metrics-command-config-setting
+  (config/setting :log-metrics-command-config
+                  "Monad command config for running metric log commands."
+                  ;; TODO allow port/host settings
+                  (config/one-of-range #{:riemann :events :no-push} :events)))
+
 
 (def metrics-config-default :events)
 (defonce metrics-config (atom metrics-config-default))
@@ -17,6 +26,7 @@
   [riemann-config desc]
   (case desc
     :events  :events
+    :no-push :no-push
     :riemann (riemann-config/make-riemann-config riemann-config)))
 
 (defn set-global-log-metrics-config!
@@ -47,7 +57,7 @@
 
 (def get-milli-time (make-get-milli-time))
 
-(defn log-metric-to-events!
+(defn emit-metric-to-events!
   [namespace label value mp]
   (internal/log-event!-internal "metric"
                                 namespace
@@ -56,17 +66,29 @@
                                 (delay
                                   [(str "Metric " label " = " value)])))
 
-(defn log-metric-to-riemann!
+(defn emit-metric-to-riemann!
   [config label value mp]
   (riemann-config/send-event-to-riemann! config "metric" mp {:label label :metric value}))
 
-(defn log-metric!-internal
-  [namespace label value mp]
-  (let [mp (internal/sanitize-context mp)
+(defn emit-metric-sample!-internal
+  ([namespace metric-sample context-map]
+   (emit-metric-sample!-internal @metrics-config namespace metric-sample context-map))
+  ([scconf namespace metric-sample context-map]
+   (when (not= :no-push scconf)
+     (let [mp            (internal/sanitize-context context-map)
+           metric-name   (metric-accumulator/metric-sample-name metric-sample)
+           metric-labels (metric-accumulator/metric-sample-labels metric-sample)
+           metric-value  (metric-accumulator/metric-sample-value metric-sample)]
+       (case scconf
+         :events (emit-metric-to-events! namespace metric-name metric-labels metric-value mp)
+         (emit-metric-to-riemann! scconf metric-name metric-value mp))))))
+
+(defn emit-metric-samples!-internal
+  [namespace metric-samples context-map]
+  (let [sanitized-context-map (internal/sanitize-context context-map)
         scconf @metrics-config]
-    (case scconf
-      :events (log-metric-to-events! namespace label value mp)
-      (log-metric-to-riemann! scconf label value mp))))
+  (doseq [metric-sample metric-samples]
+    (emit-metric-samples!-internal namespace metric-sample sanitized-context-map))))
 
 (defn get-milli-time!
   []
@@ -86,18 +108,17 @@
   ([?label ?value ?mp ?ns]
    `(make-log-metric ~?ns ~?label ~?value ~?mp)))
 
-
 ;;;; Interpreter
 
-(defn run-log-metric
+(defn run-emit-metric
   [run-any env mstate m]
   (cond
     (log-metric? m)
     (do
-      (log-metric!-internal (log-metric-namespace m)
-                            (log-metric-label m)
-                            (log-metric-value m)
-                            (log-metric-map m))
+      (emit-metric-sample!-internal (log-metric-namespace m)
+                                    (log-metric-label m)
+                                    (log-metric-value m)
+                                    (log-metric-map m))
       [nil mstate])
 
     (get-milli-time? m)
@@ -107,4 +128,4 @@
     monad/unknown-command))
 
 (def log-metrics-command-config
-  (monad/make-monad-command-config run-log-metric {} {}))
+  (monad/make-monad-command-config run-emit-metric {} {}))

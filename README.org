@@ -53,7 +53,7 @@ Or use [[https://github.com/active-group/active-clojure][active-clojure]]'s =act
   (ns my.app
     (:require [active.clojure.config :as active-config]
               [active.clojure.logger.event :as event-logger]
-              [active.clojure.logger.config.timbre :as timbre-config]))
+              [active.clojure.logger.timbre :as timbre]))
 
   (def config-map
     {:timbre-config
@@ -66,13 +66,13 @@ Or use [[https://github.com/active-group/active-clojure][active-clojure]]'s =act
        ;; Submit messages to a logstash instance.
        :logstash '(logstash "localhost" 4660)}}})
 
-  (def schema (active-config/schema "Configuration schema." timbre-config/timbre-config-section))
+  (def schema (active-config/schema "Configuration schema." timbre/timbre-config-section))
   (def configuration (active-config/make-configuration schema [] config-map))
 
   ;; Initialize the event-logger.
   (-> configuration
-      (active-config/section-subconfig timbre-config/timbre-config-section)
-      timbre-config/configuration->timbre-config
+      (active-config/section-subconfig timbre/timbre-config-section)
+      timbre/configuration->timbre-config
       event-logger/set-global-log-events-config!)
 #+end_src
 
@@ -112,7 +112,7 @@ Monadic in this context means programs defined using =active.clojure.monad=.
 #+begin_src clojure
   (ns my.ns
     (:require [active.clojure.config :as active-config]
-              [active.clojure.logger.config.timbre :as timbre-config]
+              [active.clojure.logger.timbre :as timbre]
               [active.clojure.logger.event :as event-logger]
               [active.clojure.monad :as monad :refer [monadic]]))
 

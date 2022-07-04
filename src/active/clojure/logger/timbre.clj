@@ -1,7 +1,5 @@
-(ns active.clojure.logger.config.timbre
-  (:require [active.timbre-riemann :as timbre-riemann]
-            [clojure.string :as string]
-            [riemann.client :as riemann]
+(ns active.clojure.logger.timbre
+  (:require [clojure.string :as string]
             [taoensso.encore :as encore]
             [taoensso.timbre :as timbre]
             [taoensso.timbre.appenders.core :as timbre-appenders]
@@ -9,9 +7,9 @@
             [taoensso.timbre.appenders.3rd-party.logstash :as timbre-logstash]
 
             [active.clojure.condition :as c]
-            [active.clojure.condition-hooks :as condition-hooks]
             [active.clojure.config :as config]
-            [active.clojure.logger.config.riemann :as logger-riemann]))
+            [active.clojure.logger.internal :as internal]
+            [active.clojure.logger.riemann :as riemann]))
 
 (defonce timbre-default-config timbre/*config*) ;; actually not nil!
 
@@ -152,70 +150,12 @@
                    timbre-hostname-setting
                    timbre-application-setting)))
 
-;; dummy: but it needs to exist for event logging to be a service
-(defn pr-exception-stacktrace [err]
-  ;; expecially prints conditions more pretty
-  (condition-hooks/print-stack-trace-of err))
-
-(defn timbre-event->riemann [data]
-  ;; return zero or more riemann events for one timbre appender data structure.
-  (let [{:keys [context instant hostname_ msg_ level]} data
-
-        stacktrace     (when-let [?err (and (:?err_ data) (force (:?err_ data)))]
-                         ;; Note: ?err_ will be replaced by ?err in newer timbre versions.
-                         (with-out-str (pr-exception-stacktrace ?err)))
-        [time time-ms] (logger-riemann/current-time-for-riemann)]
-    ;; Note: context already may contain some riemann specific props too, like
-    ;; :service, :state, :metric, :ttl.
-    [(-> (cond-> {:host (force hostname_)
-                  ;; :state nil
-                  ;; :description nil
-                  ;; :metric nil
-                  ;; :tags nil
-                  :time time
-                  :time-ms time-ms
-                  ;; :ttl nil
-                  }
-           (some? stacktrace)          (assoc :stacktrace stacktrace)
-           (= "event" (:type context)) (assoc :level (name level)
-                                              :description (force msg_)))
-         (merge context))]))
-
-(declare -log-event!)
-
 (defn riemann-appender [& [opts]]
-  (let [riemann-opts (-> {:host "localhost" :port 5555}
-                         (merge (select-keys opts [:host :port
-                                                   :tls? :key
-                                                   :cert :ca-cert
-                                                   :cache-dns?])))
-        ;; Note: creating the client never throws
-        client       (riemann/tcp-client riemann-opts)]
-
-    (let [at (str (:host riemann-opts) ":" (:port riemann-opts))]
-      (if (not (riemann/connected? client))
-        ;; this'll be visible on the console, before timbre is reconfigured:
-        (-log-event! :warn (str "Could not connect to Riemann at " at ". Some messages will be dropped until Riemann can be reached."))
-        (-log-event! :debug (str "Connected to Riemann at " at "."))))
-
-    (-> (timbre-riemann/riemann-appender
-         (merge {:client    client
-                 :retry-fn  (fn [promise repeat-nr message-nr]
-                             ;; we could (deref promise) here, resulting in a result message from the riemann server, or
-                             ;; in an IOException("no channels available") when the connection drops/server stopped, or in
-                             ;; an OverloadedException when the client produces more message than the server can handle.
-                             ;; For now, we think it's more important that the platform keeps on running.
-                             false ;; don't retry.
-                             )
-                 :events-fn timbre-event->riemann}
-                opts))
-        ;; cleanup-fn is our own extension to the appenders spec; see destroy-timbre-config! below
-        (assoc :cleanup-fn (fn [this]
-                             (riemann/close! client))))))
+  (riemann/riemann-appender opts))
 
 (defn logstash-appender [host port & [opts]]
   (timbre-logstash/logstash-appender host port
-                                     (merge {:pr-stacktrace pr-exception-stacktrace} opts)))
+                                     (merge {:pr-stacktrace internal/pr-exception-stacktrace} opts)))
 
 (defn rotor-appender [opts]
   (timbre-rotor/rotor-appender opts))
@@ -273,7 +213,7 @@
        (force msg_)
        (when-not no-stacktrace?
          (when-let [err (force ?err_)]
-           (str "\n" (with-out-str (pr-exception-stacktrace err)))))))))
+           (str "\n" (with-out-str (internal/pr-exception-stacktrace err)))))))))
 
 (defn fixed-properties-timbre-middleware [hostname application]
   ;; A timbre middleware, that sets log event properties that should

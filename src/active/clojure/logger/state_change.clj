@@ -3,13 +3,20 @@
   (:require [riemann.client :as riemann]
             [taoensso.timbre :as timbre]
 
-            [active.clojure.logger.config.riemann :as riemann-config]
+            [active.clojure.config :as config]
+            [active.clojure.logger.riemann :as riemann-config]
             [active.clojure.logger.internal :as internal]
             [active.clojure.monad :as monad]
             [active.clojure.record :refer [define-record-type]]))
 
 
 ;;;; Configuration
+
+(def log-state-changes-command-config-setting
+  (config/setting :log-state-changes-command-config
+                  "Monad command config for running state-change log commands."
+                  ;; TODO allow port/host settings
+                  (config/one-of-range #{:riemann :events} :events)))
 
 (def state-changes-config-default :events)
 (defonce state-changes-config (atom state-changes-config-default))
