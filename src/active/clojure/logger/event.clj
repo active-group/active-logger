@@ -115,7 +115,7 @@
   `(internal/log-event!-internal "event"
                                  ~(str *ns*)
                                  ~?level
-                                 (internal/sanitize-context ~?context)
+                                 ~?context
                                  (delay [~?msg])))
 
 (defmacro log-exception-event-with-context!
@@ -124,7 +124,7 @@
   `(internal/log-exception-event!-internal "event"
                                            ~(str *ns*)
                                            ~?level
-                                           (internal/sanitize-context ~?context)
+                                           ~?context
                                            (delay [~?msg (str ~?throwable)]) ~?throwable))
 
 (defmacro log-event
@@ -143,7 +143,7 @@
     (log-event? m)
     (do
       (internal/log-event!-internal "event"
-                                    (log-event-origin m) (log-event-level m) (internal/sanitize-context (log-event-map m))
+                                    (log-event-origin m) (log-event-level m) (log-event-map m)
                                     (log-event-vargs-delay m))
       [nil mstate])
 
@@ -151,14 +151,14 @@
     (do
       (internal/log-exception-event!-internal "event"
                                               (log-exception-event-origin m) (log-exception-event-level m)
-                                              (internal/sanitize-context (log-exception-event-map m))
+                                              (log-exception-event-map m)
                                               (log-exception-event-vargs-delay m)
                                               (log-exception-event-exception m))
       [nil mstate])
 
     (with-log-context? m)
     (timbre/with-context (merge timbre/*context*
-                                (internal/sanitize-context (with-log-context-context m)))
+                                (with-log-context-context m))
       (run-any env mstate (with-log-context-body m)))
 
     :else

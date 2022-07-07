@@ -77,8 +77,7 @@
 
 (defn log-state-change!-internal
   [namespace state ttl mp]
-  (let [mp (internal/sanitize-context mp)
-        scconf @state-changes-config]
+  (let [scconf @state-changes-config]
     (case scconf
       :events (log-state-change-to-events! namespace state mp)
       (riemann-config/log-state-change-to-riemann! scconf state ttl mp))))

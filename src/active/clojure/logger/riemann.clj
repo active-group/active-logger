@@ -103,6 +103,31 @@
   {:host hostname
    :application application})
 
+;; TODO: maybe we need to take Riemann's special keys into consideration here:
+;; From riemann sources (hardly any docs!):
+;; :host         ; string
+;; :service      ; string
+;; :state        ; string
+;; :description  ; string
+;; :metric       ; float, long or double.
+;; :tags         ; seq of strings
+;; :time         ; long, seconds since UTC epoch
+;; :ttl          ; float
+;; anything else, must be keyword => string.
+(defn sanitize-context
+  "Make sure the context only contains string values, remove non-string values."
+  [mp]
+  (if (some (fn [entry] (not (string? (val entry)))) mp)
+    (->> mp
+         (filter (fn [entry]
+                   (if (string? (val entry))
+                     true
+                     (binding [*out* *err*]
+                       (println (str "WARNING: log context contains non-string value for key " (key entry) " (" (val entry) ")"))
+                       false))))
+         (into {}))
+    mp))
+
 (defn send-event-to-riemann!
   [config type context map]
   ;; config = (make-riemann-config ...)
@@ -110,7 +135,7 @@
   ;; Note: new version never throws, but returns a promise, on which deref may throw.
   (riemann/send-events (:client config)
                        [(merge timbre/*context*
-                               context
+                               (sanitize-context context)
                                (let [[time time-ms] (current-time-for-riemann)]
                                  {:type type
                                   :time time

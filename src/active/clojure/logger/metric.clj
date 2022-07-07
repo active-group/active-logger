@@ -75,20 +75,18 @@
    (emit-metric-sample!-internal @metrics-config namespace metric-sample context-map))
   ([scconf namespace metric-sample context-map]
    (when (not= :no-push scconf)
-     (let [mp            (internal/sanitize-context context-map)
-           metric-name   (metric-accumulator/metric-sample-name metric-sample)
+     (let [metric-name   (metric-accumulator/metric-sample-name metric-sample)
            metric-labels (metric-accumulator/metric-sample-labels metric-sample)
            metric-value  (metric-accumulator/metric-sample-value metric-sample)]
        (case scconf
-         :events (emit-metric-to-events! namespace metric-name metric-labels metric-value mp)
-         (emit-metric-to-riemann! scconf metric-name metric-value mp))))))
+         :events (emit-metric-to-events! namespace metric-name metric-labels metric-value context-map)
+         (emit-metric-to-riemann! scconf metric-name metric-value context-map))))))
 
 (defn emit-metric-samples!-internal
   [namespace metric-samples context-map]
-  (let [sanitized-context-map (internal/sanitize-context context-map)
-        scconf @metrics-config]
+  (let [scconf @metrics-config]
   (doseq [metric-sample metric-samples]
-    (emit-metric-samples!-internal namespace metric-sample sanitized-context-map))))
+    (emit-metric-samples!-internal namespace metric-sample context-map))))
 
 (defn get-milli-time!
   []
