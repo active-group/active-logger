@@ -1,12 +1,11 @@
-(ns active.clojure.logger.metric
-  "Facilities for logging metrics."
+(ns active.clojure.logger.metric-emitter
+  "Facilities for emitting metrics."
   (:require [active.clojure.logger.riemann :as riemann-config]
             [active.clojure.logger.internal :as internal]
             [active.clojure.logger.metric-accumulator :as metric-accumulator]
             [active.clojure.monad :as monad]
             [active.clojure.config :as config]
             [active.clojure.record :refer [define-record-type]]))
-
 
 ;;;; Configuration
 
@@ -15,7 +14,6 @@
                   "Monad command config for running metric log commands."
                   ;; TODO allow port/host settings
                   (config/one-of-range #{:riemann :events :no-push} :events)))
-
 
 (def metrics-config-default :events)
 (defonce metrics-config (atom metrics-config-default))
@@ -38,17 +36,15 @@
   [compare]
   (swap! metrics-config #(if (= % compare) metrics-config-default %)))
 
-
 ;;;; Data definition and DSL
 
-(define-record-type LogMetric
-  (make-log-metric namespace label value map) log-metric?
-  [namespace log-metric-namespace
-   ^{:doc "String"} label log-metric-label
-   ^{:doc "Scalar value"} value log-metric-value
+(define-record-type EmitMetric
+  (make-emit-metric namespace sample map) emit-metric?
+  [namespace emit-metric-namespace
+   ^{:doc "Metric sample"} sample emit-metric-sample
    ^{:doc "Map with more data or `nil`. The context is a map that is merged
   with the log context that's already active, if present."}
-   map log-metric-map])
+   map emit-metric-map])
 
 (define-record-type ^{:doc "Get the system time in milliseconds"} GetMilliTime
   (make-get-milli-time) get-milli-time? [])
@@ -92,31 +88,16 @@
   []
   (/ (double (System/nanoTime)) 1000000.0))
 
-(defmacro log-metric!
-  ([?label ?value]
-   `(internal/log-metric!-internal ~(str *ns*) ~?label ~?value nil))
-  ([?label ?value ?mp]
-   `(internal/log-metric!-internal ~(str *ns*) ~?label ~?value ~?mp)))
-
-(defmacro log-metric
-  ([?label ?value]
-   `(make-log-metric ~(str *ns*) ~?label ~?value nil))
-  ([?label ?value ?mp]
-   `(make-log-metric ~(str *ns*) ~?label ~?value ~?mp))
-  ([?label ?value ?mp ?ns]
-   `(make-log-metric ~?ns ~?label ~?value ~?mp)))
-
 ;;;; Interpreter
 
 (defn run-emit-metric
   [run-any env mstate m]
   (cond
-    (log-metric? m)
+    (emit-metric? m)
     (do
-      (emit-metric-sample!-internal (log-metric-namespace m)
-                                    (log-metric-label m)
-                                    (log-metric-value m)
-                                    (log-metric-map m))
+      (emit-metric-sample!-internal (emit-metric-namespace m)
+                                    (emit-metric-sample m)
+                                    (emit-metric-map m))
       [nil mstate])
 
     (get-milli-time? m)
@@ -127,3 +108,17 @@
 
 (def log-metrics-command-config
   (monad/make-monad-command-config run-emit-metric {} {}))
+
+(defmacro emit-metric!
+  ([?metric-sample]
+   `(emit-metric-sample!-internal ~(str *ns*) ~?metric-sample nil))
+  ([?metric-sample ?mp]
+   `(emit-metric-sample!-internal ~(str *ns*) ~?metric-sample ~?mp)))
+
+(defmacro emit-metric
+  ([?metric-sample]
+   `(make-emit-metric ~(str *ns*) ~?metric-sample nil))
+  ([?metric-sample ?mp]
+   `(make-emit-metric ~(str *ns*) ~?metric-sample ~?mp))
+  ([?metric-sample ?mp ?ns]
+   `(make-emit-metric ~?ns ~?metric-sample ~?mp)))
