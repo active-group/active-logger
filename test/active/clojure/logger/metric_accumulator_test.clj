@@ -597,10 +597,7 @@
                                 (m/get-metrics! raw-metric-store example-gauge-metric))))))))
   (t/testing "Basic recording and getting histograms works."
     (t/is (quickcheck
-           (property [
-                      ;; FIXME: why does this line not work?
-                      ;; example-histogram-metric (spec ::m/histogram-metric)
-                      [example-histogram-metric] (spec (m/gen-histogram-metrics 1))
+           (property [example-histogram-metric (spec ::m/histogram-metric)
                       example-metric-value-1  (spec ::m/metric-value)
                       example-metric-value-2  (spec ::m/metric-value)]
 
@@ -613,41 +610,39 @@
                                                                    (- (count example-total-sum-metric-key-name) 4))
                            ;; The labels of the total-sum counter has no added labels
                            example-metric-key-labels         (m/metric-key-labels example-total-sum-metric-key)
+                           example-metric-value-1-value      (m/metric-value-value example-metric-value-1)
                            example-histogram-threshold       (m/histogram-metric-threshold example-histogram-metric)]
                        ;; TODO: do we really want to have here [nil nil nil nil]?
                        ;; empty metric store
                        (t/is (= [nil nil nil nil]
                                 (m/get-metrics! raw-metric-store example-histogram-metric)))
                        ;; record value-1
-                       #_(m/record-metric! raw-metric-store example-histogram-metric example-metric-value-1)
-                       #_(t/is (= [
-                                   (m/make-metric-sample
-                                    (str example-metric-key-basename "_sum")
-                                    example-metric-key-labels
-                                    (m/metric-value-value               example-metric-value-1)
-                                    (m/metric-value-timestamp           example-metric-value-1)
-                                    (m/metric-value-last-update-time-ms example-metric-value-1))
-                                   (m/make-metric-sample
-                                    (str example-metric-key-basename "_bucket")
-                                    (assoc example-metric-key-labels :le "+Inf")
-                                    1
-                                    (m/metric-value-timestamp example-metric-value-1)
-                                    (m/metric-value-last-update-time-ms example-metric-value-1))
-                                   (m/make-metric-sample
-                                    (str example-metric-key-basename "_count")
-                                    example-metric-key-labels
-                                    1
-                                    (m/metric-value-timestamp           example-metric-value-1)
-                                    (m/metric-value-last-update-time-ms example-metric-value-1))
-                                   (m/make-metric-sample
-                                    (str example-metric-key-basename "_bucket")
-                                    (assoc example-metric-key-labels :le (str example-histogram-threshold))
-                                    1
-                                    (m/metric-value-timestamp           example-metric-value-1)
-                                    (m/metric-value-last-update-time-ms example-metric-value-1))]
-                                  (m/get-metrics! raw-metric-store example-histogram-metric)
-
-                       ))))))))
+                       (m/record-metric! raw-metric-store example-histogram-metric example-metric-value-1)
+                       (t/is (= [(m/make-metric-sample
+                                  (str example-metric-key-basename "_sum")
+                                  example-metric-key-labels
+                                  example-metric-value-1-value
+                                  (m/metric-value-timestamp           example-metric-value-1)
+                                  (m/metric-value-last-update-time-ms example-metric-value-1))
+                                 (m/make-metric-sample
+                                  (str example-metric-key-basename "_bucket")
+                                  (assoc example-metric-key-labels :le "+Inf")
+                                  1
+                                  (m/metric-value-timestamp example-metric-value-1)
+                                  (m/metric-value-last-update-time-ms example-metric-value-1))
+                                 (m/make-metric-sample
+                                  (str example-metric-key-basename "_count")
+                                  example-metric-key-labels
+                                  1
+                                  (m/metric-value-timestamp           example-metric-value-1)
+                                  (m/metric-value-last-update-time-ms example-metric-value-1))
+                                 (m/make-metric-sample
+                                  (str example-metric-key-basename "_bucket")
+                                  (assoc example-metric-key-labels :le (str example-histogram-threshold))
+                                  (if (<= example-metric-value-1-value example-histogram-threshold) 1 0)
+                                  (m/metric-value-timestamp           example-metric-value-1)
+                                  (m/metric-value-last-update-time-ms example-metric-value-1))]
+                                  (m/get-metrics! raw-metric-store example-histogram-metric)))))))))
 
 
 (t/deftest t-record-get-metric!

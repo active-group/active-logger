@@ -419,7 +419,8 @@ where `help` must be a string or nil and `metric-key` must be a `MetricKey`."}
                                                              help
                                                              (metric-key-labels metric-key)))
                                       metric-keys helps))
-                              (s/gen (s/tuple (gen-metric-keys num-elems) (s/coll-of ::help :count num-elems)))))))
+                              (s/gen (s/tuple (gen-metric-keys num-elems)
+                                              (s/coll-of ::help :count num-elems)))))))
 
 (s/fdef make-counter-metric
   :args (s/cat :name ::metric-key-name
@@ -445,8 +446,8 @@ where `help` must be a string or nil and `metric-key` must be a `MetricKey`."}
   (s/spec
    (partial instance? GaugeMetric)
    :gen (fn []
-          (sgen/fmap (fn [{:keys [metric-key-name gauge-metric-help metric-key-labels]}]
-                       (make-gauge-metric metric-key-name gauge-metric-help metric-key-labels))
+          (sgen/fmap (fn [{:keys [metric-key-name help metric-key-labels]}]
+                       (make-gauge-metric metric-key-name help metric-key-labels))
                        (s/gen (s/keys :req-un [::metric-key-name ::help ::metric-key-labels]))))))
 
 ;; TODO: help and labels optional
@@ -460,7 +461,8 @@ where `help` must be a string or nil and `metric-key` must be a `MetricKey`."}
                                                            help
                                                            (metric-key-labels metric-key)))
                                       metric-keys helps))
-                              (s/gen (s/tuple (gen-metric-keys num-elems) (s/coll-of ::help :count num-elems)))))))
+                              (s/gen (s/tuple (gen-metric-keys num-elems)
+                                              (s/coll-of ::help :count num-elems)))))))
 
 (s/fdef make-gauge-metric
   :args (s/cat :name ::metric-key-name
@@ -476,12 +478,12 @@ where `help` must be a string or nil and `metric-key` must be a `MetricKey`."}
   HistogramMetric
   ^:private really-make-histogram-metric
   histogram-metric?
-  [help histogram-metric-help
-   threshold histogram-metric-threshold
-   total-sum histogram-metric-total-sum
+  [help                histogram-metric-help
+   threshold           histogram-metric-threshold
+   total-sum           histogram-metric-total-sum
    bucket-le-threshold histogram-metric-bucket-le-threshold
-   total-count histogram-metric-total-count
-   bucket-le-inf histogram-metric-bucket-le-inf])
+   total-count         histogram-metric-total-count
+   bucket-le-inf       histogram-metric-bucket-le-inf])
 
 (declare make-histogram-metric)
 
@@ -490,9 +492,9 @@ where `help` must be a string or nil and `metric-key` must be a `MetricKey`."}
   (s/spec
    (partial instance? HistogramMetric)
    :gen (fn []
-          (sgen/fmap (fn [{:keys [basename histogram-metric-threshold histogram-metric-help metric-key-labels]}]
-                       (make-histogram-metric basename histogram-metric-threshold histogram-metric-help metric-key-labels))
-                       (s/gen (s/keys :req-un [::metric-key-name ::metric-value-value ::help ::labels]))))))
+          (sgen/fmap (fn [{:keys [metric-key-name metric-value-value help metric-key-labels]}]
+                       (make-histogram-metric metric-key-name metric-value-value help metric-key-labels))
+                       (s/gen (s/keys :req-un [::metric-key-name ::metric-value-value ::help ::metric-key-labels]))))))
 
 (defn gen-histogram-metrics
   [num-elems]
@@ -507,7 +509,7 @@ where `help` must be a string or nil and `metric-key` must be a `MetricKey`."}
                                       metric-keys thresholds helps))
                               (s/gen (s/tuple (gen-metric-keys num-elems)
                                               (s/coll-of ::metric-value-value :count num-elems)
-                                              (s/coll-of ::help :count num-elems)))))))
+                                              (s/coll-of ::help               :count num-elems)))))))
 
 (s/fdef make-histogram-metric
   :args (s/cat :basename  ::metric-key-name
