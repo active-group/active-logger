@@ -56,8 +56,7 @@
 
 ;; TODO: clean up
 ;; - this introduces a test-library in src - should this go into test instead?
-;; TODO: document that this generates distinct metric-keys
-(defn gen-metric-keys
+(defn gen-distinct-metric-keys
   [num-elems]
   (s/spec (s/coll-of ::metric-key :into [])
           :gen (fn []
@@ -409,7 +408,7 @@ where `help` must be a string or nil and `metric-key` must be a `MetricKey`."}
 ;; TODO: clean up
 ;; - this introduces a test-library in src - should this go into test instead?
 ;; TODO: help and labels optional
-(defn gen-counter-metrics
+(defn gen-distinct-counter-metrics
   [num-elems]
   (s/spec (s/coll-of ::counter-metric :into [])
           :gen (fn []
@@ -419,7 +418,7 @@ where `help` must be a string or nil and `metric-key` must be a `MetricKey`."}
                                                              help
                                                              (metric-key-labels metric-key)))
                                       metric-keys helps))
-                              (s/gen (s/tuple (gen-metric-keys num-elems)
+                              (s/gen (s/tuple (gen-distinct-metric-keys num-elems)
                                               (s/coll-of ::help :count num-elems)))))))
 
 (s/fdef make-counter-metric
@@ -451,7 +450,7 @@ where `help` must be a string or nil and `metric-key` must be a `MetricKey`."}
                        (s/gen (s/keys :req-un [::metric-key-name ::help ::metric-key-labels]))))))
 
 ;; TODO: help and labels optional
-(defn gen-gauge-metrics
+(defn gen-distinct-gauge-metrics
   [num-elems]
   (s/spec (s/coll-of ::gauge-metric :into [])
           :gen (fn []
@@ -461,7 +460,7 @@ where `help` must be a string or nil and `metric-key` must be a `MetricKey`."}
                                                            help
                                                            (metric-key-labels metric-key)))
                                       metric-keys helps))
-                              (s/gen (s/tuple (gen-metric-keys num-elems)
+                              (s/gen (s/tuple (gen-distinct-metric-keys num-elems)
                                               (s/coll-of ::help :count num-elems)))))))
 
 (s/fdef make-gauge-metric
@@ -496,7 +495,7 @@ where `help` must be a string or nil and `metric-key` must be a `MetricKey`."}
                        (make-histogram-metric metric-key-name metric-value-value help metric-key-labels))
                        (s/gen (s/keys :req-un [::metric-key-name ::metric-value-value ::help ::metric-key-labels]))))))
 
-(defn gen-histogram-metrics
+(defn gen-distinct-histogram-metrics
   [num-elems]
   (s/spec (s/coll-of ::histogram-metric :into [])
           :gen (fn []
@@ -507,7 +506,7 @@ where `help` must be a string or nil and `metric-key` must be a `MetricKey`."}
                                                                help
                                                                (metric-key-labels metric-key)))
                                       metric-keys thresholds helps))
-                              (s/gen (s/tuple (gen-metric-keys num-elems)
+                              (s/gen (s/tuple (gen-distinct-metric-keys num-elems)
                                               (s/coll-of ::metric-value-value :count num-elems)
                                               (s/coll-of ::help               :count num-elems)))))))
 

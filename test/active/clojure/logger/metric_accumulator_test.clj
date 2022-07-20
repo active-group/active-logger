@@ -236,7 +236,7 @@
            (property [[example-metric-key-1,
                        example-metric-key-2,
                        example-metric-key-3,
-                       example-metric-key-4] (spec (m/gen-metric-keys 4))
+                       example-metric-key-4] (spec (m/gen-distinct-metric-keys 4))
 
                       example-metric-value-1 (spec ::m/metric-value)
                       example-metric-value-2 (spec ::m/metric-value)
@@ -297,7 +297,7 @@
            (property [[example-metric-key-1,
                        example-metric-key-2,
                        example-metric-key-3,
-                       example-metric-key-4] (spec (m/gen-metric-keys 4))
+                       example-metric-key-4] (spec (m/gen-distinct-metric-keys 4))
 
                       example-metric-value-1 (spec ::m/metric-value)
                       example-metric-value-2 (spec ::m/metric-value)
