@@ -7,6 +7,14 @@
             [clojure.spec.test.alpha :as stest])
   (:use [active.quickcheck]))
 
+(t/use-fixtures :each (fn [f] (m/reset-global-raw-metric-store!) (f)))
+
+(defmacro mock-run-monad
+  [& ?args]
+  `(do
+     (m/reset-global-raw-metric-store!)
+     (mock-monad/mock-run-monad ~@?args)))
+
 (stest/instrument)
 
 ;; Note: For the moment we split the tests into
@@ -396,8 +404,8 @@
            (property [example-metric-key   (spec ::m/metric-key)
                       example-metric-value (spec ::m/metric-value)]
                      (let [result
-                           (mock-monad/mock-run-monad
-                            (m/monad-command-config)
+                           (mock-run-monad
+                            m/monad-command-config
                             []
                             (monad/monadic
                              (m/set-raw-metric example-metric-key example-metric-value)
@@ -418,8 +426,8 @@
                       example-metric-value-1 (spec ::m/metric-value)
                       example-metric-value-2 (spec ::m/metric-value)]
                      (let [result
-                           (mock-monad/mock-run-monad
-                            (m/monad-command-config)
+                           (mock-run-monad
+                            m/monad-command-config
                             []
                             (monad/monadic
                              (m/set-raw-metric example-metric-key example-metric-value-1)
@@ -442,8 +450,8 @@
 (t/deftest t-monadic-prune-stale-metrics
   (t/testing "Simple pruning of metrics works."
     (let [result
-          (mock-monad/mock-run-monad
-           (m/monad-command-config)
+          (mock-run-monad
+           m/monad-command-config
            []
            (monad/monadic
             ;; empty nothing to prune
@@ -460,8 +468,8 @@
           example-metric-value-3 (m/make-metric-value 3 4 300)
 
           result
-          (mock-monad/mock-run-monad
-           (m/monad-command-config)
+          (mock-run-monad
+           m/monad-command-config
            []
            (monad/monadic
 
@@ -503,8 +511,8 @@
           example-metric-value-3 (m/make-metric-value 3 4 300)
 
           result
-          (mock-monad/mock-run-monad
-           (m/monad-command-config)
+          (mock-run-monad
+           m/monad-command-config
            []
            (monad/monadic
 
@@ -719,22 +727,24 @@
 
 (t/deftest t-monadic-record-get
   (t/testing "monadic recording and getting counters works"
+    (m/reset-global-raw-metric-store!)
     (t/is (quickcheck
            (property [example-counter-metric (spec ::m/counter-metric)]
                      (let [result
-                           (mock-monad/mock-run-monad
-                            (m/monad-command-config)
+                           (mock-run-monad
+                            m/monad-command-config
                             []
                             (monad/monadic
                              (m/get-metrics example-counter-metric)))]
                        (t/is (= [nil]
                                 result))))))
+    (m/reset-global-raw-metric-store!)
     (t/is (quickcheck
            (property [example-counter-metric (spec ::m/counter-metric)
                       example-metric-value-1 (spec ::m/metric-value)]
                      (let [result
-                           (mock-monad/mock-run-monad
-                            (m/monad-command-config)
+                           (mock-run-monad
+                            m/monad-command-config
                             []
                             (monad/monadic
                              (m/record-metric example-counter-metric example-metric-value-1)
@@ -747,13 +757,14 @@
                                   (m/metric-value-timestamp           example-metric-value-1)
                                   (m/metric-value-last-update-time-ms example-metric-value-1))]
                                 result))))))
+    (m/reset-global-raw-metric-store!)
     (t/is (quickcheck
            (property [example-counter-metric (spec ::m/counter-metric)
                       example-metric-value-1 (spec ::m/metric-value)
                       example-metric-value-2 (spec ::m/metric-value)]
                      (let [result
-                           (mock-monad/mock-run-monad
-                            (m/monad-command-config)
+                           (mock-run-monad
+                            m/monad-command-config
                             []
                             (monad/monadic
                              (m/record-metric example-counter-metric example-metric-value-1)
@@ -769,22 +780,24 @@
                                   (m/metric-value-last-update-time-ms example-metric-value-2))]
                                 result)))))))
   (t/testing "monadic recording and getting gauges works"
+    (m/reset-global-raw-metric-store!)
     (t/is (quickcheck
            (property [example-gauge-metric (spec ::m/gauge-metric)]
                      (let [result
-                           (mock-monad/mock-run-monad
-                            (m/monad-command-config)
+                           (mock-run-monad
+                            m/monad-command-config
                             []
                             (monad/monadic
                              (m/get-metrics example-gauge-metric)))]
                        (t/is (= [nil]
                                 result))))))
+    (m/reset-global-raw-metric-store!)
     (t/is (quickcheck
            (property [example-gauge-metric (spec ::m/gauge-metric)
                       example-metric-value-1 (spec ::m/metric-value)]
                      (let [result
-                           (mock-monad/mock-run-monad
-                            (m/monad-command-config)
+                           (mock-run-monad
+                            m/monad-command-config
                             []
                             (monad/monadic
                              (m/record-metric example-gauge-metric example-metric-value-1)
@@ -797,13 +810,14 @@
                                   (m/metric-value-timestamp           example-metric-value-1)
                                   (m/metric-value-last-update-time-ms example-metric-value-1))]
                                 result))))))
+    (m/reset-global-raw-metric-store!)
     (t/is (quickcheck
            (property [example-gauge-metric (spec ::m/gauge-metric)
                       example-metric-value-1 (spec ::m/metric-value)
                       example-metric-value-2 (spec ::m/metric-value)]
                      (let [result
-                           (mock-monad/mock-run-monad
-                            (m/monad-command-config)
+                           (mock-run-monad
+                            m/monad-command-config
                             []
                             (monad/monadic
                              (m/record-metric example-gauge-metric example-metric-value-1)
@@ -818,22 +832,24 @@
                                   (m/metric-value-last-update-time-ms example-metric-value-2))]
                                 result)))))))
   (t/testing "monadic recording and getting histograms works"
+    (m/reset-global-raw-metric-store!)
     (t/is (quickcheck
            (property [example-histogram-metric (spec ::m/histogram-metric)]
                      (let [result
-                           (mock-monad/mock-run-monad
-                            (m/monad-command-config)
+                           (mock-run-monad
+                            m/monad-command-config
                             []
                             (monad/monadic
                              (m/get-metrics example-histogram-metric)))]
                        (t/is (= [nil nil nil nil]
                                 result))))))
+    (m/reset-global-raw-metric-store!)
     (t/is (quickcheck
            (property [example-histogram-metric (spec ::m/histogram-metric)
                       example-metric-value-1   (spec ::m/metric-value)]
                      (let [result
-                           (mock-monad/mock-run-monad
-                            (m/monad-command-config)
+                           (mock-run-monad
+                            m/monad-command-config
                             []
                             (monad/monadic
                              (m/record-metric example-histogram-metric example-metric-value-1)
@@ -874,13 +890,14 @@
                                   (m/metric-value-timestamp           example-metric-value-1)
                                   (m/metric-value-last-update-time-ms example-metric-value-1))]
                                 result))))))
+    (m/reset-global-raw-metric-store!)
     (t/is (quickcheck
            (property [example-histogram-metric (spec ::m/histogram-metric)
                       example-metric-value-1   (spec ::m/metric-value)
                       example-metric-value-2   (spec ::m/metric-value)]
                      (let [result
-                           (mock-monad/mock-run-monad
-                            (m/monad-command-config)
+                           (mock-run-monad
+                            m/monad-command-config
                             []
                             (monad/monadic
                              (m/record-metric example-histogram-metric example-metric-value-1)
@@ -930,9 +947,10 @@
                                 result)))))))
   ;; TODO: remove, keep, document? Testing some specific test cases explicitly.
   (t/testing "Some more specific recording and getting histograms works."
+    (m/reset-global-raw-metric-store!)
     (let [result
-          (mock-monad/mock-run-monad
-           (m/monad-command-config)
+          (mock-run-monad
+           m/monad-command-config
            []
            (let [example-histogram-metric (m/make-histogram-metric "test-histogram" 25 nil {:label-1 :value-1})]
              (monad/monadic
@@ -945,9 +963,10 @@
                 (m/make-metric-sample "test-histogram_count"  {:label-1 :value-1           }  3 3 700)
                 (m/make-metric-sample "test-histogram_bucket" {:label-1 :value-1 :le "25"  }  3 3 700)]
                result)))
+    (m/reset-global-raw-metric-store!)
     (let [result
-          (mock-monad/mock-run-monad
-           (m/monad-command-config)
+          (mock-run-monad
+           m/monad-command-config
            []
            (let [example-histogram-metric (m/make-histogram-metric "test-histogram" 25 nil {:label-1 :value-1})]
              (monad/monadic
@@ -961,9 +980,10 @@
                 (m/make-metric-sample "test-histogram_count"  {:label-1 :value-1           }  4 5 900)
                 (m/make-metric-sample "test-histogram_bucket" {:label-1 :value-1 :le "25"  }  3 5 900)]
                result)))
+    (m/reset-global-raw-metric-store!)
     (let [result
-          (mock-monad/mock-run-monad
-           (m/monad-command-config)
+          (mock-run-monad
+           m/monad-command-config
            []
            (let [example-histogram-metric (m/make-histogram-metric "test-histogram" 20 nil {:label-1 :value-1})]
              (monad/monadic
@@ -981,7 +1001,7 @@
            (property [example-counter-metric (spec ::m/counter-metric)
                       example-metric-value-1 (spec ::m/metric-value)
                       example-metric-value-2 (spec ::m/metric-value)]
-                     (let [raw-metric-store (m/fresh-raw-metric-store)
+                     (let [raw-metric-store (m/reset-global-raw-metric-store!)
                            example-metric-key (m/counter-metric-key example-counter-metric)]
                        (t/is (= [(m/make-metric-sample
                                   (m/metric-key-name                  example-metric-key)
@@ -989,7 +1009,7 @@
                                   (m/metric-value-value               example-metric-value-1)
                                   (m/metric-value-timestamp           example-metric-value-1)
                                   (m/metric-value-last-update-time-ms example-metric-value-1))]
-                                (m/record-and-get! raw-metric-store example-counter-metric example-metric-value-1)))
+                                (m/record-and-get! example-counter-metric example-metric-value-1)))
                        (t/is (= [(m/make-metric-sample
                                   (m/metric-key-name                  example-metric-key)
                                   (m/metric-key-labels                example-metric-key)
@@ -997,13 +1017,13 @@
                                      (m/metric-value-value               example-metric-value-2))
                                   (m/metric-value-timestamp           example-metric-value-2)
                                   (m/metric-value-last-update-time-ms example-metric-value-2))]
-                                (m/record-and-get! raw-metric-store example-counter-metric example-metric-value-2))))))))
+                                (m/record-and-get! example-counter-metric example-metric-value-2))))))))
   (t/testing "Basic recording and getting gauges works."
     (t/is (quickcheck
            (property [example-gauge-metric   (spec ::m/gauge-metric)
                       example-metric-value-1 (spec ::m/metric-value)
                       example-metric-value-2 (spec ::m/metric-value)]
-                     (let [raw-metric-store (m/fresh-raw-metric-store)
+                     (let [raw-metric-store (m/reset-global-raw-metric-store!)
                            example-metric-key (m/gauge-metric-key example-gauge-metric)]
                        (t/is (= [(m/make-metric-sample
                                   (m/metric-key-name                  example-metric-key)
@@ -1011,21 +1031,21 @@
                                   (m/metric-value-value               example-metric-value-1)
                                   (m/metric-value-timestamp           example-metric-value-1)
                                   (m/metric-value-last-update-time-ms example-metric-value-1))]
-                                (m/record-and-get! raw-metric-store example-gauge-metric example-metric-value-1)))
+                                (m/record-and-get! example-gauge-metric example-metric-value-1)))
                        (t/is (= [(m/make-metric-sample
                                   (m/metric-key-name                  example-metric-key)
                                   (m/metric-key-labels                example-metric-key)
                                   (m/metric-value-value               example-metric-value-2)
                                   (m/metric-value-timestamp           example-metric-value-2)
                                   (m/metric-value-last-update-time-ms example-metric-value-2))]
-                                (m/record-and-get! raw-metric-store example-gauge-metric example-metric-value-2))))))))
+                                (m/record-and-get! example-gauge-metric example-metric-value-2))))))))
 
   (t/testing "Basic recording and getting histograms works."
     (t/is (quickcheck
            (property [example-histogram-metric (spec ::m/histogram-metric)
                       example-metric-value-1   (spec ::m/metric-value)
                       example-metric-value-2   (spec ::m/metric-value)]
-                     (let [raw-metric-store (m/fresh-raw-metric-store)
+                     (let [raw-metric-store (m/reset-global-raw-metric-store!)
                            example-total-sum-metric-key      (m/counter-metric-key (m/histogram-metric-total-sum example-histogram-metric))
                            example-total-sum-metric-key-name (m/metric-key-name example-total-sum-metric-key)
                            ;; To get the "basename" we need to remove the "_sum"
@@ -1061,7 +1081,7 @@
                                   (if (<= example-metric-value-1-value example-histogram-threshold) 1 0)
                                   (m/metric-value-timestamp           example-metric-value-1)
                                   (m/metric-value-last-update-time-ms example-metric-value-1))]
-                                (m/record-and-get! raw-metric-store example-histogram-metric example-metric-value-1)))
+                                (m/record-and-get! example-histogram-metric example-metric-value-1)))
                        (t/is (= [(m/make-metric-sample
                                   (str example-metric-key-basename "_sum")
                                   example-metric-key-labels
@@ -1091,40 +1111,40 @@
                                     :else                                                               0)
                                   (m/metric-value-timestamp           example-metric-value-2)
                                   (m/metric-value-last-update-time-ms example-metric-value-2))]
-                                (m/record-and-get! raw-metric-store example-histogram-metric example-metric-value-2))))))))
+                                (m/record-and-get! example-histogram-metric example-metric-value-2))))))))
   ;; TODO: remove, keep, document? Testing some specific test cases explicitly.
   (t/testing "Some more specific recording and getting histograms works."
-    (let [raw-metric-store         (m/fresh-raw-metric-store)
+    (let [raw-metric-store         (m/reset-global-raw-metric-store!)
           example-histogram-metric (m/make-histogram-metric "test-histogram" 25 nil {:label-1 :value-1})]
       (t/is (= [(m/make-metric-sample "test-histogram_sum"    {:label-1 :value-1           } 23 1 500)
                 (m/make-metric-sample "test-histogram_bucket" {:label-1 :value-1 :le "+Inf"}  1 1 500)
                 (m/make-metric-sample "test-histogram_count"  {:label-1 :value-1           }  1 1 500)
                 (m/make-metric-sample "test-histogram_bucket" {:label-1 :value-1 :le "25"  }  1 1 500)]
-               (m/record-and-get! raw-metric-store example-histogram-metric (m/make-metric-value 23 1 500))))
+               (m/record-and-get! example-histogram-metric (m/make-metric-value 23 1 500))))
       (t/is (= [(m/make-metric-sample "test-histogram_sum"    {:label-1 :value-1           } 33 2 600)
                 (m/make-metric-sample "test-histogram_bucket" {:label-1 :value-1 :le "+Inf"}  2 2 600)
                 (m/make-metric-sample "test-histogram_count"  {:label-1 :value-1           }  2 2 600)
                 (m/make-metric-sample "test-histogram_bucket" {:label-1 :value-1 :le "25"  }  2 2 600)]
-               (m/record-and-get! raw-metric-store example-histogram-metric (m/make-metric-value 10 2 600))))
+               (m/record-and-get! example-histogram-metric (m/make-metric-value 10 2 600))))
       (t/is (= [(m/make-metric-sample "test-histogram_sum"    {:label-1 :value-1           } 58 3 700)
                 (m/make-metric-sample "test-histogram_bucket" {:label-1 :value-1 :le "+Inf"}  3 3 700)
                 (m/make-metric-sample "test-histogram_count"  {:label-1 :value-1           }  3 3 700)
                 (m/make-metric-sample "test-histogram_bucket" {:label-1 :value-1 :le "25"  }  3 3 700)]
-               (m/record-and-get! raw-metric-store example-histogram-metric (m/make-metric-value 25 3 700))))
+               (m/record-and-get! example-histogram-metric (m/make-metric-value 25 3 700))))
       (t/is (= [(m/make-metric-sample "test-histogram_sum"    {:label-1 :value-1           } 88 5 900)
                 (m/make-metric-sample "test-histogram_bucket" {:label-1 :value-1 :le "+Inf"}  4 5 900)
                 (m/make-metric-sample "test-histogram_count"  {:label-1 :value-1           }  4 5 900)
                 ;; Timestamp gets updated, counter remains the same
                 (m/make-metric-sample "test-histogram_bucket" {:label-1 :value-1 :le "25"  }  3 5 900)]
-               (m/record-and-get! raw-metric-store example-histogram-metric (m/make-metric-value 30 5 900)))))
-    (let [raw-metric-store         (m/fresh-raw-metric-store)
+               (m/record-and-get! example-histogram-metric (m/make-metric-value 30 5 900)))))
+    (let [raw-metric-store         (m/reset-global-raw-metric-store!)
           example-histogram-metric (m/make-histogram-metric "test-histogram" 20 nil {:label-1 :value-1})]
       (t/is (= [(m/make-metric-sample "test-histogram_sum"    {:label-1 :value-1           } 23 1 500)
                 (m/make-metric-sample "test-histogram_bucket" {:label-1 :value-1 :le "+Inf"}  1 1 500)
                 (m/make-metric-sample "test-histogram_count"  {:label-1 :value-1           }  1 1 500)
                 ;; Bucket available but count is 0
                 (m/make-metric-sample "test-histogram_bucket" {:label-1 :value-1 :le "20"  }  0 1 500)]
-               (m/record-and-get! raw-metric-store example-histogram-metric (m/make-metric-value 23 1 500)))))))
+               (m/record-and-get! example-histogram-metric (m/make-metric-value 23 1 500)))))))
 
 (t/deftest t-monadic-record-and-get
   (t/testing "monadic recording and getting counters works"
@@ -1132,8 +1152,8 @@
            (property [example-counter-metric (spec ::m/counter-metric)
                       example-metric-value-1 (spec ::m/metric-value)]
                      (let [result
-                           (mock-monad/mock-run-monad
-                            (m/monad-command-config)
+                           (mock-run-monad
+                            m/monad-command-config
                             []
                             (monad/monadic
                              (m/record-and-get example-counter-metric example-metric-value-1)))
@@ -1150,8 +1170,8 @@
                       example-metric-value-1 (spec ::m/metric-value)
                       example-metric-value-2 (spec ::m/metric-value)]
                      (let [result
-                           (mock-monad/mock-run-monad
-                            (m/monad-command-config)
+                           (mock-run-monad
+                            m/monad-command-config
                             []
                             (monad/monadic
                              (m/record-and-get example-counter-metric example-metric-value-1)
@@ -1170,8 +1190,8 @@
            (property [example-gauge-metric   (spec ::m/gauge-metric)
                       example-metric-value-1 (spec ::m/metric-value)]
                      (let [result
-                           (mock-monad/mock-run-monad
-                            (m/monad-command-config)
+                           (mock-run-monad
+                            m/monad-command-config
                             []
                             (monad/monadic
                              (m/record-and-get example-gauge-metric example-metric-value-1)))
@@ -1188,8 +1208,8 @@
                       example-metric-value-1 (spec ::m/metric-value)
                       example-metric-value-2 (spec ::m/metric-value)]
                      (let [result
-                           (mock-monad/mock-run-monad
-                            (m/monad-command-config)
+                           (mock-run-monad
+                            m/monad-command-config
                             []
                             (monad/monadic
                              (m/record-and-get example-gauge-metric example-metric-value-1)
@@ -1208,8 +1228,8 @@
            (property [example-histogram-metric (spec ::m/histogram-metric)
                       example-metric-value-1   (spec ::m/metric-value)]
                      (let [result
-                           (mock-monad/mock-run-monad
-                            (m/monad-command-config)
+                           (mock-run-monad
+                            m/monad-command-config
                             []
                             (monad/monadic
                              (m/record-and-get example-histogram-metric example-metric-value-1)))
@@ -1254,8 +1274,8 @@
                       example-metric-value-1   (spec ::m/metric-value)
                       example-metric-value-2   (spec ::m/metric-value)]
                      (let [result
-                           (mock-monad/mock-run-monad
-                            (m/monad-command-config)
+                           (mock-run-monad
+                            m/monad-command-config
                             []
                             (monad/monadic
                              (m/record-and-get example-histogram-metric example-metric-value-1)
@@ -1305,8 +1325,8 @@
   ;; TODO: remove, keep, document? Testing some specific test cases explicitly.
   (t/testing "Some more specific recording and getting histograms works."
     (let [result
-          (mock-monad/mock-run-monad
-           (m/monad-command-config)
+          (mock-run-monad
+           m/monad-command-config
            []
            (let [example-histogram-metric (m/make-histogram-metric "test-histogram" 25 nil {:label-1 :value-1})]
              (monad/monadic
@@ -1319,8 +1339,8 @@
                 (m/make-metric-sample "test-histogram_bucket" {:label-1 :value-1 :le "25"  }  3 3 700)]
                result)))
     (let [result
-          (mock-monad/mock-run-monad
-           (m/monad-command-config)
+          (mock-run-monad
+           m/monad-command-config
            []
            (let [example-histogram-metric (m/make-histogram-metric "test-histogram" 25 nil {:label-1 :value-1})]
              (monad/monadic
@@ -1334,8 +1354,8 @@
                 (m/make-metric-sample "test-histogram_bucket" {:label-1 :value-1 :le "25"  }  3 5 900)]
                result)))
     (let [result
-          (mock-monad/mock-run-monad
-           (m/monad-command-config)
+          (mock-run-monad
+           m/monad-command-config
            []
            (let [example-histogram-metric (m/make-histogram-metric "test-histogram" 20 nil {:label-1 :value-1})]
              (monad/monadic

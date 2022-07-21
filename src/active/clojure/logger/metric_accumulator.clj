@@ -12,6 +12,14 @@
 
 ;; DATA: raw metrics
 
+(s/def ::metric-store-map (s/map-of ::metric-key ::metric-sample))
+
+(s/fdef fresh-metric-store-map
+  :ret ::metric-store-map)
+(defn ^:no-doc fresh-metric-store-map
+  []
+  {})
+
 ;; TODO: Can we improve the type of the metric-store?
 (s/def ::metric-store (partial instance? clojure.lang.Atom))
 
@@ -19,7 +27,17 @@
   :ret ::metric-store)
 (defn ^:no-doc fresh-raw-metric-store
   []
-  (atom {}))
+  (atom (fresh-metric-store-map)))
+
+(defonce raw-metric-store (fresh-raw-metric-store))
+
+(defn set-global-raw-metric-store!
+  [fresh-raw-metric-store]
+  (reset! raw-metric-store (fresh-metric-store-map)))
+
+(defn reset-global-raw-metric-store!
+  []
+  (reset! raw-metric-store (fresh-metric-store-map)))
 
 (define-record-type ^{:doc "Metric key with it's `name` and `labels`, where
 `name` must be a string and `labels` must be a map."}
@@ -347,7 +365,7 @@ where `value` must be a number, `timestamp` must be a number or nil and
 
 (defn run-metrics
   [_run-any env state m]
-  (let [a-raw-metric-store (::a-raw-metric-store env)]
+  (let [a-raw-metric-store raw-metric-store]
     (cond
       (set-raw-metric? m)
       [(set-raw-metric! a-raw-metric-store
@@ -545,11 +563,11 @@ where `help` must be a string or nil and `metric-key` must be a `MetricKey`."}
       (inc-raw-metric! a-raw-metric-store (counter-metric-key metric) metric-value)
 
       (gauge-metric? metric)
-      (set-raw-metric! a-raw-metric-store (gauge-metric-key metric  ) metric-value)
+      (set-raw-metric! a-raw-metric-store (gauge-metric-key metric) metric-value)
 
       (histogram-metric? metric)
       (do
-        (record-metric! a-raw-metric-store (histogram-metric-total-sum     metric) metric-value  )
+        (record-metric! a-raw-metric-store (histogram-metric-total-sum     metric) metric-value)
         (record-metric! a-raw-metric-store (histogram-metric-bucket-le-inf metric) metric-value-1)
         (record-metric! a-raw-metric-store (histogram-metric-total-count   metric) metric-value-1)
         (if (<= value (histogram-metric-threshold metric))
@@ -631,14 +649,14 @@ where `help` must be a string or nil and `metric-key` must be a `MetricKey`."}
      (monad/return (apply concat metrics)))))
 
 (s/fdef record-and-get!
-  :args (s/cat :a-raw-metric-store ::metric-store
-               :metric             ::metric
+  :args (s/cat :metric             ::metric
                :metric-value       ::metric-value)
   :ret  (s/coll-of ::metric-sample))
 (defn record-and-get!
-  [a-raw-metric-store metric metric-value]
-  (record-metric! a-raw-metric-store metric metric-value)
-  (get-metrics! a-raw-metric-store metric))
+  [metric metric-value]
+  (let [a-raw-metric-store raw-metric-store]
+    (record-metric! a-raw-metric-store metric metric-value)
+    (get-metrics! a-raw-metric-store metric)))
 
 ;; TODO: Return -- monad coll-of ::metric-sample
 (s/fdef record-and-get
@@ -650,8 +668,7 @@ where `help` must be a string or nil and `metric-key` must be a `MetricKey`."}
     (record-metric metric metric-value)
     (get-metrics metric)))
 
-(defn monad-command-config
-  [& [a-raw-metric-store]]
+(def monad-command-config
   (monad/make-monad-command-config
     run-metrics
-    {::a-raw-metric-store (or a-raw-metric-store (fresh-raw-metric-store))} {}))
+    {} {}))
