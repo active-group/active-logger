@@ -3,7 +3,7 @@
             [active.clojure.monad :as monad]
             [active.clojure.mock-monad :as mock-monad]
             [active.clojure.logger.event :as event]
-            [active.clojure.logger.metric :as metric]
+            [active.clojure.logger.time :as time]
             [active.clojure.logger.timed-metric :as timed-metric]))
 
 (defn float= [x y]
@@ -28,8 +28,8 @@
     (let [result
           (mock-monad/mock-run-monad
            ignore-log-event-command-config
-           [(mock-monad/mock-result metric/get-milli-time 10)
-            (mock-monad/mock-result metric/get-milli-time 20)]
+           [(mock-monad/mock-result time/get-milli-time 10)
+            (mock-monad/mock-result time/get-milli-time 20)]
            (monad/monadic
             [name (timed-metric/start-metric-timer "test metric" :id-1)]
             (timed-metric/stop-metric-timer name)))]
@@ -39,7 +39,7 @@
     (let [result
           (mock-monad/mock-run-monad
            ignore-log-event-command-config
-           [(mock-monad/mock-result metric/get-milli-time nil)]
+           [(mock-monad/mock-result time/get-milli-time nil)]
            (monad/monadic
             (timed-metric/stop-and-log-metric-timer "test metric")))]
       (is (nil? result))))
@@ -48,9 +48,9 @@
     (let [result
           (mock-monad/mock-run-monad
            ignore-log-event-command-config
-           [(mock-monad/mock-result metric/get-milli-time 10)
-            (mock-monad/mock-result metric/get-milli-time 20)
-            (mock-monad/mock-result metric/get-milli-time nil)]
+           [(mock-monad/mock-result time/get-milli-time 10)
+            (mock-monad/mock-result time/get-milli-time 20)
+            (mock-monad/mock-result time/get-milli-time nil)]
            (monad/monadic
             [name (timed-metric/start-metric-timer "test metric" :id-1)]
             (timed-metric/stop-metric-timer name)
@@ -61,8 +61,8 @@
     (let [result
           (mock-monad/mock-run-monad
            ignore-log-event-command-config
-           [(mock-monad/mock-result metric/get-milli-time 10)
-            (mock-monad/mock-result metric/get-milli-time nil)]
+           [(mock-monad/mock-result time/get-milli-time 10)
+            (mock-monad/mock-result time/get-milli-time nil)]
            (monad/monadic
             [name (timed-metric/start-metric-timer "test metric" :id-1)]
             (timed-metric/cancel-metric-timer "test metric" :id-1)

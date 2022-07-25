@@ -2,6 +2,7 @@
   "Common functionality to ease logging of timed metrics."
   (:require [active.clojure.logger.event :as event]
             [active.clojure.logger.metric :as metric]
+            [active.clojure.logger.time :as time]
             [active.clojure.monad :as monad]
             [active.clojure.record :refer :all]))
 
@@ -10,9 +11,9 @@
 (defn logging-timing*
   [origin label m]
   (monad/monadic
-   [st metric/get-milli-time
+   [st time/get-milli-time
     r m
-    e metric/get-milli-time]
+    e time/get-milli-time]
    ;; use label as metric's name and help string
    (metric/log-gauge-metric label nil label (- e st) nil origin)
    (monad/return r)))
@@ -40,7 +41,7 @@
   "Starts a metric timer, identified by `ns`, `metric` and `more`."
   [ns metric more]
   (monad/monadic
-   [time metric/get-milli-time]
+   [time time/get-milli-time]
    (let [name (make-timer-name ns metric more)])
    (monad/update-state-component! ::timers
                                   (fn [timers]
@@ -57,7 +58,7 @@
 (defn stop-metric-timer
   [timer-name]
   (monad/monadic
-   [end-time metric/get-milli-time]
+   [end-time time/get-milli-time]
    [timers (monad/get-state-component ::timers)]
    (let [start-time (get timers timer-name)])
    (if start-time

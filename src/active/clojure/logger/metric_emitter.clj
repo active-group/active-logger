@@ -46,13 +46,6 @@
   with the log context that's already active, if present."}
    map emit-metric-map])
 
-(define-record-type ^{:doc "Get the system time in milliseconds"} GetMilliTime
-  (make-get-milli-time) get-milli-time? [])
-
-;;; Actions
-
-(def get-milli-time (make-get-milli-time))
-
 (defn emit-metric-to-events!
   [namespace label value mp]
   (internal/log-event!-internal "metric"
@@ -84,9 +77,6 @@
   (doseq [metric-sample metric-samples]
     (emit-metric-samples!-internal namespace metric-sample context-map))))
 
-(defn get-milli-time!
-  []
-  (/ (double (System/nanoTime)) 1000000.0))
 
 ;;;; Interpreter
 
@@ -99,9 +89,6 @@
                                     (emit-metric-sample m)
                                     (emit-metric-map m))
       [nil mstate])
-
-    (get-milli-time? m)
-    [(get-milli-time!) mstate]
 
     :else
     monad/unknown-command))
