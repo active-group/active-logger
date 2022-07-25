@@ -66,22 +66,23 @@
    (when (not= :no-push scconf)
      (let [metric-name   (metric-accumulator/metric-sample-name metric-sample)
            metric-labels (metric-accumulator/metric-sample-labels metric-sample)
-           metric-value  (metric-accumulator/metric-sample-value metric-sample)]
+           metric-value  (metric-accumulator/metric-sample-value metric-sample)
+           labels-context-map (merge metric-labels context-map)]
        (case scconf
-         :events (emit-metric-to-events! namespace metric-name metric-labels metric-value context-map)
-         (emit-metric-to-riemann! scconf metric-name metric-value context-map))))))
+         :events (emit-metric-to-events! namespace metric-name metric-value labels-context-map)
+         (emit-metric-to-riemann! scconf metric-name metric-value labels-context-map))))))
 
 (defn emit-metric-samples!-internal
   [namespace metric-samples context-map]
   (let [scconf @metrics-config]
   (doseq [metric-sample metric-samples]
-    (emit-metric-samples!-internal namespace metric-sample context-map))))
+    (emit-metric-sample!-internal scconf namespace metric-sample context-map))))
 
 
 ;;;; Interpreter
 
 (defn run-emit-metric
-  [run-any env mstate m]
+  [_run-any _env mstate m]
   (cond
     (emit-metric? m)
     (do
@@ -98,14 +99,33 @@
 
 (defmacro emit-metric!
   ([?metric-sample]
-   `(emit-metric-sample!-internal ~(str *ns*) ~?metric-sample nil))
+   `(emit-metric! ~?metric-sample nil ~(str *ns*)))
   ([?metric-sample ?mp]
-   `(emit-metric-sample!-internal ~(str *ns*) ~?metric-sample ~?mp)))
+   `(emit-metric! ~?metric-sample ~?mp ~(str *ns*)))
+  ([?metric-sample ?mp ?ns]
+   `(emit-metrics! ~(str *ns*) [~?metric-sample] ~?mp)))
+
+(defmacro emit-metrics!
+  ([?metric-samples]
+   `(emit-metrics! ~?metric-samples nil ~(str *ns*)))
+  ([?metric-samples ?mp]
+   `(emit-metrics! ~?metric-samples ~?mp ~(str *ns*)))
+  ([?metric-samples ?mp ?ns]
+   `(emit-metric-samples!-internal ~(str *ns*) ~?metric-samples ~?mp)))
 
 (defmacro emit-metric
   ([?metric-sample]
-   `(make-emit-metric ~(str *ns*) ~?metric-sample nil))
+   `(emit-metric ~?metric-sample nil ~(str *ns*)))
   ([?metric-sample ?mp]
-   `(make-emit-metric ~(str *ns*) ~?metric-sample ~?mp))
+   `(emit-metric ~?metric-sample ~?mp ~(str *ns*)))
   ([?metric-sample ?mp ?ns]
-   `(make-emit-metric ~?ns ~?metric-sample ~?mp)))
+   `(make-emit-metric ~(str *ns*) ~?metric-sample ~?mp)))
+
+(defmacro emit-metrics
+  ([?metric-samples]
+   `(emit-metrics ~?metric-samples nil ~(str *ns*)))
+  ([?metric-samples ?mp]
+   `(emit-metrics ~?metric-samples ~?mp ~(str *ns*)))
+  ([?metric-samples ?mp ?ns]
+   `(monad/sequ_ (mapv #(emit-metric % ~?mp ~?ns) ~?metric-samples))))
+
