@@ -1,9 +1,6 @@
 (ns active.clojure.logger.timed-metric
   "Common functionality to ease logging of timed metrics."
-  (:require [taoensso.encore :as encore]
-
-            [active.clojure.config :as config]
-            [active.clojure.logger.event :as event]
+  (:require [active.clojure.logger.event :as event]
             [active.clojure.logger.metric :as metric]
             [active.clojure.monad :as monad]
             [active.clojure.record :refer :all]))
@@ -16,7 +13,8 @@
    [st metric/get-milli-time
     r m
     e metric/get-milli-time]
-   (metric/log-metric label (- e st) nil origin)
+   ;; use label as metric's name and help string
+   (metric/log-gauge-metric label nil label (- e st) nil origin)
    (monad/return r)))
 
 (defmacro logging-timing
@@ -81,7 +79,8 @@
    [timer (stop-metric-timer timer-name)]
    (if timer
      (monad/monadic
-      (metric/log-metric (timer-name-metric timer-name) timer (timer-name-map timer-name) (timer-name-namespace timer-name))
+       ;; use label as metric's name and help string
+      (metric/log-gauge-metric (timer-name-metric timer-name) (timer-name-map timer-name) (timer-name-metric timer-name) timer nil (timer-name-namespace timer-name))
       (monad/return timer))
      (monad/return nil))))
 
@@ -98,7 +97,7 @@
 
 (defmacro cancel-metric-timer
   "Cancels a metric timer.  It can either be identified by a timer name
-  returned by [[start-metric-timer]] or by current namespace, metric, and 
+  returned by [[start-metric-timer]] or by current namespace, metric, and
   (optional) addtional context map."
   ([?timer-name-or-metric]
    `(let [thing# ~?timer-name-or-metric]
@@ -110,7 +109,7 @@
 
 (defmacro stop-and-log-metric-timer
   "Stops a metric timer and logs the time.  The timer can either be identified by a timer name
-  returned by [[start-metric-timer]] or by current namespace, metric, and 
+  returned by [[start-metric-timer]] or by current namespace, metric, and
   (optional) addtional context map.
 
   Returns the elapsed time in milliseconds."
