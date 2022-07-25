@@ -241,6 +241,10 @@ where `value` must be a number, `timestamp` must be a number or nil and
                       {}
                       old-metric-store))))
 
+(defn prune-stale-metrics!
+  [time-ms]
+  (prune-stale-raw-metrics! raw-metric-store time-ms))
+
 (s/fdef get-raw-metric-sample!
   :args (s/cat :a-raw-metric-store ::metric-store
                :metric-key         ::metric-key)
@@ -271,6 +275,10 @@ where `value` must be a number, `timestamp` must be a number or nil and
                                             (metric-value-last-update-time-ms metric-value))]))
              []
              @a-raw-metric-store))
+
+(defn get-metric-samples!
+  []
+  (get-raw-metric-samples! raw-metric-store))
 
 ;; COMMANDS on raw metrics
 
