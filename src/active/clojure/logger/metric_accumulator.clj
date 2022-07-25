@@ -4,6 +4,8 @@
             [active.clojure.lens :as lens]
             [active.clojure.monad :as monad]
 
+            [active.clojure.logger.time :as time]
+
             [clojure.spec.alpha :as s]
             [clojure.spec.gen.alpha :as sgen]
             [clojure.test.check.generators :as tcheck]))
@@ -92,14 +94,12 @@
   ;; you'll get spec feedback (calling with wrong args, etc.).
   (really-make-metric-key name labels))
 
-(define-record-type ^{:doc "Metric value with it's `value` and `timestamp`,
-where `value` must be a number, `timestamp` must be a number or nil and
+(define-record-type ^{:doc "Metric value with it's `value` and
 `last-update-time-ms` must be a number."}
   MetricValue
   ^:private really-make-metric-value
   metric-value?
   [value               metric-value-value
-   timestamp           metric-value-timestamp
    last-update-time-ms metric-value-last-update-time-ms])
 
 ;; By accepting only non negative numbers we make sure that counters can only be
@@ -111,7 +111,6 @@ where `value` must be a number, `timestamp` must be a number or nil and
 ;; https://prometheus.io/docs/instrumenting/writing_exporters/
 ;; "You should not set timestamps on the metrics you expose, let Prometheus
 ;; take care of that."
-(s/def ::metric-value-timestamp (s/nilable number?))
 (s/def ::metric-value-last-update-time-ms  number?)
 
 (declare make-metric-value)
@@ -119,18 +118,17 @@ where `value` must be a number, `timestamp` must be a number or nil and
   (s/spec
    (partial instance? MetricValue)
           :gen (fn []
-                 (sgen/fmap (fn [{:keys [metric-value-value metric-value-timestamp metric-value-last-update-time-ms]}]
-                              (make-metric-value metric-value-value metric-value-timestamp metric-value-last-update-time-ms))
-                            (s/gen (s/keys :req-un [::metric-value-value ::metric-value-timestamp ::metric-value-last-update-time-ms]))))))
+                 (sgen/fmap (fn [{:keys [metric-value-value metric-value-last-update-time-ms]}]
+                              (make-metric-value metric-value-value metric-value-last-update-time-ms))
+                            (s/gen (s/keys :req-un [::metric-value-value ::metric-value-last-update-time-ms]))))))
 
 (s/fdef make-metric-value
   :args (s/cat :value       ::metric-value-value
-               :timestamp   ::metric-value-timestamp
                :update-time ::metric-value-last-update-time-ms)
   :ret  ::metric-value)
 (defn make-metric-value
-  [value timestamp update-time]
-  (really-make-metric-value value timestamp update-time))
+  [value update-time]
+  (really-make-metric-value value update-time))
 
 (define-record-type ^{:doc "Metric sample with the sum of the fields of
 `MetricKey` and `MetricValue` and the same constraints."}
@@ -140,41 +138,40 @@ where `value` must be a number, `timestamp` must be a number or nil and
   [name                metric-sample-name
    labels              metric-sample-labels
    value               metric-sample-value
-   timestamp           metric-sample-timestamp
-   last-update-time-ms metric-sample-last-update-time-ms])
+   timestamp           metric-sample-timestamp])
 
 (declare make-metric-sample)
 (s/def ::metric-sample
   (s/spec
    (partial instance? MetricSample)
    :gen (fn []
-          (sgen/fmap (fn [{:keys [metric-key-name metric-key-labels metric-value-value metric-value-timestamp metric-value-last-update-time-ms]}]
-                       (make-metric-sample metric-key-name metric-key-labels metric-value-value metric-value-timestamp metric-value-last-update-time-ms))
+          (sgen/fmap (fn [{:keys [metric-key-name metric-key-labels metric-value-value metric-value-last-update-time-ms]}]
+                       (make-metric-sample metric-key-name metric-key-labels metric-value-value metric-value-last-update-time-ms))
                      (s/gen (s/keys :req-un [::metric-key-name ::metric-key-labels ::metric-value-value ::metric-value-timestamp ::metric-value-last-update-time-ms]))))))
 
 (s/fdef make-metric-sample
   :args (s/cat :name        ::metric-key-name
                :labels      ::metric-key-labels
                :value       ::metric-value-value
-               :timestamp   ::metric-value-timestamp
                :update-time ::metric-value-last-update-time-ms)
   :ret ::metric-sample)
 (defn make-metric-sample
-  [name labels value timestamp update-time]
-  (really-make-metric-sample name labels value timestamp update-time))
+  [name labels value update-time]
+  (really-make-metric-sample name labels value update-time))
 
 (s/fdef set-raw-metric!
   :args (s/cat :a-raw-metric-store ::metric-store
                :metric-key         ::metric-key
                :metric-value       ::metric-value)
-  :ret ::metric-value)
+  :ret nil)
 (defn set-raw-metric!
   "Sets a `metric-value` (`MetricValue`) for the given `metric-key`
   (`MetricKey`) in `a-raw-metric-store` (`Map`). If `metric-key` is not in
   `a-raw-metric-store` key and value are added, otherwise the value of
   `metric-key` will be overwritten."
   [a-raw-metric-store metric-key metric-value]
-  (swap! a-raw-metric-store assoc metric-key metric-value))
+  (swap! a-raw-metric-store assoc metric-key metric-value)
+  nil)
 
 (s/def ::update-function
   (s/fspec
@@ -197,7 +194,6 @@ where `value` must be a number, `timestamp` must be a number or nil and
   (if metric-value-1
     (-> metric-value-1
         (lens/overhaul metric-value-value f (metric-value-value metric-value-2))
-        (metric-value-timestamp           (metric-value-timestamp           metric-value-2))
         (metric-value-last-update-time-ms (metric-value-last-update-time-ms metric-value-2)))
     metric-value-2))
 
@@ -212,7 +208,7 @@ where `value` must be a number, `timestamp` must be a number or nil and
   :args (s/cat :a-raw-metric-store ::metric-store
                :metric-key         ::metric-key
                :metric-value       ::metric-value)
-  :ret ::metric-value)
+  :ret nil)
 (defn inc-raw-metric!
   "Find a raw-metric with `metric-key` (`MetricKey`) in `a-raw-metric-store`
   (`Map`) and update this metric's value (`MetricValue`) by adding
@@ -220,7 +216,8 @@ where `value` must be a number, `timestamp` must be a number or nil and
   `metric-value`. If the metric is not in `a-raw-metric-store` it will be added
   as `metric-key` with `metric-value`."
   [a-raw-metric-store metric-key metric-value]
-  (swap! a-raw-metric-store update metric-key sum-metric-value metric-value))
+  (swap! a-raw-metric-store update metric-key sum-metric-value metric-value)
+  nil)
 
 ;; TODO return? new-metric-store?
 ;; TODO are we sure that {} will stay? - related to fresh-metric-store
@@ -257,7 +254,6 @@ where `value` must be a number, `timestamp` must be a number or nil and
     (make-metric-sample (metric-key-name                  metric-key)
                         (metric-key-labels                metric-key)
                         (metric-value-value               metric-value)
-                        (metric-value-timestamp           metric-value)
                         (metric-value-last-update-time-ms metric-value))))
 
 (s/fdef get-raw-metric-samples!
@@ -271,7 +267,6 @@ where `value` must be a number, `timestamp` must be a number or nil and
                        [(make-metric-sample (metric-key-name                  metric-key)
                                             (metric-key-labels                metric-key)
                                             (metric-value-value               metric-value)
-                                            (metric-value-timestamp           metric-value)
                                             (metric-value-last-update-time-ms metric-value))]))
              []
              @a-raw-metric-store))
@@ -370,6 +365,8 @@ where `value` must be a number, `timestamp` must be a number or nil and
 (defn get-raw-metric-samples
   []
   (really-get-raw-metric-samples))
+
+(def get-metric-samples get-raw-metric-samples)
 
 (defn run-metrics
   [_run-any env state m]
@@ -557,15 +554,13 @@ where `help` must be a string or nil and `metric-key` must be a `MetricKey`."}
 (s/fdef record-metric!
   :args (s/cat :a-raw-metric-store ::metric-store
                :metric             ::metric
-               :metric-value       ::metric-value)
-  :ret ::metric-value)
+               :value              ::metric-value-value
+               :last-update (s/nilable ::metric-value-last-update-time-ms))
+  :ret nil)
 (defn record-metric!
-  [a-raw-metric-store metric metric-value]
-  (let [value          (metric-value-value               metric-value)
-        timestamp      (metric-value-timestamp           metric-value)
-        last-update    (metric-value-last-update-time-ms metric-value)
-        metric-value-1 (make-metric-value 1 timestamp last-update)
-        metric-value-0 (make-metric-value 0 timestamp last-update)]
+  [a-raw-metric-store metric value & [last-update]]
+  (let [last-update  (or last-update (time/get-milli-time!))
+        metric-value (make-metric-value value last-update)]
     (cond
       (counter-metric? metric)
       (inc-raw-metric! a-raw-metric-store (counter-metric-key metric) metric-value)
@@ -575,39 +570,42 @@ where `help` must be a string or nil and `metric-key` must be a `MetricKey`."}
 
       (histogram-metric? metric)
       (do
-        (record-metric! a-raw-metric-store (histogram-metric-total-sum     metric) metric-value)
-        (record-metric! a-raw-metric-store (histogram-metric-bucket-le-inf metric) metric-value-1)
-        (record-metric! a-raw-metric-store (histogram-metric-total-count   metric) metric-value-1)
+        (record-metric! a-raw-metric-store (histogram-metric-total-sum     metric) value last-update)
+        (record-metric! a-raw-metric-store (histogram-metric-bucket-le-inf metric) 1 last-update)
+        (record-metric! a-raw-metric-store (histogram-metric-total-count   metric) 1 last-update)
         (if (<= value (histogram-metric-threshold metric))
-          (record-metric! a-raw-metric-store (histogram-metric-bucket-le-threshold metric) metric-value-1)
-          (record-metric! a-raw-metric-store (histogram-metric-bucket-le-threshold metric) metric-value-0))))))
+          (record-metric! a-raw-metric-store (histogram-metric-bucket-le-threshold metric) 1 last-update)
+          ;; record this although the counter does not change to bump `last-update`
+          (record-metric! a-raw-metric-store (histogram-metric-bucket-le-threshold metric) 0 last-update))))))
 
 ;; TODO: Returns --- monad metric-value?
 (s/fdef record-metric
-  :args (s/cat :metric       ::metric
-               :metric-value ::metric-value))
+  :args (s/cat :metric      ::metric
+               :value       ::metric-value-value
+               :last-update (s/nilable ::metric-value-last-update-time-ms)))
 (defn record-metric
-  [metric metric-value]
-  (let [value          (metric-value-value               metric-value)
-        timestamp      (metric-value-timestamp           metric-value)
-        last-update    (metric-value-last-update-time-ms metric-value)
-        metric-value-1 (make-metric-value 1 timestamp last-update)
-        metric-value-0 (make-metric-value 0 timestamp last-update)]
-    (cond
-      (counter-metric? metric)
-      (inc-raw-metric (counter-metric-key metric) metric-value)
+  [metric value & [last-update]]
+  (monad/monadic
+   [last-update (if last-update
+                  (monad/return last-update)
+                  time/get-milli-time)]
+   (let [metric-value (make-metric-value value last-update)])
+   (cond
+     (counter-metric? metric)
+     (inc-raw-metric (counter-metric-key metric) metric-value)
 
-      (gauge-metric? metric)
-      (set-raw-metric (gauge-metric-key metric  ) metric-value)
+     (gauge-metric? metric)
+     (set-raw-metric (gauge-metric-key metric) metric-value)
 
-      (histogram-metric? metric)
-      (monad/monadic
-        (record-metric (histogram-metric-total-sum     metric) metric-value  )
-        (record-metric (histogram-metric-bucket-le-inf metric) metric-value-1)
-        (record-metric (histogram-metric-total-count   metric) metric-value-1)
-        (if (<= value (histogram-metric-threshold metric))
-          (record-metric (histogram-metric-bucket-le-threshold metric) metric-value-1)
-          (record-metric (histogram-metric-bucket-le-threshold metric) metric-value-0))))))
+     (histogram-metric? metric)
+     (monad/monadic
+      (record-metric (histogram-metric-total-sum     metric) value last-update)
+      (record-metric (histogram-metric-bucket-le-inf metric) 1 last-update)
+      (record-metric (histogram-metric-total-count   metric) 1 last-update)
+      (if (<= value (histogram-metric-threshold metric))
+        (record-metric (histogram-metric-bucket-le-threshold metric) 1 last-update)
+        ;; record this although the counter does not change to bump `last-update`
+        (record-metric (histogram-metric-bucket-le-threshold metric) 0 last-update))))))
 
 (s/fdef get-metrics!
   :args (s/cat :a-raw-metric-store ::metric-store
@@ -657,26 +655,31 @@ where `help` must be a string or nil and `metric-key` must be a `MetricKey`."}
      (monad/return (apply concat metrics)))))
 
 (s/fdef record-and-get!
-  :args (s/cat :metric             ::metric
-               :metric-value       ::metric-value)
+  :args (s/cat :metric ::metric
+               :value  ::metric-value-value
+               :optional (s/? (s/cat :last-update (s/nilable ::metric-value-last-update-time-ms))))
   :ret  (s/coll-of ::metric-sample))
 (defn record-and-get!
-  [metric metric-value]
+  [metric value & [last-update]]
   (let [a-raw-metric-store raw-metric-store]
-    (record-metric! a-raw-metric-store metric metric-value)
+    (record-metric! a-raw-metric-store metric value last-update)
     (get-metrics! a-raw-metric-store metric)))
 
 ;; TODO: Return -- monad coll-of ::metric-sample
 (s/fdef record-and-get
-  :args (s/cat :metric       ::metric
-               :metric-value ::metric-value))
+  :args (s/cat :metric ::metric
+               :value  ::metric-value-value
+               :optional (s/? (s/cat :last-update (s/nilable ::metric-value-last-update-time-ms))))
+  :ret  (s/coll-of ::metric-sample))
 (defn record-and-get
-  [metric metric-value]
+  [metric value & [last-update]]
   (monad/monadic
-    (record-metric metric metric-value)
+    (record-metric metric value last-update)
     (get-metrics metric)))
 
 (def monad-command-config
-  (monad/make-monad-command-config
-    run-metrics
-    {} {}))
+  (monad/combine-monad-command-configs
+    (monad/make-monad-command-config
+      run-metrics
+      {} {})
+    time/monad-command-config))
