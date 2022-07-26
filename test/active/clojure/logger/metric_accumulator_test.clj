@@ -668,7 +668,7 @@
                 ;; Timestamp gets updated, counter remains the same
                 (m/make-metric-sample "test-histogram_bucket" {:label-1 :value-1 :le "25"  }  3 900)]
                (m/get-metrics! raw-metric-store example-histogram-metric))))
-    #_(let [raw-metric-store         (m/fresh-raw-metric-store)
+    (let [raw-metric-store         (m/fresh-raw-metric-store)
           example-histogram-metric (m/make-histogram-metric "test-histogram" 20 nil {:label-1 :value-1})]
       (m/record-metric! raw-metric-store example-histogram-metric 23 500)
       (t/is (= [(m/make-metric-sample "test-histogram_sum"    {:label-1 :value-1           } 23 500)

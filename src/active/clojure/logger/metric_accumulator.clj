@@ -34,8 +34,8 @@
 (defonce raw-metric-store (fresh-raw-metric-store))
 
 (defn set-global-raw-metric-store!
-  [fresh-raw-metric-store]
-  (reset! raw-metric-store (fresh-metric-store-map)))
+  [fresh-metric-store-map]
+  (reset! raw-metric-store fresh-metric-store-map))
 
 (defn reset-global-raw-metric-store!
   []
