@@ -13,7 +13,7 @@
 
 ;; DATA: raw metrics
 
-(s/def ::metric-store-map (s/map-of ::metric-key ::metric-sample))
+(s/def ::metric-store-map (s/map-of ::metric-key ::metric-value))
 
 (s/fdef fresh-metric-store-map
   :ret ::metric-store-map)
