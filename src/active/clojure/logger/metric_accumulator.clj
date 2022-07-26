@@ -7,8 +7,7 @@
             [active.clojure.logger.time :as time]
 
             [clojure.spec.alpha :as s]
-            [clojure.spec.gen.alpha :as sgen]
-            [clojure.test.check.generators :as tcheck]))
+            [clojure.spec.gen.alpha :as sgen]))
 
 (s/check-asserts true)
 
@@ -73,14 +72,6 @@
                               (make-metric-key metric-key-name metric-key-labels))
                             ;; (1)
                             (s/gen (s/keys :req-un [::metric-key-name ::metric-key-labels]))))))
-
-;; TODO: clean up
-;; - this introduces a test-library in src - should this go into test instead?
-(defn gen-distinct-metric-keys
-  [num-elems]
-  (s/spec (s/coll-of ::metric-key :into [])
-          :gen (fn []
-                 (clojure.test.check.generators/list-distinct (s/gen ::metric-key) {:num-elements num-elems}))))
 
 (s/fdef make-metric-key
   :args (s/cat :name   ::metric-key-name
@@ -428,22 +419,6 @@ where `help` must be a string or nil and `metric-key` must be a `MetricKey`."}
                        (make-counter-metric metric-key-name help metric-key-labels))
                        (s/gen (s/keys :req-un [::metric-key-name ::help ::metric-key-labels]))))))
 
-;; TODO: clean up
-;; - this introduces a test-library in src - should this go into test instead?
-;; TODO: help and labels optional
-(defn gen-distinct-counter-metrics
-  [num-elems]
-  (s/spec (s/coll-of ::counter-metric :into [])
-          :gen (fn []
-                 (tcheck/fmap (fn [[metric-keys helps]]
-                                (mapv (fn [metric-key help]
-                                        (make-counter-metric (metric-key-name metric-key)
-                                                             help
-                                                             (metric-key-labels metric-key)))
-                                      metric-keys helps))
-                              (s/gen (s/tuple (gen-distinct-metric-keys num-elems)
-                                              (s/coll-of ::help :count num-elems)))))))
-
 (s/fdef make-counter-metric
   :args (s/cat :name ::metric-key-name
                :optional (s/? (s/cat :help   ::help
@@ -471,20 +446,6 @@ where `help` must be a string or nil and `metric-key` must be a `MetricKey`."}
           (sgen/fmap (fn [{:keys [metric-key-name help metric-key-labels]}]
                        (make-gauge-metric metric-key-name help metric-key-labels))
                        (s/gen (s/keys :req-un [::metric-key-name ::help ::metric-key-labels]))))))
-
-;; TODO: help and labels optional
-(defn gen-distinct-gauge-metrics
-  [num-elems]
-  (s/spec (s/coll-of ::gauge-metric :into [])
-          :gen (fn []
-                 (tcheck/fmap (fn [[metric-keys helps]]
-                                (mapv (fn [metric-key help]
-                                        (make-gauge-metric (metric-key-name metric-key)
-                                                           help
-                                                           (metric-key-labels metric-key)))
-                                      metric-keys helps))
-                              (s/gen (s/tuple (gen-distinct-metric-keys num-elems)
-                                              (s/coll-of ::help :count num-elems)))))))
 
 (s/fdef make-gauge-metric
   :args (s/cat :name ::metric-key-name
@@ -517,21 +478,6 @@ where `help` must be a string or nil and `metric-key` must be a `MetricKey`."}
           (sgen/fmap (fn [{:keys [metric-key-name metric-value-value help metric-key-labels]}]
                        (make-histogram-metric metric-key-name metric-value-value help metric-key-labels))
                        (s/gen (s/keys :req-un [::metric-key-name ::metric-value-value ::help ::metric-key-labels]))))))
-
-(defn gen-distinct-histogram-metrics
-  [num-elems]
-  (s/spec (s/coll-of ::histogram-metric :into [])
-          :gen (fn []
-                 (tcheck/fmap (fn [[metric-keys thresholds helps]]
-                                (mapv (fn [metric-key threshold help]
-                                        (make-histogram-metric (metric-key-name metric-key)
-                                                               threshold
-                                                               help
-                                                               (metric-key-labels metric-key)))
-                                      metric-keys thresholds helps))
-                              (s/gen (s/tuple (gen-distinct-metric-keys num-elems)
-                                              (s/coll-of ::metric-value-value :count num-elems)
-                                              (s/coll-of ::help               :count num-elems)))))))
 
 (s/fdef make-histogram-metric
   :args (s/cat :basename  ::metric-key-name

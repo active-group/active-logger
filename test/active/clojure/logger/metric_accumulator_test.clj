@@ -4,7 +4,10 @@
             [active.clojure.monad :as monad]
             [active.clojure.mock-monad :as mock-monad]
 
-            [clojure.spec.test.alpha :as stest])
+            [clojure.spec.alpha :as s]
+
+            [clojure.spec.test.alpha :as stest]
+            [clojure.test.check.generators :as tcheck])
   (:use [active.quickcheck]))
 
 (t/use-fixtures :each (fn [f] (m/reset-global-raw-metric-store!) (f)))
@@ -22,6 +25,58 @@
 ;;   Function names: t-my-function
 ;; - destructive use: we try to break the functions
 ;;   Function names: t-d-my-function
+
+;; GENERATORS
+
+(defn gen-distinct-metric-keys
+  [num-elems]
+  (s/spec (s/coll-of ::m/metric-key :into [])
+          :gen (fn []
+                 (clojure.test.check.generators/list-distinct (s/gen ::m/metric-key) {:num-elements num-elems}))))
+
+;; TODO: help and labels optional
+(defn gen-distinct-counter-metrics
+  [num-elems]
+  (s/spec (s/coll-of ::m/counter-metric :into [])
+          :gen (fn []
+                 (tcheck/fmap (fn [[metric-keys helps]]
+                                (mapv (fn [metric-key help]
+                                        (m/make-counter-metric (m/metric-key-name metric-key)
+                                                               help
+                                                               (m/metric-key-labels metric-key)))
+                                      metric-keys helps))
+                              (s/gen (s/tuple (gen-distinct-metric-keys num-elems)
+                                              (s/coll-of ::m/help :count num-elems)))))))
+
+;; TODO: help and labels optional
+(defn gen-distinct-gauge-metrics
+  [num-elems]
+  (s/spec (s/coll-of ::m/gauge-metric :into [])
+          :gen (fn []
+                 (tcheck/fmap (fn [[metric-keys helps]]
+                                (mapv (fn [metric-key help]
+                                        (m/make-gauge-metric (m/metric-key-name metric-key)
+                                                             help
+                                                             (m/metric-key-labels metric-key)))
+                                      metric-keys helps))
+                              (s/gen (s/tuple (gen-distinct-metric-keys num-elems)
+                                              (s/coll-of ::m/help :count num-elems)))))))
+
+;; TODO: help and labels optional
+(defn gen-distinct-histogram-metrics
+  [num-elems]
+  (s/spec (s/coll-of ::m/histogram-metric :into [])
+          :gen (fn []
+                 (tcheck/fmap (fn [[metric-keys thresholds helps]]
+                                (mapv (fn [metric-key threshold help]
+                                        (m/make-histogram-metric (m/metric-key-name metric-key)
+                                                                 threshold
+                                                                 help
+                                                               (m/metric-key-labels metric-key)))
+                                      metric-keys thresholds helps))
+                              (s/gen (s/tuple (gen-distinct-metric-keys num-elems)
+                                              (s/coll-of ::m/metric-value-value :count num-elems)
+                                              (s/coll-of ::m/help               :count num-elems)))))))
 
 ;; CONSTRUCTIVE
 
@@ -232,7 +287,7 @@
            (property [[example-metric-key-1,
                        example-metric-key-2,
                        example-metric-key-3,
-                       example-metric-key-4] (spec (m/gen-distinct-metric-keys 4))
+                       example-metric-key-4] (spec (gen-distinct-metric-keys 4))
 
                       example-metric-value-1 (spec ::m/metric-value)
                       example-metric-value-2 (spec ::m/metric-value)
@@ -288,7 +343,7 @@
            (property [[example-metric-key-1,
                        example-metric-key-2,
                        example-metric-key-3,
-                       example-metric-key-4] (spec (m/gen-distinct-metric-keys 4))
+                       example-metric-key-4] (spec (gen-distinct-metric-keys 4))
 
                       example-metric-value-1 (spec ::m/metric-value)
                       example-metric-value-2 (spec ::m/metric-value)
