@@ -7,3 +7,9 @@
     (str "FIXME" "\n"
          (pr-str all-metrics))))
 
+(defn wrap-prometheus-metrics-ring-handler
+  [handler]
+  (fn [req]
+    (if (re-matches #"^/metrics" (:uri req))
+      {:status 200 :headers {"Content-Type" "text/plain"} :body (render-metrics!)}
+      (handler req))))
