@@ -1,4 +1,4 @@
-(ns ^:no-doc active.clojure.logger.metric-accumulator_refac
+(ns ^:no-doc active.clojure.logger.metric-accumulator-refac
   "Metrics."
   (:require [active.clojure.record :refer [define-record-type]]
             [active.clojure.lens :as lens]
@@ -43,7 +43,7 @@
 (s/def ::metric-name string?)
 (s/def ::help        string?)
 (s/def ::metric-labels (s/map-of keyword? any?))
-(s/def ::metric-labels-values-map (s/map-of ::metric-labels ::metric-values))
+(s/def ::metric-labels-values-map (s/map-of ::metric-labels ::metric-value))
 
 (define-record-type ^{:doc "Metric value is a combination of the `value` itself
   and the `last-update-time-ms` of the value."}
