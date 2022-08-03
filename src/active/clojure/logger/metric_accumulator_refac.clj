@@ -54,14 +54,7 @@
    last-update-time-ms metric-value-last-update-time-ms])
 
 ;; TODO: maybe better counter-metric-value and gauge-metric-value?
-(s/def ::metric-value-value (s/or :gauge-metric-value-value   ::gauge-metric-value-value
-                                  :counter-metric-value-value ::counter-metric-value-value))
-(s/def ::gauge-metric-value-value number?)
-;; By accepting only non negative numbers we make sure that counters can only be
-;; incremented when using `update-metric-value`.
-;; We accept 0 to initialize counters (e.g. histogram empty bucket).
-(s/def ::counter-metric-value-value (s/or :zero     zero?
-                                          :positive pos?))
+(s/def ::metric-value-value number?)
 ;; https://prometheus.io/docs/instrumenting/writing_exporters/
 ;; "You should not set timestamps on the metrics you expose, let Prometheus
 ;; take care of that."
@@ -72,12 +65,9 @@
   (s/spec
    (partial instance? MetricValue)
    :gen (fn []
-          (sgen/fmap (fn [{:keys [metric-value-value
-                                  metric-value-last-update-time-ms]}]
-                       (make-metric-value metric-value-value
-                                          metric-value-last-update-time-ms))
-                     (s/gen (s/keys :req-un [::metric-value-value
-                                             ::metric-value-last-update-time-ms]))))))
+          (sgen/fmap (fn [{:keys [metric-value-value metric-value-last-update-time-ms]}]
+                       (make-metric-value metric-value-value metric-value-last-update-time-ms))
+                     (s/gen (s/keys :req-un [::metric-value-value ::metric-value-last-update-time-ms]))))))
 
 (s/fdef make-metric-value
   :args (s/cat :value       ::metric-value-value
@@ -166,30 +156,8 @@
    labels-values-map-bucket histogram-metric-labels-values-map-bucket])
 
 
-(declare make-histogram-metric)
-(s/def ::histogram-metric
-  (s/spec
-   (partial instance? HistogramMetric)
-   :gen (fn []
-          ;; TODO: Does this work? mapping s/gen keys / arguments --- names?
-          (sgen/fmap (fn [{:keys [metric-name
-                                  help
-                                  metric-value-value
-                                  metric-labels-values-map-sum
-                                  metric-labels-values-map-count
-                                  metric-labels-values-map-bucket]}]
-                       (make-histogram-metric metric-name
-                                              help
-                                              metric-value-value
-                                              metric-labels-values-map-sum
-                                              metric-labels-values-map-count
-                                              metric-labels-values-map-bucket))
-                     (s/gen (s/keys :req-un [::metric-name
-                                             ::help
-                                             ::metric-value-value
-                                             ::metric-labels-values-map
-                                             ::metric-labels-values-map
-                                             ::metric-labels-values-map]))))))
+(s/def ::histogram-metric (s/spec (partial instance? HistogramMetric)))
+
 (s/fdef make-histogram-metric
   :args (s/cat :metric-name                     ::metric-name
                :help                            ::help
@@ -205,12 +173,12 @@
    metric-labels-values-map-sum
    metric-labels-values-map-count
    metric-labels-values-map-bucket]
-  (really-make-counter-metric metric-name
-                              help
-                              threshold
-                              metric-labels-values-map-sum
-                              metric-labels-values-map-count
-                              metric-labels-values-map-bucket))
+  (really-make-histogram-metric metric-name
+                                help
+                                threshold
+                                metric-labels-values-map-sum
+                                metric-labels-values-map-count
+                                metric-labels-values-map-bucket))
 
 ;; -----------------------------------------------------------------
 
@@ -230,13 +198,13 @@
                 :metric-value-value-2 ::metric-value-value)
    :ret ::metric-value-value))
 
-(s/fdef update-metric-value'
+(s/fdef update-metric-value
   :args (s/cat
          :f              ::update-function
          :metric-value-1 (s/nilable ::metric-value)
          :metric-value-2 ::metric-value)
   :ret ::metric-value)
-(defn update-metric-value'
+(defn update-metric-value
   "Update a `MetricValue` by applying a function `f` to the `value`s of the old
   and the new `MetricValue` and setting the `timestamp` to the new timestamp. If
   the old-metric-value` is `nil` take the new-metric-value."
@@ -247,26 +215,6 @@
         (metric-value-last-update-time-ms (metric-value-last-update-time-ms metric-value-2)))
     metric-value-2))
 
-(s/fdef update-metric-value
-  :args (s/cat :metric-labels-values-map ::metric-labels-values-map
-               :metric-labels            ::metric-labels
-               :metric-value             ::metric-value
-               :update-function          ::update-function)
-  :ret ::metric-labels-values-map)
-(defn update-metric-value
-  "Update a metric-value within a metric-labels-values-map."
-  [metric-labels-values-map metric-labels metric-value-2 f]
-  (update metric-labels-values-map metric-labels
-          (fn [metric-value-1]
-            (update-metric-value' f metric-value-1 metric-value-2))))
-
-(s/fdef sum-metric-value
-  :args (s/cat
-         :metric-value-1 (s/nilable ::metric-value)
-         :metric-value-2 ::metric-value)
-  :ret ::metric-value)
-(def sum-metric-value (partial update-metric-value' +))
-
 (s/fdef inc-metric-value
   :args (s/cat :metric-labels-values-map ::metric-labels-values-map
                :metric-labels            ::metric-labels
@@ -274,8 +222,10 @@
   :ret ::metric-labels-values-map)
 (defn inc-metric-value
   "Increment a metric-value within a metric-labels-values-map."
-  [metric-labels-values-map metric-labels metric-value]
-  (update-metric-value metric-labels-values-map metric-labels metric-value sum-metric-value))
+  [metric-labels-values-map metric-labels metric-value-2]
+  (update metric-labels-values-map metric-labels
+          (fn [metric-value-1]
+            (update-metric-value + metric-value-1 metric-value-2))))
 
 ;; update metrics
 
