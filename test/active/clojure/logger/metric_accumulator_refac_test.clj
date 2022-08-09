@@ -22,13 +22,26 @@
 
 ;; GENERATORS
 
+(defn gen-distinct-metric-names
+  [num-elems]
+  (s/spec (s/coll-of ::m/metric-name :into [])
+          :gen (fn []
+                 (tgen/list-distinct (s/gen ::m/metric-name) {:num-elements num-elems}))))
+
+;; TODO: Does not need to be distinct
+(defn gen-helps
+  [num-elems]
+   (s/spec (s/coll-of ::m/help :into [])
+           :gen (fn []
+                  (tgen/list-distinct (s/gen ::m/help {:num-elements num-elems})))))
+
 (defn gen-distinct-metric-labels
   [num-elems]
   (s/spec (s/coll-of ::m/metric-labels :into [])
           :gen (fn []
                  (tgen/list-distinct (s/gen ::m/metric-labels) {:num-elements num-elems}))))
 
-;; TODO: `list-distinct` is not necessary, but with `tgen/list` `NullPointerException`s appear
+;; TODO: Does not need to be distinct
 (defn gen-metric-values
   [num-elems]
   (s/spec (s/coll-of ::m/metric-value :into [])
@@ -108,7 +121,22 @@
       (t/is map-count   (m/histogram-metric-labels-values-map-count  example-histogram-metric))
       (t/is map-bucket  (m/histogram-metric-labels-values-map-bucket example-histogram-metric)))))
 
-;; set-metric-value
+(t/deftest t-make-metric-sample
+  (t/testing "All fields of a metric-sample are set correct."
+    (t/is (quickcheck
+           (property [metric-name (spec ::m/metric-name)
+                      labels      (spec ::m/metric-labels)
+                      value       (spec ::m/metric-value-value)
+                      timestamp   (spec ::m/metric-value-last-update-time-ms)]
+                     (let [example-metric-sample (m/make-metric-sample metric-name
+                                                                       labels
+                                                                       value
+                                                                       timestamp)]
+                       (t/is                (m/metric-sample?          example-metric-sample))
+                       (t/is (= metric-name (m/metric-sample-name      example-metric-sample)))
+                       (t/is (= labels      (m/metric-sample-labels    example-metric-sample)))
+                       (t/is (= value       (m/metric-sample-value     example-metric-sample)))
+                       (t/is (= timestamp   (m/metric-sample-timestamp example-metric-sample)))))))))
 
 ;; TODO: make this quickcheck
 (t/deftest t-set-metric-value
@@ -289,3 +317,66 @@
                                 (m/update-histogram-metric example-histogram-metric-prefilled labels-to-change value)))))))))
 
 ;; update-metric
+
+;; record-metric
+
+(t/deftest t-get-metric-sample
+  (t/testing "Getting a record sample works for all metrics."
+    (t/is (quickcheck
+           (property [name      (spec ::m/metric-name)
+                      help      (spec ::m/help)
+                      labels    (spec (gen-distinct-metric-labels 6))
+                      values    (spec (gen-metric-values          6))
+                      threshold (spec ::m/metric-value-value)]
+                     ;; gauge
+                     (let [labels-values-map (zipmap labels values)
+                           labels-to-get     (nth labels 3)
+                           value-to-get      (nth values 3)
+                           example-gauge-metric (m/make-gauge-metric name
+                                                                     help
+                                                                     labels-values-map)]
+                       (t/is (= [(m/make-metric-sample name
+                                                       labels-to-get
+                                                       (m/metric-value-value               value-to-get)
+                                                       (m/metric-value-last-update-time-ms value-to-get))]
+                                (m/get-metric-sample example-gauge-metric labels-to-get))))
+                     ;; counter
+                     (let [labels-values-map (zipmap labels values)
+                           labels-to-get     (nth labels 2)
+                           value-to-get      (nth values 2)
+                           example-counter-metric (m/make-counter-metric name
+                                                                         help
+                                                                         labels-values-map)]
+                       (t/is (= [(m/make-metric-sample name
+                                                       labels-to-get
+                                                       (m/metric-value-value               value-to-get)
+                                                       (m/metric-value-last-update-time-ms value-to-get))]
+                                (m/get-metric-sample example-counter-metric labels-to-get))))
+
+                     ;; histogram
+                     (let [labels-values-map (zipmap labels values)
+                           labels-to-get     (nth labels 0)
+                           value-to-get      (nth values 0)
+                           example-histogram-metric (m/make-histogram-metric name
+                                                                             help
+                                                                             threshold
+                                                                             labels-values-map
+                                                                             labels-values-map
+                                                                             labels-values-map)]
+                       (t/is (= [(m/make-metric-sample (str name "_sum")
+                                                       labels-to-get
+                                                       (m/metric-value-value               value-to-get)
+                                                       (m/metric-value-last-update-time-ms value-to-get))
+                                 (m/make-metric-sample (str name "_count")
+                                                       labels-to-get
+                                                       (m/metric-value-value               value-to-get)
+                                                       (m/metric-value-last-update-time-ms value-to-get))
+                                 (m/make-metric-sample (str name "_bucket")
+                                                       (assoc labels-to-get :le "+Inf")
+                                                       (m/metric-value-value               value-to-get)
+                                                       (m/metric-value-last-update-time-ms value-to-get))
+                                 (m/make-metric-sample (str name "_bucket")
+                                                       (assoc labels-to-get :le (str threshold))
+                                                       (m/metric-value-value               value-to-get)
+                                                       (m/metric-value-last-update-time-ms value-to-get))]
+                                (m/get-metric-sample example-histogram-metric labels-to-get)))))))))

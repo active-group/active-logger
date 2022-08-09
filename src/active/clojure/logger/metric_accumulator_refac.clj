@@ -180,6 +180,27 @@
                                 metric-labels-values-map-count
                                 metric-labels-values-map-bucket))
 
+(define-record-type ^{:doc "Metric sample."}
+  MetricSample
+  ^:private really-make-metric-sample
+  metric-sample?
+  [name      metric-sample-name
+   labels    metric-sample-labels
+   value     metric-sample-value
+   timestamp metric-sample-timestamp])
+
+(s/def ::metric-sample (s/spec (partial instance? MetricSample)))
+
+(s/fdef make-metric-sample
+  :args (s/cat :name      ::metric-name
+               :labels    ::metric-labels
+               :value     ::metric-value-value
+               :timestamp ::metric-value-last-update-time-ms)
+  :ret ::metric-sample)
+(defn make-metric-sample
+  [name labels value timestamp]
+  (really-make-metric-sample name labels value timestamp))
+
 ;; -----------------------------------------------------------------
 
 (s/fdef set-metric-value
@@ -292,6 +313,7 @@
                                             metric-labels
                                             metric-value-bucket))))))
 
+;; TODO: currently not used
 (s/fdef update-metric
   :args (s/cat :metric        ::metric
                :metric-labels ::metric-labels
@@ -309,3 +331,91 @@
 
     (histogram-metric? metric)
     (update-histogram-metric metric metric-labels metric-value)))
+
+;; TODO: How do we make sure that users do use `metric-name`s unique?
+(s/fdef record-metric!
+  :args (s/cat :metric-store ::metric-store
+               :metric       ::metric
+               :labels       ::metric-labels
+               :value-value  ::metric-value-value
+               :last-update  (s/nilable ::metric-value-last-update-time-ms))
+  :ret ::metric-store)
+(defn record-metric!
+  "Record a metric."
+  [a-raw-metric-store metric labels value-value & [last-update]]
+  (let [last-update (or last-update (time/get-milli-time!))
+        metric-value (make-metric-value value-value last-update)]
+    (cond
+      (gauge-metric? metric)
+      (let [name (gauge-metric-name metric)]
+        (swap! a-raw-metric-store
+               (fn [metric-store]
+                 (assoc metric-store
+                        name
+                        (update-gauge-metric metric labels metric-value)))))
+      (counter-metric? metric)
+      (let [name (counter-metric-name metric)]
+        (swap! a-raw-metric-store
+               (fn [metric-store]
+                 (assoc metric-store
+                        name
+                        (update-counter-metric metric labels metric-value)))))
+      (histogram-metric? metric)
+      (let [name (histogram-metric-name metric)]
+        (swap! a-raw-metric-store
+               (fn [metric-store]
+                 (assoc metric-store
+                        name
+                        (update-histogram-metric metric labels metric-value))))))))
+
+(s/fdef get-metric-sample
+  :args (s/cat :metric ::metric
+               :labels ::metric-labels)
+  :ret (s/coll-of  ::metric-sample))
+(defn get-metric-sample
+  "Return all metric-samples with the given labels within this metric."
+  [metric labels]
+  (cond
+    (gauge-metric? metric)
+    (let [name              (gauge-metric-name              metric)
+          labels-values-map (gauge-metric-labels-values-map metric)
+          metric-value      (get labels-values-map labels)]
+      [(make-metric-sample name
+                          labels
+                          (metric-value-value               metric-value)
+                          (metric-value-last-update-time-ms metric-value))])
+    (counter-metric? metric)
+    (let [name              (counter-metric-name              metric)
+          labels-values-map (counter-metric-labels-values-map metric)
+          metric-value      (get labels-values-map labels)]
+      [(make-metric-sample name
+                          labels
+                          (metric-value-value               metric-value)
+                          (metric-value-last-update-time-ms metric-value))])
+    (histogram-metric? metric)
+    (let [basename   (histogram-metric-name                     metric)
+          threshold  (histogram-metric-threshold                metric)
+          map-sum    (histogram-metric-labels-values-map-sum    metric)
+          map-count  (histogram-metric-labels-values-map-count  metric)
+          map-bucket (histogram-metric-labels-values-map-bucket metric)
+          metric-value-sum    (get map-sum labels)
+          metric-value-count  (get map-count labels)
+          metric-value-bucket (get map-bucket labels)]
+      [(make-metric-sample (str basename "_sum")
+                           labels
+                           (metric-value-value               metric-value-sum)
+                           (metric-value-last-update-time-ms metric-value-sum))
+       (make-metric-sample (str basename "_count")
+                           labels
+                           (metric-value-value               metric-value-count)
+                           (metric-value-last-update-time-ms metric-value-count))
+       (make-metric-sample (str basename "_bucket")
+                           (assoc labels :le "+Inf")
+                           (metric-value-value               metric-value-count)
+                           (metric-value-last-update-time-ms metric-value-count))
+       (make-metric-sample (str basename "_bucket")
+                           (assoc labels :le (str threshold))
+                           (metric-value-value               metric-value-bucket)
+                           (metric-value-last-update-time-ms metric-value-bucket))])))
+
+;; get-metric-samples
