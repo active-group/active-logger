@@ -320,8 +320,9 @@
 
 ;; record-metric
 
+;; TODO: test labels that are not part of metric!
 (t/deftest t-get-metric-sample
-  (t/testing "Getting a record sample works for all metrics."
+  (t/testing "Getting a metric-sample works for all metrics."
     (t/is (quickcheck
            (property [name      (spec ::m/metric-name)
                       help      (spec ::m/help)
@@ -380,3 +381,7 @@
                                                        (m/metric-value-value               value-to-get)
                                                        (m/metric-value-last-update-time-ms value-to-get))]
                                 (m/get-metric-sample example-histogram-metric labels-to-get)))))))))
+
+
+
+;; get-metric-samples!

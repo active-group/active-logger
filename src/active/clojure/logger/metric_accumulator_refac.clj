@@ -368,37 +368,46 @@
                         name
                         (update-histogram-metric metric labels metric-value))))))))
 
+;; TODO: [] or nil if labels are not in metric?
 (s/fdef get-metric-sample
   :args (s/cat :metric ::metric
                :labels ::metric-labels)
-  :ret (s/coll-of  ::metric-sample))
+  :ret (s/coll-of ::metric-sample))
 (defn get-metric-sample
   "Return all metric-samples with the given labels within this metric."
   [metric labels]
   (cond
     (gauge-metric? metric)
     (let [name              (gauge-metric-name              metric)
-          labels-values-map (gauge-metric-labels-values-map metric)
-          metric-value      (get labels-values-map labels)]
-      [(make-metric-sample name
-                          labels
-                          (metric-value-value               metric-value)
-                          (metric-value-last-update-time-ms metric-value))])
+          labels-values-map (gauge-metric-labels-values-map metric)]
+      (if (contains? labels-values-map labels)
+        (let [metric-value      (get labels-values-map labels)]
+          [(make-metric-sample name
+                               labels
+                               (metric-value-value               metric-value)
+                               (metric-value-last-update-time-ms metric-value))])
+        []))
     (counter-metric? metric)
     (let [name              (counter-metric-name              metric)
-          labels-values-map (counter-metric-labels-values-map metric)
-          metric-value      (get labels-values-map labels)]
-      [(make-metric-sample name
-                          labels
-                          (metric-value-value               metric-value)
-                          (metric-value-last-update-time-ms metric-value))])
+          labels-values-map (counter-metric-labels-values-map metric)]
+      (if (contains? labels-values-map labels)
+        (let [metric-value      (get labels-values-map labels)]
+          [(make-metric-sample name
+                               labels
+                               (metric-value-value               metric-value)
+                               (metric-value-last-update-time-ms metric-value))])
+        []))
     (histogram-metric? metric)
     (let [basename   (histogram-metric-name                     metric)
           threshold  (histogram-metric-threshold                metric)
           map-sum    (histogram-metric-labels-values-map-sum    metric)
           map-count  (histogram-metric-labels-values-map-count  metric)
-          map-bucket (histogram-metric-labels-values-map-bucket metric)
-          metric-value-sum    (get map-sum labels)
+          map-bucket (histogram-metric-labels-values-map-bucket metric)]
+      ;; TODO: do we trust that it is always in all three maps?
+      (if (and (contains? map-sum    labels)
+               (contains? map-count  labels)
+               (contains? map-bucket labels))
+        (let [metric-value-sum    (get map-sum labels)
           metric-value-count  (get map-count labels)
           metric-value-bucket (get map-bucket labels)]
       [(make-metric-sample (str basename "_sum")
@@ -416,6 +425,48 @@
        (make-metric-sample (str basename "_bucket")
                            (assoc labels :le (str threshold))
                            (metric-value-value               metric-value-bucket)
-                           (metric-value-last-update-time-ms metric-value-bucket))])))
+                           (metric-value-last-update-time-ms metric-value-bucket))])
+        []))))
 
-;; get-metric-samples
+
+(s/fdef get-raw-metric-sample!
+  :args (s/cat :a-raw-metric-store ::metric-store
+               :metric-name        ::metric-name
+               :labels             ::metric-labels)
+  :ret (s/coll-of ::metric-sample))
+(defn get-raw-metric-sample!
+  "Return all metric-samples for a given metric-name within the given
+  metric-store with the given labels."
+  [a-raw-metric-store metric-name labels]
+  (when-let [metric (get @a-raw-metric-store metric-name)]
+    (get-metric-sample metric labels)))
+
+(s/fdef get-all-labels-of-metric
+  :args (s/cat :metric ::metric)
+  :ret (s/nilable (s/coll-of ::metric-labels)))
+(defn get-all-labels-of-metric
+  [metric]
+  (cond
+    (gauge-metric? metric)
+    (keys (gauge-metric-labels-values-map metric))
+    (counter-metric? metric)
+    (keys (counter-metric-labels-values-map metric))
+    ;; TODO: is this enough? are we sure that sum/count/bucket have only the same labels?
+    (histogram-metric? metric)
+    (keys (histogram-metric-labels-values-map-sum metric))))
+
+(s/fdef get-metric-samples!
+  :args (s/cat :a-raw-metric-store ::metric-store)
+  :ret (s/coll-of (s/coll-of ::metric-sample)))
+(defn get-metric-samples!
+  "Return all metric-samples within the given metric-store."
+  [a-raw-metric-store]
+  ;; for each metric within the metric-store
+  (reduce-kv (fn [r1 _metric-name metric]
+               (concat r1 (when-let [labelss (get-all-labels-of-metric metric)]
+                            (reduce-kv (fn [r2 labels _v]
+                                         (concat r2 (get-metric-sample metric labels)))
+                                       []
+                                       labelss))))
+             []
+             @a-raw-metric-store))
