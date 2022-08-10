@@ -41,7 +41,7 @@
   (reset! raw-metric-store (fresh-metric-store-map)))
 
 (s/def ::metric-name string?)
-(s/def ::help        string?)
+(s/def ::metric-help string?)
 (s/def ::metric-labels (s/map-of keyword? any?))
 (s/def ::metric-labels-values-map (s/map-of ::metric-labels ::metric-value))
 
@@ -95,22 +95,22 @@
    (partial instance? GaugeMetric)
    :gen (fn []
           (sgen/fmap (fn [{:keys [metric-name
-                                  help
+                                  metric-help
                                   metric-labels-values-map]}]
                        (make-gauge-metric metric-name
-                                          help
+                                          metric-help
                                           metric-labels-values-map))
                      (s/gen (s/keys :req-un [::metric-name
-                                             ::help
+                                             ::metric-help
                                              ::metric-labels-values-map]))))))
 (s/fdef make-gauge-metric
   :args (s/cat :metric-name              ::metric-name
-               :help                     ::help
+               :metric-help              ::metric-help
                :metric-labels-values-map ::metric-labels-values-map)
   :ret ::gauge-metric)
 (defn make-gauge-metric
-  [metric-name help metric-labels-values-map]
-  (really-make-gauge-metric metric-name help metric-labels-values-map))
+  [metric-name metric-help metric-labels-values-map]
+  (really-make-gauge-metric metric-name metric-help metric-labels-values-map))
 
 (define-record-type ^{:doc "Counter metric"}
   CounterMetric
@@ -126,22 +126,22 @@
    (partial instance? CounterMetric)
    :gen (fn []
           (sgen/fmap (fn [{:keys [metric-name
-                                  help
+                                  metric-help
                                   metric-labels-values-map]}]
                        (make-counter-metric metric-name
-                                          help
+                                          metric-help
                                           metric-labels-values-map))
                      (s/gen (s/keys :req-un [::metric-name
-                                             ::help
+                                             ::metric-help
                                              ::metric-labels-values-map]))))))
 (s/fdef make-counter-metric
   :args (s/cat :metric-name              ::metric-name
-               :help                     ::help
+               :metric-help              ::metric-help
                :metric-labels-values-map ::metric-labels-values-map)
   :ret ::counter-metric)
 (defn make-counter-metric
-  [metric-name help metric-labels-values-map]
-  (really-make-counter-metric metric-name help metric-labels-values-map))
+  [metric-name metric-help metric-labels-values-map]
+  (really-make-counter-metric metric-name metric-help metric-labels-values-map))
 
 
 (define-record-type ^{:doc "Histogram metric"}
@@ -160,7 +160,7 @@
 
 (s/fdef make-histogram-metric
   :args (s/cat :metric-name                     ::metric-name
-               :help                            ::help
+               :metric-help                     ::metric-help
                :threshold                       ::metric-value-value
                :metric-labels-values-map-sum    ::metric-labels-values-map
                :metric-labels-values-map-count  ::metric-labels-values-map
@@ -168,13 +168,13 @@
   :ret ::histogram-metric)
 (defn make-histogram-metric
   [metric-name
-   help
+   metric-help
    threshold
    metric-labels-values-map-sum
    metric-labels-values-map-count
    metric-labels-values-map-bucket]
   (really-make-histogram-metric metric-name
-                                help
+                                metric-help
                                 threshold
                                 metric-labels-values-map-sum
                                 metric-labels-values-map-count
@@ -295,23 +295,24 @@
         metric-value-1      (make-metric-value 1 last-update)
         metric-value-bucket (if (<= value-value threshold)
                               metric-value-1
-                              metric-value-0)]
-    (-> histogram-metric
-        (lens/overhaul histogram-metric-labels-values-map-sum
+                              metric-value-0)
+        ;; FIXME!
+        h1 (lens/overhaul histogram-metric histogram-metric-labels-values-map-sum
                        (fn [labels-values-map]
                          (inc-metric-value labels-values-map
                                            metric-labels
                                            metric-value)))
-        (lens/overhaul histogram-metric-labels-values-map-count
-                       (fn [labels-values-map]
-                         (inc-metric-value labels-values-map
-                                           metric-labels
-                                           metric-value-1)))
-         (lens/overhaul histogram-metric-labels-values-map-bucket
-                        (fn [labels-values-map]
-                          (inc-metric-value labels-values-map
-                                            metric-labels
-                                            metric-value-bucket))))))
+        h2 (lens/overhaul h1 histogram-metric-labels-values-map-count
+                          (fn [labels-values-map]
+                            (inc-metric-value labels-values-map
+                                              metric-labels
+                                              metric-value-1)))]
+
+    (lens/overhaul h2 histogram-metric-labels-values-map-bucket
+                   (fn [labels-values-map]
+                     (inc-metric-value labels-values-map
+                                       metric-labels
+                                       metric-value-bucket)))))
 
 ;; TODO: currently not used
 (s/fdef update-metric
@@ -338,7 +339,7 @@
                :metric       ::metric
                :labels       ::metric-labels
                :value-value  ::metric-value-value
-               :last-update  (s/nilable ::metric-value-last-update-time-ms))
+               :optional     (s/? (s/cat :last-update ::metric-value-last-update-time-ms)))
   :ret ::metric-store)
 (defn record-metric!
   "Record a metric."
@@ -368,13 +369,12 @@
                         name
                         (update-histogram-metric metric labels metric-value))))))))
 
-;; TODO: [] or nil if labels are not in metric?
-(s/fdef get-metric-sample
-  :args (s/cat :metric ::metric
+(s/fdef get-gauge-metric-sample
+  :args (s/cat :metric ::gauge-metric
                :labels ::metric-labels)
   :ret (s/coll-of ::metric-sample))
-(defn get-metric-sample
-  "Return all metric-samples with the given labels within this metric."
+(defn get-gauge-metric-sample
+  "Return all metric-samples with the given labels within this gauge-metric."
   [metric labels]
   (cond
     (gauge-metric? metric)
@@ -386,7 +386,19 @@
                                labels
                                (metric-value-value               metric-value)
                                (metric-value-last-update-time-ms metric-value))])
+        ;; TODO: [] or nil if labels are not in metric?
         []))
+    ;; TODO: [] or nil if metric is not gauge? or ignoring because of specs?
+   :else []))
+
+(s/fdef get-counter-metric-sample
+  :args (s/cat :metric ::counter-metric
+               :labels ::metric-labels)
+  :ret (s/coll-of ::metric-sample))
+(defn get-counter-metric-sample
+  "Return all metric-samples with the given labels within this counter-metric."
+  [metric labels]
+  (cond
     (counter-metric? metric)
     (let [name              (counter-metric-name              metric)
           labels-values-map (counter-metric-labels-values-map metric)]
@@ -396,7 +408,19 @@
                                labels
                                (metric-value-value               metric-value)
                                (metric-value-last-update-time-ms metric-value))])
+        ;; TODO: [] or nil if labels are not in metric?
         []))
+    ;; TODO: [] or nil if metric is not counter? or ignoring because of specs?
+    :else []))
+
+(s/fdef get-histogram-metric-sample
+  :args (s/cat :metric ::histogram-metric
+               :labels ::metric-labels)
+  :ret (s/coll-of ::metric-sample))
+(defn get-histogram-metric-sample
+  "Return all metric-samples with the given labels within this histogram-metric."
+  [metric labels]
+  (cond
     (histogram-metric? metric)
     (let [basename   (histogram-metric-name                     metric)
           threshold  (histogram-metric-threshold                metric)
@@ -426,8 +450,27 @@
                            (assoc labels :le (str threshold))
                            (metric-value-value               metric-value-bucket)
                            (metric-value-last-update-time-ms metric-value-bucket))])
-        []))))
+        ;; TODO: [] or nil if labels are not in metric?
+        []))
+    ;; TODO: [] or nil if metric is not histogram? or ignoring because of specs?
+    :else []))
 
+;; TODO: do we need this function?
+;; TODO: [] or nil if labels are not in metric?
+(s/fdef get-metric-sample
+  :args (s/cat :metric ::metric
+               :labels ::metric-labels)
+  :ret (s/coll-of ::metric-sample))
+(defn get-metric-sample
+  "Return all metric-samples with the given labels within this metric."
+  [metric labels]
+  (cond
+    (gauge-metric? metric)
+    (get-gauge-metric-sample metric labels)
+    (counter-metric? metric)
+    (get-counter-metric-sample metric labels)
+    (histogram-metric? metric)
+    (get-histogram-metric-sample metric labels)))
 
 (s/fdef get-raw-metric-sample!
   :args (s/cat :a-raw-metric-store ::metric-store
@@ -455,10 +498,10 @@
     (histogram-metric? metric)
     (keys (histogram-metric-labels-values-map-sum metric))))
 
-(s/fdef get-metric-samples!
+(s/fdef get-raw-metric-samples!
   :args (s/cat :a-raw-metric-store ::metric-store)
   :ret (s/coll-of (s/coll-of ::metric-sample)))
-(defn get-metric-samples!
+(defn get-raw-metric-samples!
   "Return all metric-samples within the given metric-store."
   [a-raw-metric-store]
   ;; for each metric within the metric-store
