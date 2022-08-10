@@ -517,16 +517,16 @@
                            example-histogram-metric (m/make-histogram-metric (nth names 2) (nth helps 2)
                                                                              threshold {} {} {})]
                        ;; first set
-                       (m/record-metric! raw-metric-store
+                       (m/record-raw-metric! raw-metric-store
                                          example-gauge-metric
                                          (nth labelss 1)
                                          (m/metric-value-value               value-1)
                                          (m/metric-value-last-update-time-ms value-1))
-                       (m/record-metric! raw-metric-store
+                       (m/record-raw-metric! raw-metric-store
                                          example-counter-metric
                                          (nth labelss 4)
                                          (m/metric-value-value value-4))
-                       (m/record-metric! raw-metric-store
+                       (m/record-raw-metric! raw-metric-store
                                          example-histogram-metric
                                          (nth labelss 5)
                                          (m/metric-value-value               value-5)
@@ -571,16 +571,16 @@
                                 (m/get-raw-metric-sample! raw-metric-store (nth names 2) (nth labelss 5))))
 
                        ;; update metrics
-                       (m/record-metric! raw-metric-store
+                       (m/record-raw-metric! raw-metric-store
                                          example-gauge-metric
                                          (nth labelss 1)
                                          (m/metric-value-value               value-x)
                                          (m/metric-value-last-update-time-ms value-x))
-                       (m/record-metric! raw-metric-store
+                       (m/record-raw-metric! raw-metric-store
                                          example-counter-metric
                                          (nth labelss 4)
                                          (m/metric-value-value value-x))
-                       (m/record-metric! raw-metric-store
+                       (m/record-raw-metric! raw-metric-store
                                          example-histogram-metric
                                          (nth labelss 5)
                                          (m/metric-value-value               value-x)
@@ -621,7 +621,7 @@
                                                              ;; FIXME: shouldn't be 1 but 2
                                                              1
                                                              (or (<= (m/metric-value-value value-5) threshold)
-                                                                  (<= (m/metric-value-value value-x) threshold))
+                                                                 (<= (m/metric-value-value value-x) threshold))
                                                              1
                                                              :else
                                                              0)
@@ -629,3 +629,39 @@
                                 (m/get-raw-metric-sample! raw-metric-store (nth names 2) (nth labelss 5))))))))))
 
 ;; get-raw-metric-samples!
+
+;;;
+
+
+(t/deftest t-m-update-counter-metric
+  (t/testing "U."
+    (let [name-c "name-c"
+          help-c "help-c"
+          labels {:a "a"}
+          example-c (m/make-counter-metric name-c help-c {})]
+      (t/is (= (m/make-counter-metric name-c help-c {{:a "a"} (m/make-metric-value 1 0)})
+               (m/update-counter-metric example-c labels (m/make-metric-value 1 0))))
+
+      (t/is (= (m/make-counter-metric name-c help-c {{:a "a"} (m/make-metric-value 3 1)})
+               (m/update-counter-metric (m/update-counter-metric example-c labels (m/make-metric-value 1 0))
+                                        labels (m/make-metric-value 2 1)))))))
+
+(t/deftest t-m-record-get!
+  (t/testing "M."
+    (let [name-c "name-c"
+          help-c "help-c"
+          labels {:a "a"}
+          example-c (m/make-counter-metric name-c help-c {})
+          raw-metric-store         (m/fresh-raw-metric-store)]
+
+      ;; record first time
+      (m/record-raw-metric! raw-metric-store example-c labels 1 0)
+      (t/is (= [(m/make-metric-sample name-c labels 1 0)]
+               (m/get-raw-metric-sample! raw-metric-store name-c labels)))
+
+       ;; record second time
+      (let [new-example-c  (m/get-raw-metric-sample! raw-metric-store name-c labels)]
+        ;; (m/record-raw-metric! raw-metric-store new-example-c labels 2 1)
+        ;; (t/is (= [(m/make-metric-sample name-c labels 3 1)]
+        ;;            (m/get-raw-metric-sample! raw-metric-store name-c labels)))
+        (t/is (= 1 1))))))

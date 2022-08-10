@@ -333,15 +333,17 @@
     (histogram-metric? metric)
     (update-histogram-metric metric metric-labels metric-value)))
 
+;; FIXME: input needs to be metric-name and metric-type!
+;; FIXME: record does not work!
 ;; TODO: How do we make sure that users do use `metric-name`s unique?
-(s/fdef record-metric!
+(s/fdef record-raw-metric!
   :args (s/cat :metric-store ::metric-store
                :metric       ::metric
                :labels       ::metric-labels
                :value-value  ::metric-value-value
                :optional     (s/? (s/cat :last-update ::metric-value-last-update-time-ms)))
   :ret ::metric-store)
-(defn record-metric!
+(defn record-raw-metric!
   "Record a metric."
   [a-raw-metric-store metric labels value-value & [last-update]]
   (let [last-update (or last-update (time/get-milli-time!))
@@ -432,8 +434,8 @@
                (contains? map-count  labels)
                (contains? map-bucket labels))
         (let [metric-value-sum    (get map-sum labels)
-          metric-value-count  (get map-count labels)
-          metric-value-bucket (get map-bucket labels)]
+              metric-value-count  (get map-count labels)
+              metric-value-bucket (get map-bucket labels)]
       [(make-metric-sample (str basename "_sum")
                            labels
                            (metric-value-value               metric-value-sum)
