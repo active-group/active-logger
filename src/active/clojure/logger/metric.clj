@@ -41,7 +41,7 @@
   ([?name ?labels ?help ?value ?mp]
    `(log-gauge-metric! ~?name ~?labels ~?help ~?value ~?mp ~(str *ns*)))
   ([?name ?labels ?help ?value ?mp ?ns]
-   `(log-metric! (metric-accumulator/make-gauge-metric ~?name ~?help ~?labels) ~?value ~?mp ~?ns)))
+   `(log-metric! (metric-accumulator/make-gauge-metric ~?name ~?help) ~?labels ~?value ~?mp ~?ns)))
 
 (defmacro log-gauge-metric
   ([?name ?value]
@@ -53,7 +53,7 @@
   ([?name ?labels ?help ?value ?mp]
    `(log-gauge-metric ~?name ~?labels ~?help ~?value ~?mp ~(str *ns*)))
   ([?name ?labels ?help ?value ?mp ?ns]
-   `(log-metric (metric-accumulator/make-gauge-metric ~?name ~?help ~?labels) ~?value ~?mp ~?ns)))
+   `(log-metric (metric-accumulator/make-gauge-metric ~?name ~?help) ~?labels ~?value ~?mp ~?ns)))
 
 (defmacro log-counter-metric!
   ([?name ?value]
@@ -65,7 +65,7 @@
   ([?name ?labels ?help ?value ?mp]
    `(log-counter-metric! ~?name ~?labels ~?help ~?value ~?mp ~(str *ns*)))
   ([?name ?labels ?help ?value ?mp ?ns]
-   `(log-metric! (metric-accumulator/make-counter-metric ~?name ~?help ~?labels) ~?value ~?mp ~?ns)))
+   `(log-metric! (metric-accumulator/make-counter-metric ~?name ~?help) ~?labels ~?value ~?mp ~?ns)))
 
 (defmacro log-counter-metric
   ([?name ?value]
@@ -77,7 +77,7 @@
   ([?name ?labels ?help ?value ?mp]
    `(log-counter-metric ~?name ~?labels ~?help ~?value ~?mp ~(str *ns*)))
   ([?name ?labels ?help ?value ?mp ?ns]
-   `(log-metric (metric-accumulator/make-counter-metric ~?name ~?help ~?labels) ~?value ~?mp ~?ns)))
+   `(log-metric (metric-accumulator/make-counter-metric ~?name ~?help) ~?labels ~?value ~?mp ~?ns)))
 
 (defmacro log-histogram-metric!
   ([?name ?threshold ?value]
@@ -89,7 +89,7 @@
   ([?name ?threshold ?labels ?help ?value ?mp]
    `(log-histogram-metric! ~?name ~?threshold ~?labels ~?help ~?value ~?mp ~(str *ns*)))
   ([?name ?threshold ?labels ?help ?value ?mp ?ns]
-   `(log-metric! (metric-accumulator/make-histogram-metric ~?name ~?threshold ~?help ~?labels) ~?value ~?mp ~?ns)))
+   `(log-metric! (metric-accumulator/make-histogram-metric ~?name ~?help ~?threshold) ~?labels ~?value ~?mp ~?ns)))
 
 (defmacro log-histogram-metric
   ([?name ?threshold ?value]
@@ -101,7 +101,7 @@
   ([?name ?threshold ?labels ?help ?value ?mp]
    `(log-histogram-metric ~?name ~?threshold ~?labels ~?help ~?value ~?mp ~(str *ns*)))
   ([?name ?threshold ?labels ?help ?value ?mp ?ns]
-   `(log-metric (metric-accumulator/make-histogram-metric ~?name ~?threshold ~?help ~?labels) ~?value ~?mp ~?ns)))
+   `(log-metric (metric-accumulator/make-histogram-metric ~?name ~?help ~?threshold) ~?labels ~?value ~?mp ~?ns)))
 
 (def monad-command-config
   (monad/combine-monad-command-configs metric-accumulator/monad-command-config metric-emitter/log-metrics-command-config))
