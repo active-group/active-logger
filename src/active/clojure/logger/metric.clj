@@ -5,31 +5,35 @@
             [active.clojure.monad :as monad]))
 
 (defn log-metric!-internal
-  [namespace metric value & [mp]]
-  (let [metric-samples (metric-accumulator/record-and-get! metric value)]
+  [namespace metric labels value & [mp]]
+  (let [metric-samples (metric-accumulator/record-and-get! metric labels value)]
     (metric-emitter/emit-metrics! metric-samples mp namespace)))
 
 (defn log-metric-internal
-  [namespace metric value & [mp]]
+  [namespace metric labels value & [mp]]
   (monad/monadic
-    [metric-samples (metric-accumulator/record-and-get metric value)]
+    [metric-samples (metric-accumulator/record-and-get metric labels value)]
     (metric-emitter/emit-metrics metric-samples mp namespace)))
 
 (defmacro log-metric!
   ([?metric ?value]
-  `(log-metric! ~?metric ~?value nil ~(str *ns*)))
-  ([?metric ?value ?mp]
-  `(log-metric! ~?metric ~?value ~?mp ~(str *ns*)))
-  ([?metric ?value ?mp ?ns]
-  `(log-metric!-internal ~?ns ~?metric ~?value ~?mp)))
+  `(log-metric! ~?metric {} ~?value nil ~(str *ns*)))
+  ([?metric ?labels ?value]
+  `(log-metric! ~?metric ~?labels ~?value nil ~(str *ns*)))
+  ([?metric ?labels ?value ?mp]
+  `(log-metric! ~?metric ~?labels ~?value ~?mp ~(str *ns*)))
+  ([?metric ?labels ?value ?mp ?ns]
+  `(log-metric!-internal ~?ns ~?metric ~?labels ~?value ~?mp)))
 
 (defmacro log-metric
   ([?metric ?value]
-  `(log-metric ~?metric ~?value nil ~(str *ns*)))
-  ([?metric ?value ?mp]
-  `(log-metric ~?metric ~?value ~?mp ~(str *ns*)))
-  ([?metric ?value ?mp ?ns]
-  `(log-metric-internal ~?ns ~?metric ~?value ~?mp)))
+  `(log-metric ~?metric {} ~?value nil ~(str *ns*)))
+  ([?metric ?labels ?value]
+  `(log-metric ~?metric ~?labels ~?value nil ~(str *ns*)))
+  ([?metric ?labels ?value ?mp]
+  `(log-metric ~?metric ~?labels ~?value ~?mp ~(str *ns*)))
+  ([?metric ?labels ?value ?mp ?ns]
+  `(log-metric-internal ~?ns ~?metric ~?labels ~?value ~?mp)))
 
 (defmacro log-gauge-metric!
   ([?name ?value]
