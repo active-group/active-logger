@@ -584,21 +584,22 @@
   ^:private really-make-metric-sample-set
   metric-sample-set?
   [name metric-sample-set-name
-   help metric-sample-set-help
    type-string metric-sample-set-type-string
-   samples metric-sample-set-sampels])
+   help metric-sample-set-help
+   samples metric-sample-set-samples])
 
 (s/def ::metric-sample-set (s/spec (partial instance? MetricSampleSet)))
+(s/def ::metric-type-string #{"GAUGE" "COUNTER" "HISTOGRAM"})
 
 (s/fdef make-metric-sample-set
   :args (s/cat :name      ::metric-name
-               :help    ::metric-help
                :type-string ::metric-type-string
+               :help    ::metric-help
                :samples (s/coll-of ::metric-sample))
   :ret ::metric-sample-set)
 (defn make-metric-sample-set
-  [name help type-string samples]
-  (really-make-metric-sample-set name help type-string samples))
+  [name type-string help samples]
+  (really-make-metric-sample-set name type-string help samples))
 
 
 (defn metric-type-string
@@ -626,30 +627,29 @@
   [metric-store metric]
   (let [stored-value (get metric-store metric)]
     (make-metric-sample-set (metric-name metric)
-                            (metric-help metric)
                             (metric-type-string metric)
+                            (metric-help metric)
                             (stored-value->all-metric-samples metric stored-value))))
 
-(s/fdef get-all-metric-sample-sets
+(s/fdef get-all-metric-sample-sets-1
   :args (s/cat :metric-store ::metric-store-map)
   :ret (s/coll-of (s/coll-of ::metric-sample-set)))
-(defn all-metric-sample-sets
+(defn get-all-metric-sample-sets-1
   "Return all metric-samples-sets within the given metric-store."
   [metric-store]
   (map (fn [metric] (get-metric-sample-set metric-store metric))
        (keys metric-store)))
 
 (s/fdef get-all-metric-sample-sets!
-  :args (s/cat :a-metric-store ::metric-store)
   :ret (s/coll-of (s/coll-of ::metric-sample-set)))
 (defn get-all-metric-sample-sets!
   "Return all metric-samples-sets within the given metric-store."
-  [a-metric-store]
-  (all-metric-sample-sets @a-metric-store))
+  []
+  (get-all-metric-sample-sets-1 @metric-store))
 
 (s/fdef prune-stale-metrics!
   :args (s/cat :a-raw-metric-store ::metric-store
-               :time-ms            ::metric-value-last-update-time-ms))
+               :time-ms            ::metric-val11ue-last-update-time-ms))
 (defn prune-stale-metrics!
   "Prune all metrics in the `a-raw-metric-store` that are older than `time-ms`. That is,
   the last update time in ms of the metric value is smaller than `time-ms`."
@@ -680,7 +680,8 @@
    (partial instance? RecordMetric)))
 
 (s/fdef record-metric
-  :args (s/cat :metric ::metric :labels ::metric-labels :value ::metric-value-value :last-update ::metric-value-last-update-time-ms)
+  :args (s/cat :metric ::metric :labels ::metric-labels :value ::metric-value-value
+               :optional (s/? (s/cat :last-update (s/nilable ::metric-value-last-update-time-ms))))
   :ret ::record-metric)
 (defn record-metric
   [metric labels value & [last-update]]
@@ -737,7 +738,7 @@
   :ret ::get-all-metric-sample-sets)
 (defn get-all-metric-sample-sets
   []
-  (really-get-metric-samples))
+  (really-get-all-metric-sample-sets))
 
 (defn run-metrics
   [_run-any _env state m]
@@ -758,7 +759,7 @@
        state]
 
       (get-all-metric-sample-sets? m)
-      [(get-all-metric-sample-sets! a-metric-store)
+      [(get-all-metric-sample-sets-1 @a-metric-store)
        state]
 
       (prune-stale-metrics? m)
@@ -771,6 +772,7 @@
 
 (s/fdef record-and-get!
   :args (s/cat :metric ::metric
+               :labels ::metric-labels
                :value  ::metric-value-value
                :optional (s/? (s/cat :last-update (s/nilable ::metric-value-last-update-time-ms))))
   :ret  (s/coll-of ::metric-sample))
@@ -783,6 +785,7 @@
 ;; TODO: Return -- monad coll-of ::metric-sample
 (s/fdef record-and-get
   :args (s/cat :metric ::metric
+               :labels ::metric-labels
                :value  ::metric-value-value
                :optional (s/? (s/cat :last-update (s/nilable ::metric-value-last-update-time-ms))))
   :ret  (s/coll-of ::metric-sample))
