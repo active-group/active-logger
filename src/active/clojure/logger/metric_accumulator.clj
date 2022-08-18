@@ -131,6 +131,14 @@
           (fn [metric-value-1]
             (update-metric-value + metric-value-1 metric-value-2))))
 
+(defn prune-stale-metric-value
+  [labels-value-map time-ms]
+  (reduce-kv (fn [new-labels-value-map metric-labels metric-value]
+               (if (< (metric-value-last-update-time-ms metric-value) time-ms)
+                 new-labels-value-map
+                 (assoc new-labels-value-map metric-labels metric-value)))
+             {}
+             labels-value-map))
 
 (s/def ::metric (s/or :gauge-metric     ::gauge-metric
                       :counter-metric   ::counter-metric
@@ -208,12 +216,19 @@
   :ret (s/coll-of ::metric-sample))
 (defn gauge-values->metric-samples
   [name gauge-values metric-labels]
-  (if-let [metric-value (get (gauge-values-map gauge-values) metric-labels)]
+  (when-let [metric-value (get (gauge-values-map gauge-values) metric-labels)]
     [(make-metric-sample name
                          metric-labels
                          (metric-value-value               metric-value)
                          (metric-value-last-update-time-ms metric-value))]))
 
+(defn prune-stale-gauge-values
+  [gauge-values time-ms]
+  (lens/overhaul gauge-values gauge-values-map prune-stale-metric-value time-ms))
+
+(defn empty-gauge-values?
+  [gauge-values]
+  (empty? (gauge-values-map gauge-values)))
 
 ;; 2. Counters
 
@@ -279,11 +294,19 @@
   :ret (s/coll-of ::metric-sample))
 (defn counter-values->metric-samples
   [name counter-values metric-labels]
-  (if-let [metric-value (get (counter-values-map counter-values) metric-labels)]
+  (when-let [metric-value (get (counter-values-map counter-values) metric-labels)]
     [(make-metric-sample name
                          metric-labels
                          (metric-value-value               metric-value)
                          (metric-value-last-update-time-ms metric-value))]))
+
+(defn prune-stale-counter-values
+  [counter-values time-ms]
+  (lens/overhaul counter-values counter-values-map prune-stale-metric-value time-ms))
+
+(defn empty-counter-values?
+  [counter-values]
+  (empty? (counter-values-map counter-values)))
 
 ;; 3. Histograms
 
@@ -361,11 +384,11 @@
   (let [threshold  (histogram-values-threshold histogram-values)
         sum-map   (histogram-values-sum-map histogram-values)
         count-map (histogram-values-count-map histogram-values)
-        bucket-map (histogram-values-bucket-map histogram-values)]
-      ;; TODO: do we trust that it is always in all three maps?
-    (let [metric-value-sum    (get sum-map metric-labels)
-          metric-value-count  (get count-map metric-labels)
-          metric-value-bucket (get bucket-map metric-labels)]
+        bucket-map (histogram-values-bucket-map histogram-values)
+        ;; TODO: do we trust that it is always in all three maps?
+        metric-value-sum    (get sum-map metric-labels)
+        metric-value-count  (get count-map metric-labels)
+        metric-value-bucket (get bucket-map metric-labels)]
       [(make-metric-sample (str basename "_sum")
                            metric-labels
                            (metric-value-value               metric-value-sum)
@@ -381,8 +404,18 @@
        (make-metric-sample (str basename "_bucket")
                            (assoc metric-labels :le (str threshold))
                            (metric-value-value               metric-value-bucket)
-                           (metric-value-last-update-time-ms metric-value-bucket))])))
+                           (metric-value-last-update-time-ms metric-value-bucket))]))
 
+(defn prune-stale-histogram-values
+  [histogram-values time-ms]
+  (-> histogram-values
+      (lens/overhaul histogram-values-sum-map prune-stale-metric-value time-ms)
+      (lens/overhaul histogram-values-count-map prune-stale-metric-value time-ms)
+      (lens/overhaul histogram-values-bucket-map prune-stale-metric-value time-ms)))
+
+(defn empty-histogram-values?
+  [histogram-values]
+  (empty? (histogram-values-sum-map histogram-values)))
 
 ;; Primitives on stored values
 
@@ -417,6 +450,29 @@
      (histogram-metric? metric) (make-histogram-values (histogram-metric-threshold metric)))
    metric-labels metric-value))
 
+(defn prune-stale-stored-values
+  [stored-values time-ms]
+  (cond
+    (gauge-values? stored-values)
+    (prune-stale-gauge-values stored-values time-ms)
+
+    (counter-values? stored-values)
+    (prune-stale-counter-values stored-values time-ms)
+
+    (histogram-values? stored-values)
+    (prune-stale-histogram-values stored-values time-ms)))
+
+(defn empty-stored-values?
+  [stored-values]
+  (cond
+    (gauge-values? stored-values)
+    (empty-gauge-values? stored-values)
+
+    (counter-values? stored-values)
+    (empty-counter-values? stored-values)
+
+    (histogram-values? stored-values)
+    (empty-histogram-values? stored-values)))
 
 ;; Metrics samples and sample sets
 
@@ -601,9 +657,10 @@
   (swap! a-raw-metric-store
          (fn [old-metric-store]
            (reduce-kv (fn [new-metric-store metric stored-values]
-                        (if (< (metric-value-last-update-time-ms metric-value) time-ms)
-                          new-metric-store
-                          (assoc new-metric-store metric-key metric-value)))
+                        (let [new-stored-values (prune-stale-stored-values stored-values time-ms)]
+                          (if (empty-stored-values? new-stored-values)
+                            new-metric-store
+                            (assoc new-metric-store metric new-stored-values))))
                       {}
                       old-metric-store))))
 
