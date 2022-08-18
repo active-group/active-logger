@@ -2,6 +2,7 @@
   "Metrics."
   (:require [active.clojure.record :refer [define-record-type]]
             [active.clojure.lens :as lens]
+            [active.clojure.monad :as monad]
 
             [active.clojure.logger.time :as time]
 
@@ -443,13 +444,13 @@
 ;; -----------------------------------------------------------------
 
 
-(s/fdef record-metric
+(s/fdef record-metric-1
   :args (s/cat :metric-store ::metric-store-map
                :metric       ::metric
                :labels       ::metric-labels
                :value        ::metric-value)
   :ret ::metric-store-map)
-(defn record-metric
+(defn record-metric-1
   [metric-store metric metric-labels metric-value]
   (update metric-store metric #(if (some? %)
                                  update-stored-values
@@ -468,9 +469,7 @@
   [a-metric-store metric labels value-value & [last-update]]
   (let [last-update (or last-update (time/get-milli-time!))
         metric-value (make-metric-value value-value last-update)]
-    (swap! a-metric-store record-metric metric labels metric-value)))
-
-
+    (swap! a-metric-store record-metric-1 metric labels metric-value)))
 
 
 (s/fdef stored-value->metric-samples
@@ -508,7 +507,7 @@
                :metric       ::metric
                :metric-labels ::metric-labels)
   :ret (s/coll-of ::metric-sample))
-(defn get-metric-samples
+(defn get-metric-samples-1
   [metric-store metric metric-labels]
   (let [stored-value (get metric-store metric)]
     (stored-value->metric-samples metric stored-value metric-labels)))
@@ -522,7 +521,7 @@
   "Return all metric-samples for a given metric within the given
   metric-store with the given labels."
   [a-metric-store metric labels]
-  (get-metric-samples @a-metric-store metric labels))
+  (get-metric-samples-1 @a-metric-store metric labels))
 
 (define-record-type ^{:doc "Metric sample set."}
   MetricSampleSet
@@ -578,7 +577,7 @@
 (s/fdef get-all-metric-sample-sets
   :args (s/cat :metric-store ::metric-store-map)
   :ret (s/coll-of (s/coll-of ::metric-sample-set)))
-(defn get-all-metric-sample-sets
+(defn all-metric-sample-sets
   "Return all metric-samples-sets within the given metric-store."
   [metric-store]
   (map (fn [metric] (get-metric-sample-set metric-store metric))
@@ -590,4 +589,155 @@
 (defn get-all-metric-sample-sets!
   "Return all metric-samples-sets within the given metric-store."
   [a-metric-store]
-  (get-all-metric-sample-sets @a-metric-store))
+  (all-metric-sample-sets @a-metric-store))
+
+(s/fdef prune-stale-metrics!
+  :args (s/cat :a-raw-metric-store ::metric-store
+               :time-ms            ::metric-value-last-update-time-ms))
+(defn prune-stale-metrics!
+  "Prune all metrics in the `a-raw-metric-store` that are older than `time-ms`. That is,
+  the last update time in ms of the metric value is smaller than `time-ms`."
+  [a-raw-metric-store time-ms]
+  (swap! a-raw-metric-store
+         (fn [old-metric-store]
+           (reduce-kv (fn [new-metric-store metric stored-values]
+                        (if (< (metric-value-last-update-time-ms metric-value) time-ms)
+                          new-metric-store
+                          (assoc new-metric-store metric-key metric-value)))
+                      {}
+                      old-metric-store))))
+
+;; COMMANDS on raw metrics
+
+(define-record-type ^{:doc "Monadic command for recording a metric."}
+  RecordMetric
+  ^:private really-record-metric
+  record-metric?
+  [metric record-metric-metric
+   labels record-metric-labels
+   value record-metric-value
+   last-update record-metric-last-update])
+
+(s/def ::record-metric
+  (s/spec
+   (partial instance? RecordMetric)))
+
+(s/fdef record-metric
+  :args (s/cat :metric ::metric :labels ::metric-labels :value ::metric-value-value :last-update ::metric-value-last-update-time-ms)
+  :ret ::record-metric)
+(defn record-metric
+  [metric labels value & [last-update]]
+  (really-record-metric metric labels value last-update))
+
+(define-record-type ^{:doc "Monadic command for pruning stale metrics."}
+  PruneStaleMetrics
+  ^:private really-prune-stale-metrics
+  prune-stale-metrics?
+  [time-ms prune-stale-metrics-time-ms])
+
+(s/def ::prune-stale-metrics
+  (s/spec
+   (partial instance? PruneStaleMetrics)))
+
+(s/fdef prune-stale-metrics
+  :args (s/cat :time-ms ::metric-value-last-update-time-ms)
+  :ret ::prune-stale-metrics)
+(defn prune-stale-metrics
+  [time-ms]
+  (really-prune-stale-metrics time-ms))
+
+(define-record-type ^{:doc "Monadic command for getting metric samples for one metric and label pair."}
+  GetMetricSamples
+  ^:private really-get-metric-samples
+  get-metric-samples?
+  [metric get-metric-samples-metric
+   labels get-metric-samples-labels])
+
+(s/def ::get-metric-samples
+  (s/spec
+   (partial instance? GetMetricSamples)))
+
+(s/fdef get-metric-samples
+  :args (s/cat :metric ::metric
+               :labels ::metric-labels)
+  :ret ::get-metric-samples)
+(defn get-metric-samples
+  [metric labels]
+  (really-get-metric-samples metric labels))
+
+(define-record-type ^{:doc "Monadic command for getting metric samples."}
+  GetAllMetricSampleSets
+  ^:private really-get-all-metric-sample-sets
+  get-all-metric-sample-sets?
+  [])
+
+(s/def ::get-all-metric-sample-sets
+  (s/spec
+   (partial instance? GetAllMetricSampleSets)))
+
+;; TODO: args empty - clean up?
+(s/fdef get-all-metric-sample-setss
+  :ret ::get-all-metric-sample-sets)
+(defn get-all-metric-sample-sets
+  []
+  (really-get-metric-samples))
+
+(defn run-metrics
+  [_run-any _env state m]
+  (let [a-metric-store metric-store]
+    (cond
+      (record-metric? m)
+      [(record-metric! a-metric-store
+                       (record-metric-metric m)
+                       (record-metric-labels m)
+                       (record-metric-value m)
+                       (record-metric-last-update m))
+       state]
+
+      (get-metric-samples? m)
+      [(get-metric-samples! a-metric-store
+                            (get-metric-samples-metric m)
+                            (get-metric-samples-labels m))
+       state]
+
+      (get-all-metric-sample-sets? m)
+      [(get-all-metric-sample-sets! a-metric-store)
+       state]
+
+      (prune-stale-metrics? m)
+      [(prune-stale-metrics! a-metric-store
+                             (prune-stale-metrics-time-ms m))
+       state]
+
+      :else
+      monad/unknown-command)))
+
+(s/fdef record-and-get!
+  :args (s/cat :metric ::metric
+               :value  ::metric-value-value
+               :optional (s/? (s/cat :last-update (s/nilable ::metric-value-last-update-time-ms))))
+  :ret  (s/coll-of ::metric-sample))
+(defn record-and-get!
+  [metric labels value & [last-update]]
+  (let [a-metric-store metric-store]
+    (record-metric! a-metric-store metric labels value last-update)
+    (get-metric-samples! a-metric-store metric labels)))
+
+;; TODO: Return -- monad coll-of ::metric-sample
+(s/fdef record-and-get
+  :args (s/cat :metric ::metric
+               :value  ::metric-value-value
+               :optional (s/? (s/cat :last-update (s/nilable ::metric-value-last-update-time-ms))))
+  :ret  (s/coll-of ::metric-sample))
+(defn record-and-get
+  [metric labels value & [last-update]]
+  (monad/monadic
+   (record-metric metric labels value last-update)
+   (get-metric-samples metric labels)))
+
+(def monad-command-config
+  (monad/combine-monad-command-configs
+   (monad/make-monad-command-config
+    run-metrics
+    {} {})
+   time/monad-command-config))
