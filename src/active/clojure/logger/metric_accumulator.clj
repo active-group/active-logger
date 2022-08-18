@@ -637,8 +637,8 @@
 (defn get-all-metric-sample-sets-1
   "Return all metric-samples-sets within the given metric-store."
   [metric-store]
-  (map (fn [metric] (get-metric-sample-set metric-store metric))
-       (keys metric-store)))
+  (mapv (fn [metric] (get-metric-sample-set metric-store metric))
+        (keys metric-store)))
 
 (s/fdef get-all-metric-sample-sets!
   :ret (s/coll-of (s/coll-of ::metric-sample-set)))

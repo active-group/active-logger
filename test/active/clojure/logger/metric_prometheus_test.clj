@@ -1,10 +1,21 @@
 (ns active.clojure.logger.metric-prometheus-test
   (:require [active.clojure.logger.metric-prometheus :as m]
-            [clojure.test :as t]
-            [clojure.spec.test.alpha :as stest]))
+            [active.clojure.logger.metric-accumulator :as metric-accumulator]
+            [clojure.test :as t]))
+
+
+(t/deftest t-render-metric-sets
+  (t/is (= "# HELP name help\n# TYPE name COUNTER\nname{:label=a} 23 0\n# HELP name help\n# TYPE name HISTOGRAM\nname_sum{:label=a} 23 0\nname_count{:label=a} 1 0\nname_bucket{:label=a,:le=+Inf} 1 0\nname_bucket{:label=a,:le=20} 0 0"
+           (m/render-metric-sets [(metric-accumulator/make-metric-sample-set "name" "COUNTER" "help"
+                                                                             [(metric-accumulator/make-metric-sample "name" {:label "a"} 23 0)])
+                                  (metric-accumulator/make-metric-sample-set "name" "HISTOGRAM" "help"
+                                                                             [(metric-accumulator/make-metric-sample "name_sum" {:label "a"} 23 0)
+                                                                              (metric-accumulator/make-metric-sample "name_count" {:label "a"} 1 0)
+                                                                              (metric-accumulator/make-metric-sample "name_bucket" {:label "a" :le "+Inf"} 1 0)
+                                                                              (metric-accumulator/make-metric-sample "name_bucket" {:label "a" :le "20"} 0 0)])]))))
 
 (t/deftest t-render-metrics!
-  (t/is (= "FIXME\n[]" (m/render-metrics!))))
+  (t/is (= "" (m/render-metrics!))))
 
 (t/deftest t-wrap-prometheus-metrics-ring-handler
   (t/is (= "ELSE"
