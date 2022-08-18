@@ -508,17 +508,17 @@
   :ret ::metric-store-map)
 (defn record-metric-1
   [metric-store metric metric-labels metric-value]
-  (update metric-store metric #(if (some? %)
-                                 update-stored-values
-                                 make-stored-values)
-          metric-labels metric-value))
+  (update metric-store metric (fn [maybe-stored-values]
+                                (if (some? maybe-stored-values)
+                                  (update-stored-values maybe-stored-values metric-labels metric-value)
+                                  (make-stored-values metric metric-labels metric-value)))))
 
 (s/fdef record-metric!
   :args (s/cat :a-metric-store ::metric-store
                :metric         ::metric
                :labels         ::metric-labels
                :value-value    ::metric-value-value
-               :optional       (s/? (s/cat :last-update ::metric-value-last-update-time-ms)))
+               :optional       (s/? (s/cat :last-update (s/nilable ::metric-value-last-update-time-ms))))
   :ret ::metric-store)
 (defn record-metric!
   "Record a metric."
