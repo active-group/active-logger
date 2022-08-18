@@ -131,6 +131,10 @@
           (fn [metric-value-1]
             (update-metric-value + metric-value-1 metric-value-2))))
 
+(s/fdef prune-stale-metric-value
+  :args (s/cat :labels-value-map ::labels-value-map
+               :time-ms          ::metric-value-last-update-time-ms)
+  :ret ::labels-value-map)
 (defn prune-stale-metric-value
   [labels-value-map time-ms]
   (reduce-kv (fn [new-labels-value-map metric-labels metric-value]
@@ -213,7 +217,7 @@
   :args (s/cat :name          ::metric-name
                :gauge-values  ::gauge-values
                :metric-labels ::metric-labels)
-  :ret (s/coll-of ::metric-sample))
+  :ret (s/nilable (s/coll-of ::metric-sample)))
 (defn gauge-values->metric-samples
   [name gauge-values metric-labels]
   (when-let [metric-value (get (gauge-values-map gauge-values) metric-labels)]
@@ -222,10 +226,17 @@
                          (metric-value-value               metric-value)
                          (metric-value-last-update-time-ms metric-value))]))
 
+(s/fdef prune-stalte-gauge-values
+  :args (s/cat :gauge-values ::gauge-values
+               :time-ms      ::metric-value-last-update-time-ms)
+  :ret ::gauge-values)
 (defn prune-stale-gauge-values
   [gauge-values time-ms]
   (lens/overhaul gauge-values gauge-values-map prune-stale-metric-value time-ms))
 
+(s/fdef empty-gauge-values?
+  :args (s/cat :gauge-values ::gauge-values)
+  :ret boolean)
 (defn empty-gauge-values?
   [gauge-values]
   (empty? (gauge-values-map gauge-values)))
@@ -291,7 +302,7 @@
   :args (s/cat :name           ::metric-name
                :counter-values ::counter-values
                :metric-labels  ::metric-labels)
-  :ret (s/coll-of ::metric-sample))
+  :ret (s/nilable (s/coll-of ::metric-sample)))
 (defn counter-values->metric-samples
   [name counter-values metric-labels]
   (when-let [metric-value (get (counter-values-map counter-values) metric-labels)]
@@ -300,10 +311,17 @@
                          (metric-value-value               metric-value)
                          (metric-value-last-update-time-ms metric-value))]))
 
+(s/fdef prune-stale-counter-values
+  :args (s/cat :counter-values ::counter-values
+               :time-ms        ::metric-value-last-update-time-ms)
+  :ret ::counter-values)
 (defn prune-stale-counter-values
   [counter-values time-ms]
   (lens/overhaul counter-values counter-values-map prune-stale-metric-value time-ms))
 
+(s/fdef empty-counter-values?
+  :args (s/cat :counter-values ::counter-values)
+  :ret boolean)
 (defn empty-counter-values?
   [counter-values]
   (empty? (counter-values-map counter-values)))
@@ -373,6 +391,7 @@
         (lens/overhaul histogram-values-bucket-map
                        inc-metric-value metric-labels metric-value-bucket))))
 
+;; TODO: gauge/counter-values->metric-samples has nilable-return-value
 (s/fdef histogram-values->metric-samples
   :args (s/cat :basename ::metric-name
                :histogram-values ::histogram-values
@@ -406,6 +425,10 @@
                            (metric-value-value               metric-value-bucket)
                            (metric-value-last-update-time-ms metric-value-bucket))]))
 
+(s/fdef prune-stale-histogram-values
+  :args (s/cat :histogram-values ::histogram-values
+               :time-ms          ::metric-value-last-update-time-ms)
+  :ret ::histogram-values)
 (defn prune-stale-histogram-values
   [histogram-values time-ms]
   (-> histogram-values
@@ -413,6 +436,9 @@
       (lens/overhaul histogram-values-count-map prune-stale-metric-value time-ms)
       (lens/overhaul histogram-values-bucket-map prune-stale-metric-value time-ms)))
 
+(s/fdef empty-histogram-values?
+  :args (s/cat :histogram-values ::histogram-values)
+  :ret boolean)
 (defn empty-histogram-values?
   [histogram-values]
   (empty? (histogram-values-sum-map histogram-values)))
@@ -532,7 +558,7 @@
   :args (s/cat :metric ::metric
                :stored-value ::stored-values
                :metric-labels ::metric-labels)
-  :ret (s/coll-of ::metric-sample))
+  :ret (s/nilable (s/coll-of ::metric-sample)))
 (defn stored-value->metric-samples
   [metric stored-value metric-labels]
   (cond
@@ -558,11 +584,11 @@
     (mapcat (fn [metric-labels] (histogram-values->metric-samples (histogram-metric-name metric) stored-value metric-labels))
             (keys (histogram-values-sum-map stored-value)))))
 
-(s/fdef get-metric-samples
+(s/fdef get-metric-samples-1
   :args (s/cat :metric-store ::metric-store-map
                :metric       ::metric
                :metric-labels ::metric-labels)
-  :ret (s/coll-of ::metric-sample))
+  :ret (s/nilable (s/coll-of ::metric-sample)))
 (defn get-metric-samples-1
   [metric-store metric metric-labels]
   (let [stored-value (get metric-store metric)]
@@ -572,7 +598,7 @@
   :args (s/cat :a-metric-store ::metric-store
                :metric         ::metric
                :labels         ::metric-labels)
-  :ret (s/coll-of ::metric-sample))
+  :ret (s/nilable (s/coll-of ::metric-sample)))
 (defn get-metric-samples!
   "Return all metric-samples for a given metric within the given
   metric-store with the given labels."
@@ -649,7 +675,7 @@
 
 (s/fdef prune-stale-metrics!
   :args (s/cat :a-raw-metric-store ::metric-store
-               :time-ms            ::metric-val11ue-last-update-time-ms))
+               :time-ms            ::metric-value-last-update-time-ms))
 (defn prune-stale-metrics!
   "Prune all metrics in the `a-raw-metric-store` that are older than `time-ms`. That is,
   the last update time in ms of the metric value is smaller than `time-ms`."
