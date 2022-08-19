@@ -545,7 +545,7 @@
                                  (nth labelss 1) (m/make-metric-value (+ value-value-1
                                                                          value-value-x)
                                                                       (m/metric-value-last-update-time-ms value-x))
-                                 (nth labelss 2) (m/make-metric-value value-value-1 (m/metric-value-last-update-time-ms (nth values 2)))}
+                                 (nth labelss 2) (m/make-metric-value value-value-2 (m/metric-value-last-update-time-ms (nth values 2)))}
                                 (m/histogram-values-bucket-map
                                  (m/update-histogram-values
                                   (m/update-histogram-values
