@@ -408,22 +408,26 @@
         metric-value-sum    (get sum-map metric-labels)
         metric-value-count  (get count-map metric-labels)
         metric-value-bucket (get bucket-map metric-labels)]
-      [(make-metric-sample (str basename "_sum")
-                           metric-labels
-                           (metric-value-value               metric-value-sum)
-                           (metric-value-last-update-time-ms metric-value-sum))
-       (make-metric-sample (str basename "_count")
+    (concat
+      (when (metric-value? metric-value-sum)
+        [(make-metric-sample (str basename "_sum")
+                             metric-labels
+                             (metric-value-value               metric-value-sum)
+                             (metric-value-last-update-time-ms metric-value-sum))])
+      (when (metric-value? metric-value-count)
+        [(make-metric-sample (str basename "_count")
                            metric-labels
                            (metric-value-value               metric-value-count)
                            (metric-value-last-update-time-ms metric-value-count))
-       (make-metric-sample (str basename "_bucket")
-                           (assoc metric-labels :le "+Inf")
-                           (metric-value-value               metric-value-count)
-                           (metric-value-last-update-time-ms metric-value-count))
-       (make-metric-sample (str basename "_bucket")
+         (make-metric-sample (str basename "_bucket")
+                             (assoc metric-labels :le "+Inf")
+                             (metric-value-value               metric-value-count)
+                             (metric-value-last-update-time-ms metric-value-count))])
+      (when (metric-value? metric-value-bucket)
+        [(make-metric-sample (str basename "_bucket")
                            (assoc metric-labels :le (str threshold))
                            (metric-value-value               metric-value-bucket)
-                           (metric-value-last-update-time-ms metric-value-bucket))]))
+                           (metric-value-last-update-time-ms metric-value-bucket))]))))
 
 (s/fdef prune-stale-histogram-values
   :args (s/cat :histogram-values ::histogram-values

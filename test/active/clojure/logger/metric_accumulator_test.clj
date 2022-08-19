@@ -565,13 +565,9 @@
                      (let [empty-histogram-values (m/make-histogram-values threshold)
                            filled-histogram-values (gen-filled-histogram-values empty-histogram-values labelss values)]
                        ;; empty histogram-values-map
-                       ;; FIXME: `NullPointerException`
-                       #_(t/is (= nil
-                                (m/histogram-values->metric-samples basename empty-histogram-values label-x)))
+                       (t/is (empty? (m/histogram-values->metric-samples basename empty-histogram-values label-x)))
                        ;; labels not in histogram-values-map
-                       ;; FIXME: `NullPointerException`
-                       #_(t/is (= nil
-                                (m/histogram-values->metric-samples basename filled-histogram-values label-x)))
+                       (t/is (empty? (m/histogram-values->metric-samples basename filled-histogram-values label-x)))
                        (t/is (= [(m/make-metric-sample (str basename "_sum")
                                                        (nth labelss 0)
                                                        (m/metric-value-value               (nth values 0))
