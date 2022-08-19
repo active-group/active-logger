@@ -559,7 +559,7 @@
   (t/testing "Creating metric-samples from histogram-values works."
     (t/is (quickcheck
            (property [basename            (spec ::m/metric-name)
-                      threshold           (spec ::m/metric-value-last-update-time-ms)
+                      threshold           (spec ::m/metric-value-value)
                       [label-x & labelss] (spec (gen-distinct-metric-labels 4))
                       values              (spec (gen-metric-values          3))]
                      (let [empty-histogram-values (m/make-histogram-values threshold)
@@ -593,7 +593,7 @@
 (t/deftest t-prune-stale-histogram-values
   (t/testing "Pruning stale histogram-values works."
     (t/is (quickcheck
-           (property [threshold (spec ::m/metric-value-last-update-time-ms)
+           (property [threshold (spec ::m/metric-value-value)
                       [label-x & labelss] (spec (gen-distinct-metric-labels 7))]
                      (let [empty-histogram-values (m/make-histogram-values threshold)
                            values [(m/make-metric-value 300 10)
@@ -691,7 +691,7 @@
 (t/deftest t-empty-histogram-values?
   (t/testing "Pruning stale histogram-values works."
     (t/is (quickcheck
-           (property [threshold (spec ::m/metric-value-last-update-time-ms)
+           (property [threshold (spec ::m/metric-value-value)
                       labelss   (spec (gen-distinct-metric-labels 6))
                       values    (spec (gen-metric-values          6))]
                      (let [empty-histogram-values (m/make-histogram-values threshold)

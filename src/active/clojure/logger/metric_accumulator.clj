@@ -64,7 +64,7 @@
 ;; https://prometheus.io/docs/instrumenting/writing_exporters/
 ;; "You should not set timestamps on the metrics you expose, let Prometheus
 ;; take care of that."
-(s/def ::metric-value-last-update-time-ms  number?)
+(s/def ::metric-value-last-update-time-ms nat-int?)
 
 (declare make-metric-value)
 (s/def ::metric-value
