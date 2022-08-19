@@ -11,9 +11,9 @@
 (defn logging-timing*
   [origin label m]
   (monad/monadic
-   [st time/get-milli-time
+   [st time/get-elapsed-time
     r m
-    e time/get-milli-time]
+    e time/get-elapsed-time]
    ;; use label as metric's name and help string
    (metric/log-gauge-metric label nil label (- e st) nil origin)
    (monad/return r)))
@@ -41,7 +41,7 @@
   "Starts a metric timer, identified by `ns`, `metric` and `more`."
   [ns metric more]
   (monad/monadic
-   [time time/get-milli-time]
+   [time time/get-elapsed-time]
    (let [name (make-timer-name ns metric more)])
    (monad/update-state-component! ::timers
                                   (fn [timers]
@@ -58,7 +58,7 @@
 (defn stop-metric-timer
   [timer-name]
   (monad/monadic
-   [end-time time/get-milli-time]
+   [end-time time/get-elapsed-time]
    [timers (monad/get-state-component ::timers)]
    (let [start-time (get timers timer-name)])
    (if start-time

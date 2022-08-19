@@ -17,7 +17,7 @@
 (defn maybe-render-timestamp
   [maybe-timestamp]
   (when maybe-timestamp
-    (str " " maybe-timestamp)))
+    (format " %d" maybe-timestamp)))
 
 (defn render-metric-sample
   [metric-sample]

@@ -10,6 +10,15 @@
 
 (defn get-milli-time!
   []
+  (System/currentTimeMillis))
+
+(define-record-type ^{:doc "Get the elapsed time in milliseconds.  Only useful for precise measurments of elapsed time."} GetElapsedTime
+  (make-get-elapsed-time) get-elapsed-time? [])
+
+(def get-elapsed-time (make-get-elapsed-time))
+
+(defn get-elapsed-time!
+  []
   (/ (double (System/nanoTime)) 1000000.0))
 
 (defn run-time
@@ -17,6 +26,9 @@
   (cond
     (get-milli-time? m)
     [(get-milli-time!) mstate]
+
+    (get-elapsed-time? m)
+    [(get-elapsed-time!) mstate]
 
     :else
     monad/unknown-command))
