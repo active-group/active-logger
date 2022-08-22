@@ -700,7 +700,6 @@
 
 ;; Primitives on stored values
 
-;; update-stored-values
 ;; TODO: testing with more elaborated value-counts? That is, not only where each label has the value 1.
 ;; TODO: testing that threshold for histogram doesn't change.
 (t/deftest t-update-stored-values
@@ -1059,41 +1058,194 @@
 
 ;; ------------------
 
-;; TODO: This is not finished yet.
-(t/deftest t-record-1-get-metric
-  (t/testing "`record-metric-1` and `get-metric-samples` work."
+;; TODO: More elaborated metric-stores
+(t/deftest t-record-metric-1-get-metric-samples-1
+  (t/testing "`record-metric-1` and `get-metric-samples-1` work."
     (t/is (quickcheck
-           (property [names     (spec (gen-distinct-metric-names  3))
-                      helps     (spec (gen-metric-helps           3))
-                      threshold (spec ::m/metric-value-value)
-                      labelss   (spec (gen-distinct-metric-labels 7))
-                      values    (spec (gen-metric-values          7))]
+           (property [names               (spec (gen-distinct-metric-names  3))
+                      helps               (spec (gen-metric-helps           3))
+                      threshold           (spec ::m/metric-value-value)
+                      [label-x & labelss] (spec (gen-distinct-metric-labels 7))
+                      [value-x & values ] (spec (gen-metric-values          7))]
                      (let [example-gauge-metric     (m/make-gauge-metric     (nth names 0) (nth helps 0))
                            example-counter-metric   (m/make-counter-metric   (nth names 1) (nth helps 1))
                            example-histogram-metric (m/make-histogram-metric (nth names 2) (nth helps 2) threshold)
                            metric-store (m/fresh-metric-store-map)]
-                       ;; test: metric is not in the store
-                       #_(t/is (= nil (m/get-metric-samples-1 metric-store example-gauge-metric (nth labelss 0))))
-                       ;; test: labels are not in this metric
-                       (let [metric-store-1
-                             (m/record-metric-1 metric-store example-gauge-metric (nth labelss 0) (nth values 0))]
-                         (t/is (= [(m/make-metric-sample (nth names 0)
-                                                         (nth labelss 0)
-                                                         (m/metric-value-value               (nth values 0))
-                                                         (m/metric-value-last-update-time-ms (nth values 0)))]
-                                (m/get-metric-samples-1 metric-store-1 example-gauge-metric (nth labelss 0))))
-)))))))
+                       ;; Gauge
+                       ;; metric is not in the store
+                       (t/is (= nil (m/get-metric-samples-1 metric-store example-gauge-metric label-x)))
+                       ;; labels are not in this metric
+                       (t/is (= nil (m/get-metric-samples-1
+                                     (m/record-metric-1 metric-store example-gauge-metric (nth labelss 0) (nth values 0))
+                                     example-gauge-metric label-x)))
+                       ;; labels are within this metric
+                       (t/is (= [(m/make-metric-sample (nth names 0)
+                                                       (nth labelss 0)
+                                                       (m/metric-value-value               (nth values 0))
+                                                       (m/metric-value-last-update-time-ms (nth values 0)))]
+                                (m/get-metric-samples-1
+                                 (m/record-metric-1 metric-store example-gauge-metric (nth labelss 0) (nth values 0))
+                                 example-gauge-metric (nth labelss 0))))
+                       ;; labels are within this metric - map is larger
+                       (t/is (= [(m/make-metric-sample (nth names 0)
+                                                       (nth labelss 3)
+                                                       (m/metric-value-value               (nth values 3))
+                                                       (m/metric-value-last-update-time-ms (nth values 3)))]
+                                (m/get-metric-samples-1
+                                 (m/record-metric-1
+                                  (m/record-metric-1
+                                   (m/record-metric-1
+                                    (m/record-metric-1
+                                     (m/record-metric-1
+                                      (m/record-metric-1 metric-store
+                                                         example-gauge-metric (nth labelss 0) (nth values 0))
+                                      example-gauge-metric (nth labelss 1) (nth values 1))
+                                     example-gauge-metric (nth labelss 2) (nth values 2))
+                                    example-gauge-metric (nth labelss 3) (nth values 3))
+                                   example-gauge-metric (nth labelss 4) (nth values 4))
+                                  example-gauge-metric (nth labelss 5) (nth values 5))
+                                 example-gauge-metric (nth labelss 3))))
 
+                       ;; Counter
+                       ;; metric is not in the store
+                       (t/is (= nil (m/get-metric-samples-1 metric-store example-counter-metric label-x)))
+                       ;; labels are not in this metric
+                       (t/is (= nil (m/get-metric-samples-1
+                                     (m/record-metric-1 metric-store example-counter-metric (nth labelss 0) (nth values 0))
+                                     example-counter-metric label-x)))
+                       ;; labels are within this metric
+                       (t/is (= [(m/make-metric-sample (nth names 1)
+                                                       (nth labelss 0)
+                                                       (m/metric-value-value               (nth values 0))
+                                                       (m/metric-value-last-update-time-ms (nth values 0)))]
+                                (m/get-metric-samples-1
+                                 (m/record-metric-1 metric-store example-counter-metric (nth labelss 0) (nth values 0))
+                                 example-counter-metric (nth labelss 0))))
+                       ;; labels are within this metric - map is larger
+                       (t/is (= [(m/make-metric-sample (nth names 1)
+                                                       (nth labelss 3)
+                                                       (m/metric-value-value               (nth values 3))
+                                                       (m/metric-value-last-update-time-ms (nth values 3)))]
+                                (m/get-metric-samples-1
+                                 (m/record-metric-1
+                                  (m/record-metric-1
+                                   (m/record-metric-1
+                                    (m/record-metric-1
+                                     (m/record-metric-1
+                                      (m/record-metric-1 metric-store
+                                                         example-counter-metric (nth labelss 0) (nth values 0))
+                                      example-counter-metric (nth labelss 1) (nth values 1))
+                                     example-counter-metric (nth labelss 2) (nth values 2))
+                                    example-counter-metric (nth labelss 3) (nth values 3))
+                                   example-counter-metric (nth labelss 4) (nth values 4))
+                                  example-counter-metric (nth labelss 5) (nth values 5))
+                                 example-counter-metric (nth labelss 3))))
 
-;; record-metric!  - get-metric-samples!
+                       ;; Histogram
+                       ;; metric is not in the store
+                       (t/is (= nil (m/get-metric-samples-1 metric-store example-histogram-metric label-x)))
+                       ;; labels are not in this metric
+                       ;; TODO: this return value is different wrt. gauge and counter
+                       (t/is (= [] (m/get-metric-samples-1
+                                     (m/record-metric-1 metric-store example-histogram-metric (nth labelss 0) (nth values 0))
+                                     example-histogram-metric label-x)))
+                       ;; labels are within this metric
+                       (t/is (= [(m/make-metric-sample (str (nth names 2) "_sum")
+                                                       (nth labelss 0)
+                                                       (m/metric-value-value               (nth values 0))
+                                                       (m/metric-value-last-update-time-ms (nth values 0)))
+                                 (m/make-metric-sample (str (nth names 2) "_count")
+                                                       (nth labelss 0)
+                                                       1
+                                                       (m/metric-value-last-update-time-ms (nth values 0)))
+                                 (m/make-metric-sample (str (nth names 2) "_bucket")
+                                                       (assoc (nth labelss 0) :le "+Inf")
+                                                       1
+                                                       (m/metric-value-last-update-time-ms (nth values 0)))
+                                 (m/make-metric-sample (str (nth names 2) "_bucket")
+                                                       (assoc (nth labelss 0) :le (str threshold))
+                                                       (if (<= (m/metric-value-value (nth values 0)) threshold) 1 0)
+                                                       (m/metric-value-last-update-time-ms (nth values 0)))]
+                                (m/get-metric-samples-1
+                                 (m/record-metric-1 metric-store example-histogram-metric (nth labelss 0) (nth values 0))
+                                 example-histogram-metric (nth labelss 0))))
+                       ;; labels are within this metric - map is larger
+                       (t/is (= [(m/make-metric-sample (str (nth names 2) "_sum")
+                                                       (nth labelss 3)
+                                                       (m/metric-value-value               (nth values 3))
+                                                       (m/metric-value-last-update-time-ms (nth values 3)))
+                                 (m/make-metric-sample (str (nth names 2) "_count")
+                                                       (nth labelss 3)
+                                                       1
+                                                       (m/metric-value-last-update-time-ms (nth values 3)))
+                                 (m/make-metric-sample (str (nth names 2) "_bucket")
+                                                       (assoc (nth labelss 3) :le "+Inf")
+                                                       1
+                                                       (m/metric-value-last-update-time-ms (nth values 3)))
+                                 (m/make-metric-sample (str (nth names 2) "_bucket")
+                                                       (assoc (nth labelss 3) :le (str threshold))
+                                                       (if (<= (m/metric-value-value (nth values 3)) threshold) 1 0)
+                                                       (m/metric-value-last-update-time-ms (nth values 3)))]
+                                (m/get-metric-samples-1
+                                 (m/record-metric-1
+                                  (m/record-metric-1
+                                   (m/record-metric-1
+                                    (m/record-metric-1
+                                     (m/record-metric-1
+                                      (m/record-metric-1 metric-store
+                                                         example-histogram-metric (nth labelss 0) (nth values 0))
+                                      example-histogram-metric (nth labelss 1) (nth values 1))
+                                     example-histogram-metric (nth labelss 2) (nth values 2))
+                                    example-histogram-metric (nth labelss 3) (nth values 3))
+                                   example-histogram-metric (nth labelss 4) (nth values 4))
+                                  example-histogram-metric (nth labelss 5) (nth values 5))
+                                 example-histogram-metric (nth labelss 3))))))))))
 
 ;; stored-value->metric-samples
 ;; stored-value->all-metric-samples
 
 ;; make-metric-sample-set
-;; metric-type-string
-;; metric-name
-;; metric-help
+
+(t/deftest t-metric-type-string
+  (t/testing "Getting the metric type as string works."
+    (t/is (quickcheck
+           (property [example-gauge-metric     (spec ::m/gauge-metric)
+                      example-counter-metric   (spec ::m/counter-metric)
+                      example-histogram-metric (spec ::m/histogram-metric)]
+                     (t/is (= "GAUGE"     (m/metric-type-string example-gauge-metric)))
+                     (t/is (= "COUNTER"   (m/metric-type-string example-counter-metric)))
+                     (t/is (= "HISTOGRAM" (m/metric-type-string example-histogram-metric))))))))
+
+(t/deftest t-metric-name
+  (t/testing "Getting the metric name works."
+    (t/is (quickcheck
+           (property [example-gauge-metric     (spec ::m/gauge-metric)
+                      example-counter-metric   (spec ::m/counter-metric)
+                      example-histogram-metric (spec ::m/histogram-metric)]
+                     (t/is (= (m/gauge-metric-name example-gauge-metric)
+                              (m/metric-name example-gauge-metric)))
+
+                     (t/is (= (m/counter-metric-name example-counter-metric)
+                              (m/metric-name example-counter-metric)))
+
+                     (t/is (= (m/histogram-metric-name example-histogram-metric)
+                              (m/metric-name example-histogram-metric))))))))
+
+(t/deftest t-metric-help
+  (t/testing "Getting the metric help works."
+    (t/is (quickcheck
+           (property [example-gauge-metric     (spec ::m/gauge-metric)
+                      example-counter-metric   (spec ::m/counter-metric)
+                      example-histogram-metric (spec ::m/histogram-metric)]
+                     (t/is (= (m/gauge-metric-help example-gauge-metric)
+                              (m/metric-help example-gauge-metric)))
+
+                     (t/is (= (m/counter-metric-help example-counter-metric)
+                              (m/metric-help example-counter-metric)))
+
+                     (t/is (= (m/histogram-metric-help example-histogram-metric)
+                              (m/metric-help example-histogram-metric))))))))
+
 ;; get-metric-sample-set
 ;; all-metric-sample-sets
 ;; get-all-metric-sample-sets!

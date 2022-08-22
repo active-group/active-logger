@@ -609,7 +609,7 @@
   :ret (s/nilable (s/coll-of ::metric-sample)))
 (defn get-metric-samples-1
   [metric-store metric metric-labels]
-  (let [stored-value (get metric-store metric)]
+  (when-let [stored-value (get metric-store metric)]
     (stored-value->metric-samples metric stored-value metric-labels)))
 
 (s/fdef get-metric-samples!
@@ -636,40 +636,52 @@
 (s/def ::metric-type-string #{"GAUGE" "COUNTER" "HISTOGRAM"})
 
 (s/fdef make-metric-sample-set
-  :args (s/cat :name      ::metric-name
+  :args (s/cat :name        ::metric-name
                :type-string ::metric-type-string
-               :help    ::metric-help
-               :samples (s/coll-of ::metric-sample))
+               :help        ::metric-help
+               :samples     (s/coll-of ::metric-sample))
   :ret ::metric-sample-set)
 (defn make-metric-sample-set
   [name type-string help samples]
   (really-make-metric-sample-set name type-string help samples))
 
-
+(s/fdef metric-type-string
+  :args (s/cat :metric ::metric)
+  :ret ::metric-type-string)
 (defn metric-type-string
   [metric]
   (cond
-    (gauge-metric? metric) "GAUGE"
-    (counter-metric? metric) "COUNTER"
+    (gauge-metric?     metric) "GAUGE"
+    (counter-metric?   metric) "COUNTER"
     (histogram-metric? metric) "HISTOGRAM"))
 
+(s/fdef metric-name
+  :args (s/cat :metric ::metric)
+  :ret ::metric-name)
 (defn metric-name
   [metric]
   (cond
-    (gauge-metric? metric) (gauge-metric-name metric)
-    (counter-metric? metric) (counter-metric-name metric)
+    (gauge-metric?     metric) (gauge-metric-name     metric)
+    (counter-metric?   metric) (counter-metric-name   metric)
     (histogram-metric? metric) (histogram-metric-name metric)))
 
+(s/fdef metric-help
+  :args (s/cat :metric ::metric)
+  :ret ::metric-help)
 (defn metric-help
   [metric]
   (cond
-    (gauge-metric? metric) (gauge-metric-help metric)
-    (counter-metric? metric) (counter-metric-help metric)
+    (gauge-metric?     metric) (gauge-metric-help     metric)
+    (counter-metric?   metric) (counter-metric-help   metric)
     (histogram-metric? metric) (histogram-metric-help metric)))
 
+(s/fdef get-metric-sample-set
+  :args (s/cat :a-metric-store ::metric-store
+               :metric         ::metric)
+  :ret (s/nilable ::metric-sample-set))
 (defn get-metric-sample-set
-  [metric-store metric]
-  (let [stored-value (get metric-store metric)]
+  [a-metric-store metric]
+  (when-let [stored-value (get a-metric-store metric)]
     (make-metric-sample-set (metric-name metric)
                             (metric-type-string metric)
                             (metric-help metric)
@@ -685,6 +697,7 @@
         (keys metric-store)))
 
 (s/fdef get-all-metric-sample-sets!
+  :args (s/cat)
   :ret (s/coll-of (s/coll-of ::metric-sample-set)))
 (defn get-all-metric-sample-sets!
   "Return all metric-samples-sets within the given metric-store."
@@ -692,13 +705,14 @@
   (get-all-metric-sample-sets-1 @metric-store))
 
 (s/fdef prune-stale-metrics!
-  :args (s/cat :a-raw-metric-store ::metric-store
-               :time-ms            ::metric-value-last-update-time-ms))
+  :args (s/cat :a-metric-store ::metric-store
+               :time-ms        ::metric-value-last-update-time-ms)
+  :ret nil)
 (defn prune-stale-metrics!
-  "Prune all metrics in the `a-raw-metric-store` that are older than `time-ms`. That is,
+  "Prune all metrics in the `a-metric-store` that are older than `time-ms`. That is,
   the last update time in ms of the metric value is smaller than `time-ms`."
-  [a-raw-metric-store time-ms]
-  (swap! a-raw-metric-store
+  [a-metric-store time-ms]
+  (swap! a-metric-store
          (fn [old-metric-store]
            (reduce-kv (fn [new-metric-store metric stored-values]
                         (let [new-stored-values (prune-stale-stored-values stored-values time-ms)]
@@ -706,7 +720,8 @@
                             new-metric-store
                             (assoc new-metric-store metric new-stored-values))))
                       {}
-                      old-metric-store))))
+                      old-metric-store)))
+  nil)
 
 ;; COMMANDS on raw metrics
 
