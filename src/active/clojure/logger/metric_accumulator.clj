@@ -336,7 +336,14 @@
    help      histogram-metric-help
    threshold histogram-metric-threshold])
 
-(s/def ::histogram-metric (s/spec (partial instance? HistogramMetric)))
+(declare make-histogram-metric)
+(s/def ::histogram-metric
+  (s/spec
+   (partial instance? HistogramMetric)
+   :gen (fn []
+          (sgen/fmap (fn [{:keys [metric-name metric-help metric-value-value]}]
+                       (make-histogram-metric metric-name metric-help metric-value-value))
+                     (s/gen (s/keys :req-un [::metric-name ::metric-help ::metric-value-value]))))))
 
 (s/fdef make-histogram-metric
   :args (s/cat :metric-name ::metric-name
@@ -480,6 +487,10 @@
      (histogram-metric? metric) (make-histogram-values (histogram-metric-threshold metric)))
    metric-labels metric-value))
 
+(s/fdef prune-stale-stored-values
+  :args (s/cat :stored-values ::stored-values
+               :time-ms       ::metric-value-last-update-time-ms)
+  :ret ::stored-values)
 (defn prune-stale-stored-values
   [stored-values time-ms]
   (cond
@@ -492,6 +503,9 @@
     (histogram-values? stored-values)
     (prune-stale-histogram-values stored-values time-ms)))
 
+(s/fdef empty-stored-values?
+  :args (s/cat :stored-values ::stored-values)
+  :ret boolean)
 (defn empty-stored-values?
   [stored-values]
   (cond
