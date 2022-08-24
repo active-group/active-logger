@@ -79,7 +79,6 @@
   :args (s/cat :value       ::metric-value-value
                :update-time ::metric-value-last-update-time-ms)
   :ret  ::metric-value)
-
 (defn make-metric-value
   [value update-time]
   (really-make-metric-value value update-time))
@@ -529,7 +528,23 @@
    value     metric-sample-value
    timestamp metric-sample-timestamp])
 
-(s/def ::metric-sample (s/spec (partial instance? MetricSample)))
+;; FIXME: This might not work? NullPointerExceptions?
+(s/def ::metric-sample
+  (s/spec
+   (partial instance? MetricSample)
+   :gen (fn []
+          (sgen/fmap (fn [{:keys [metric-name
+                                  metric-labels
+                                  metric-value-value
+                                  metric-value-last-update-time-ms]}]
+                       (make-metric-sample metric-name
+                                           metric-labels
+                                           metric-value-value
+                                           metric-value-last-update-time-ms)
+                       (s/gen (s/keys :req-un [::metric-name
+                                               ::metric-labels
+                                               ::metric-value-value
+                                               ::metric-value-last-update-time-ms])))))))
 
 (s/fdef make-metric-sample
   :args (s/cat :name      ::metric-name
@@ -571,10 +586,9 @@
         metric-value (make-metric-value value-value last-update)]
     (swap! a-metric-store record-metric-1 metric labels metric-value)))
 
-
 (s/fdef stored-value->metric-samples
-  :args (s/cat :metric ::metric
-               :stored-value ::stored-values
+  :args (s/cat :metric        ::metric
+               :stored-value  ::stored-values
                :metric-labels ::metric-labels)
   :ret (s/nilable (s/coll-of ::metric-sample)))
 (defn stored-value->metric-samples
@@ -588,6 +602,10 @@
     (histogram-values? stored-value)
     (histogram-values->metric-samples (histogram-metric-name metric) stored-value metric-labels)))
 
+(s/fdef stored-value->all-metric-samples
+  :args (s/cat :metric       ::metric
+               :stored-value ::stored-values)
+  :ret (s/nilable (s/coll-of ::metric-sample)))
 (defn stored-value->all-metric-samples
   [metric stored-value]
   (cond
@@ -603,8 +621,8 @@
             (keys (histogram-values-sum-map stored-value)))))
 
 (s/fdef get-metric-samples-1
-  :args (s/cat :metric-store ::metric-store-map
-               :metric       ::metric
+  :args (s/cat :metric-store  ::metric-store-map
+               :metric        ::metric
                :metric-labels ::metric-labels)
   :ret (s/nilable (s/coll-of ::metric-sample)))
 (defn get-metric-samples-1
