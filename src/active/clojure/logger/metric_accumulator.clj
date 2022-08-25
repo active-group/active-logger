@@ -1,4 +1,4 @@
-(ns ^:no-doc active.clojure.logger.metric-accumulator
+(ns active.clojure.logger.metric-accumulator
   "Metrics."
   (:require [active.clojure.record :refer [define-record-type]]
             [active.clojure.lens :as lens]
@@ -578,13 +578,14 @@
                :labels         ::metric-labels
                :value-value    ::metric-value-value
                :optional       (s/? (s/cat :last-update (s/nilable ::metric-value-last-update-time-ms))))
-  :ret ::metric-store)
+  :ret nil)
 (defn record-metric!
   "Record a metric."
   [a-metric-store metric labels value-value & [last-update]]
   (let [last-update (or last-update (time/get-milli-time!))
         metric-value (make-metric-value value-value last-update)]
-    (swap! a-metric-store record-metric-1 metric labels metric-value)))
+    (swap! a-metric-store record-metric-1 metric labels metric-value))
+  nil)
 
 (s/fdef stored-value->metric-samples
   :args (s/cat :metric        ::metric
@@ -693,13 +694,13 @@
     (counter-metric?   metric) (counter-metric-help   metric)
     (histogram-metric? metric) (histogram-metric-help metric)))
 
-(s/fdef get-metric-sample-set
-  :args (s/cat :a-metric-store ::metric-store
-               :metric         ::metric)
+(s/fdef get-metric-sample-set-1
+  :args (s/cat :metric-store ::metric-store-map
+               :metric       ::metric)
   :ret (s/nilable ::metric-sample-set))
-(defn get-metric-sample-set
-  [a-metric-store metric]
-  (when-let [stored-value (get a-metric-store metric)]
+(defn get-metric-sample-set-1
+  [metric-store metric]
+  (when-let [stored-value (get metric-store metric)]
     (make-metric-sample-set (metric-name metric)
                             (metric-type-string metric)
                             (metric-help metric)
@@ -711,7 +712,9 @@
 (defn get-all-metric-sample-sets-1
   "Return all metric-samples-sets within the given metric-store."
   [metric-store]
-  (mapv (fn [metric] (get-metric-sample-set metric-store metric))
+  (mapv (fn [metric] (get-metric-sample-set-1 metric-store metric))
+
+
         (keys metric-store)))
 
 (s/fdef get-all-metric-sample-sets!
@@ -757,7 +760,9 @@
    (partial instance? RecordMetric)))
 
 (s/fdef record-metric
-  :args (s/cat :metric ::metric :labels ::metric-labels :value ::metric-value-value
+  :args (s/cat :metric ::metric
+               :labels ::metric-labels
+               :value ::metric-value-value
                :optional (s/? (s/cat :last-update (s/nilable ::metric-value-last-update-time-ms))))
   :ret ::record-metric)
 (defn record-metric
@@ -810,8 +815,8 @@
   (s/spec
    (partial instance? GetAllMetricSampleSets)))
 
-;; TODO: args empty - clean up?
-(s/fdef get-all-metric-sample-setss
+(s/fdef get-all-metric-sample-sets
+  :args (s/cat)
   :ret ::get-all-metric-sample-sets)
 (defn get-all-metric-sample-sets
   []
