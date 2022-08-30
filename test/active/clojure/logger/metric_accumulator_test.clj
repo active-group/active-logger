@@ -8,8 +8,6 @@
             [clojure.test.check.generators :as tgen])
   (:use [active.quickcheck]))
 
-;; (t/use-fixtures :each (fn [f] (m/reset-global-raw-metric-store!) (f)))
-
 (stest/instrument)
 
 ;; GENERATORS
@@ -96,10 +94,42 @@
 
 ;; -----------------------------------------------
 
-;; fresh-metric-store-map
-;; fresh-metric-store
-;; set-global-metric-store!
-;; reset-global-metric-store!
+(t/deftest t-fresh-metric-store-map
+  (t/testing "Creating a fresh-metric-store-map works."
+    (let [example-fresh-metric-store-map (m/fresh-metric-store-map)]
+      (t/is (map?   example-fresh-metric-store-map))
+      (t/is (empty? example-fresh-metric-store-map)))))
+
+(t/deftest t-fresh-metric-store
+  (t/testing "Creating a fresh-metric-store works."
+    (let [example-fresh-metric-store (m/fresh-metric-store)]
+      (t/is (= (type example-fresh-metric-store) clojure.lang.Atom))
+      (t/is (map?  @example-fresh-metric-store))
+      (t/is (empty @example-fresh-metric-store)))))
+
+(t/deftest t-reset-and-set-global-metric-store!
+  (t/testing "Setting and resetting a global-metric-store works."
+    (t/is (quickcheck
+           (property [names     (spec (gen-distinct-metric-names  3))
+                      helps     (spec (gen-metric-helps           3))
+                      threshold (spec ::m/metric-value-value)
+                      labelss   (spec (gen-distinct-metric-labels 3))
+                      values    (spec (gen-metric-values          3))]
+                     (let [example-gauge-metric     (m/make-gauge-metric     (nth names 0) (nth helps 0))
+                           example-counter-metric   (m/make-counter-metric   (nth names 1) (nth helps 1))
+                           example-histogram-metric (m/make-histogram-metric (nth names 2) (nth helps 2) threshold)
+                           example-gauge-values     (gen-filled-gauge-values     (m/make-gauge-values)               labelss values)
+                           example-counter-values   (gen-filled-counter-values   (m/make-counter-values)             labelss values)
+                           example-histogram-values (gen-filled-histogram-values (m/make-histogram-values threshold) labelss values)
+                           example-metric-store-map {example-gauge-metric     example-gauge-values
+                                                     example-counter-metric   example-counter-values
+                                                     example-histogram-metric example-histogram-values}]
+                       (m/reset-global-metric-store!)
+                       (t/is (= {} @m/metric-store))
+                       (m/set-global-metric-store! example-metric-store-map)
+                       (t/is (= example-metric-store-map @m/metric-store))
+                       (m/reset-global-metric-store!)
+                       (t/is (= {} @m/metric-store))))))))
 
 (t/deftest t-make-metric-value
   (t/testing "All fields of a metric-value are set correct."
@@ -2115,6 +2145,7 @@
                                                                                   (if (<= (m/metric-value-value (nth values 3)) threshold) 1 0)
                                                                                   (m/metric-value-last-update-time-ms (nth values 3)))])]
                                  (m/get-all-metric-sample-sets!)))))))))
+
 ;; >>> HELPER
 (defn t-prune-stale-metrics!-prune-nothing
   "Metric sample set where nothing is pruned."
@@ -2224,7 +2255,6 @@
                                                     (assoc (nth labelss 3) :le (str threshold))
                                                     (if (<= (m/metric-value-value (nth values 3)) threshold) 1 0)
                                                     (m/metric-value-last-update-time-ms (nth values 3)))])])
-
 
 (defn t-prune-stale-metrics!-prune-some
   "Metric sample set where some were pruned."

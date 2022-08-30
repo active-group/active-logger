@@ -32,13 +32,21 @@
 
 (defonce metric-store (fresh-metric-store))
 
+(s/fdef set-global-metric-store!
+  :args (s/cat :fresh-metric-store-map ::metric-store-map)
+  :ret nil)
 (defn set-global-metric-store!
   [fresh-metric-store-map]
-  (reset! metric-store fresh-metric-store-map))
+  (reset! metric-store fresh-metric-store-map)
+  nil)
 
+(s/fdef reset-global-metric-store!
+  :args (s/cat)
+  :ret nil)
 (defn reset-global-metric-store!
   []
-  (reset! metric-store (fresh-metric-store-map)))
+  (reset! metric-store (fresh-metric-store-map))
+  nil)
 
 (declare make-metric-sample)
 
