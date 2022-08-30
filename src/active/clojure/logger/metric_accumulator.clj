@@ -581,19 +581,23 @@
                                   (make-stored-values metric metric-labels metric-value)))))
 
 (s/fdef record-metric!
-  :args (s/cat :a-metric-store ::metric-store
+  :args (s/cat :optional-1     (s/? (s/cat :a-metric-store ::metric-store))
                :metric         ::metric
                :labels         ::metric-labels
                :value-value    ::metric-value-value
-               :optional       (s/? (s/cat :last-update (s/nilable ::metric-value-last-update-time-ms))))
+               :optional-2     (s/? (s/cat :last-update (s/nilable ::metric-value-last-update-time-ms))))
   :ret nil)
 (defn record-metric!
   "Record a metric."
-  [a-metric-store metric labels value-value & [last-update]]
-  (let [last-update (or last-update (time/get-milli-time!))
-        metric-value (make-metric-value value-value last-update)]
-    (swap! a-metric-store record-metric-1 metric labels metric-value))
-  nil)
+  ([metric labels value-value]
+   (record-metric! metric-store metric labels value-value nil))
+  ([metric labels value-value last-update]
+   (record-metric! metric-store metric labels value-value last-update))
+  ([a-metric-store metric labels value-value last-update]
+   (let [last-update (or last-update (time/get-milli-time!))
+         metric-value (make-metric-value value-value last-update)]
+     (swap! a-metric-store record-metric-1 metric labels metric-value))
+   nil))
 
 (s/fdef stored-value->metric-samples
   :args (s/cat :metric        ::metric
@@ -721,36 +725,40 @@
   "Return all metric-samples-sets within the given metric-store."
   [metric-store]
   (mapv (fn [metric] (get-metric-sample-set-1 metric-store metric))
-
-
         (keys metric-store)))
 
 (s/fdef get-all-metric-sample-sets!
-  :args (s/cat)
+  :args (s/cat :optional (s/? (s/cat :a-metric-store ::metric-store)))
   :ret (s/coll-of (s/coll-of ::metric-sample-set)))
 (defn get-all-metric-sample-sets!
-  "Return all metric-samples-sets within the given metric-store."
-  []
-  (get-all-metric-sample-sets-1 @metric-store))
+  "Return all metric-samples-sets within the given metric-store.
+  If no metric-store is given, use the global metric store."
+  ([]
+   (get-all-metric-sample-sets! metric-store))
+  ([a-metric-store]
+   (get-all-metric-sample-sets-1 @a-metric-store)))
 
 (s/fdef prune-stale-metrics!
-  :args (s/cat :a-metric-store ::metric-store
+  :args (s/cat :optional (s/? (s/cat :a-metric-store ::metric-store))
                :time-ms        ::metric-value-last-update-time-ms)
   :ret nil)
 (defn prune-stale-metrics!
   "Prune all metrics in the `a-metric-store` that are older than `time-ms`. That is,
-  the last update time in ms of the metric value is smaller than `time-ms`."
-  [a-metric-store time-ms]
-  (swap! a-metric-store
-         (fn [old-metric-store]
-           (reduce-kv (fn [new-metric-store metric stored-values]
-                        (let [new-stored-values (prune-stale-stored-values stored-values time-ms)]
-                          (if (empty-stored-values? new-stored-values)
-                            new-metric-store
-                            (assoc new-metric-store metric new-stored-values))))
-                      {}
-                      old-metric-store)))
-  nil)
+  the last update time in ms of the metric value is smaller than `time-ms`.
+  If no metric-store is given, use the global metric store."
+  ([time-ms]
+   (prune-stale-metrics! metric-store time-ms))
+  ([a-metric-store time-ms]
+   (swap! a-metric-store
+          (fn [old-metric-store]
+            (reduce-kv (fn [new-metric-store metric stored-values]
+                         (let [new-stored-values (prune-stale-stored-values stored-values time-ms)]
+                           (if (empty-stored-values? new-stored-values)
+                             new-metric-store
+                             (assoc new-metric-store metric new-stored-values))))
+                       {}
+                       old-metric-store)))
+   nil))
 
 ;; COMMANDS on raw metrics
 
@@ -861,16 +869,20 @@
       monad/unknown-command)))
 
 (s/fdef record-and-get!
-  :args (s/cat :metric ::metric
+  :args (s/cat :optional-1 (s/? (s/cat :a-metric-store ::metric-store))
+               :metric ::metric
                :labels ::metric-labels
                :value  ::metric-value-value
-               :optional (s/? (s/cat :last-update (s/nilable ::metric-value-last-update-time-ms))))
+               :optional-2 (s/? (s/cat :last-update (s/nilable ::metric-value-last-update-time-ms))))
   :ret  (s/coll-of ::metric-sample))
 (defn record-and-get!
-  [metric labels value & [last-update]]
-  (let [a-metric-store metric-store]
-    (record-metric! a-metric-store metric labels value last-update)
-    (get-metric-samples! a-metric-store metric labels)))
+  ([metric labels value]
+   (record-and-get! metric-store metric labels value nil))
+  ([metric labels value last-update]
+   (record-and-get! metric-store metric labels value last-update))
+  ([a-metric-store metric labels value last-update]
+   (record-metric! a-metric-store metric labels value last-update)
+   (get-metric-samples! a-metric-store metric labels)))
 
 ;; TODO: Return -- monad coll-of ::metric-sample
 (s/fdef record-and-get
