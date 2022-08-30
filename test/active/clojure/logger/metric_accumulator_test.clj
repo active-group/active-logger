@@ -295,11 +295,9 @@
                      (let [empty-gauge-values (m/make-gauge-values)
                            filled-gauge-values (gen-filled-gauge-values empty-gauge-values labelss values)]
                        ;; empty gauge-values-map
-                       (t/is (= nil
-                                (m/gauge-values->metric-samples name empty-gauge-values label-x)))
+                       (t/is (= [] (m/gauge-values->metric-samples name empty-gauge-values label-x)))
                        ;; labels not in gauge-values-map
-                       (t/is (= nil
-                                (m/gauge-values->metric-samples name filled-gauge-values label-x)))
+                       (t/is (= [] (m/gauge-values->metric-samples name filled-gauge-values label-x)))
                        (t/is (= [(m/make-metric-sample name
                                                        (nth labelss 0)
                                                        (m/metric-value-value               (nth values  0))
@@ -1129,9 +1127,9 @@
                            metric-store (m/fresh-metric-store-map)]
                        ;; Gauge
                        ;; metric is not in the store
-                       (t/is (= nil (m/get-metric-samples-1 metric-store example-gauge-metric label-x)))
+                       (t/is (= [] (m/get-metric-samples-1 metric-store example-gauge-metric label-x)))
                        ;; labels are not in this metric
-                       (t/is (= nil (m/get-metric-samples-1
+                       (t/is (= [] (m/get-metric-samples-1
                                      (m/record-metric-1 metric-store example-gauge-metric (nth labelss 0) (nth values 0))
                                      example-gauge-metric label-x)))
                        ;; labels are within this metric
@@ -1164,9 +1162,9 @@
 
                        ;; Counter
                        ;; metric is not in the store
-                       (t/is (= nil (m/get-metric-samples-1 metric-store example-counter-metric label-x)))
+                       (t/is (= [] (m/get-metric-samples-1 metric-store example-counter-metric label-x)))
                        ;; labels are not in this metric
-                       (t/is (= nil (m/get-metric-samples-1
+                       (t/is (= [] (m/get-metric-samples-1
                                      (m/record-metric-1 metric-store example-counter-metric (nth labelss 0) (nth values 0))
                                      example-counter-metric label-x)))
                        ;; labels are within this metric
@@ -1199,9 +1197,8 @@
 
                        ;; Histogram
                        ;; metric is not in the store
-                       (t/is (= nil (m/get-metric-samples-1 metric-store example-histogram-metric label-x)))
+                       (t/is (= [] (m/get-metric-samples-1 metric-store example-histogram-metric label-x)))
                        ;; labels are not in this metric
-                       ;; TODO: this return value is different wrt. gauge and counter
                        (t/is (= [] (m/get-metric-samples-1
                                     (m/record-metric-1 metric-store example-histogram-metric (nth labelss 0) (nth values 0))
                                     example-histogram-metric label-x)))
@@ -1273,14 +1270,14 @@
 
                        ;; GAUGES
                        ;; metric is not in the store
-                       (t/is (= nil (m/get-metric-samples! a-metric-store example-gauge-metric label-x)))
+                       (t/is (= [] (m/get-metric-samples! a-metric-store example-gauge-metric label-x)))
                        (m/record-metric! a-metric-store
                                          example-gauge-metric
                                          (nth labelss 0)
                                          (m/metric-value-value               (nth values 0))
                                          (m/metric-value-last-update-time-ms (nth values 0)))
                        ;; labels are not in this metric
-                       (t/is (= nil (m/get-metric-samples! a-metric-store example-gauge-metric label-x)))
+                       (t/is (= [] (m/get-metric-samples! a-metric-store example-gauge-metric label-x)))
                        ;; labels are within this metric
                        (t/is (= [(m/make-metric-sample (nth names 0)
                                                        (nth labelss 0)
@@ -1325,14 +1322,14 @@
 
                        ;; COUNTERS
                        ;; metric is not in the store
-                       (t/is (= nil (m/get-metric-samples! a-metric-store example-counter-metric label-x)))
+                       (t/is (= [] (m/get-metric-samples! a-metric-store example-counter-metric label-x)))
                        (m/record-metric! a-metric-store
                                          example-counter-metric
                                          (nth labelss 0)
                                          (m/metric-value-value               (nth values 0))
                                          (m/metric-value-last-update-time-ms (nth values 0)))
                        ;; labels are not in this metric
-                       (t/is (= nil (m/get-metric-samples! a-metric-store example-counter-metric label-x)))
+                       (t/is (= [] (m/get-metric-samples! a-metric-store example-counter-metric label-x)))
                        ;; labels are within this metric
                        (t/is (= [(m/make-metric-sample (nth names 1)
                                                        (nth labelss 0)
@@ -1377,14 +1374,13 @@
 
                        ;; HISTOGRAMS
                        ;; metric is not in the store
-                       (t/is (= nil (m/get-metric-samples! a-metric-store example-histogram-metric label-x)))
+                       (t/is (= [] (m/get-metric-samples! a-metric-store example-histogram-metric label-x)))
                        (m/record-metric! a-metric-store
                                          example-histogram-metric
                                          (nth labelss 0)
                                          (m/metric-value-value               (nth values 0))
                                          (m/metric-value-last-update-time-ms (nth values 0)))
                        ;; labels are not in this metric
-                       ;; TODO: this return value is different wrt. gauge and counter
                        (t/is (= [] (m/get-metric-samples! a-metric-store example-histogram-metric label-x)))
                        ;; labels are within this metric
                        (t/is (= [(m/make-metric-sample (str (nth names 2) "_sum")
@@ -1468,11 +1464,9 @@
                            basename                (m/histogram-metric-name example-histogram-metric)]
                        ;; GAUGES
                        ;; empty gauge-values-map
-                       (t/is (= nil
-                                (m/stored-value->metric-samples example-gauge-metric empty-gauge-values label-x)))
+                       (t/is (= [] (m/stored-value->metric-samples example-gauge-metric empty-gauge-values label-x)))
                        ;; labels not in gauge-values-map
-                       (t/is (= nil
-                                (m/stored-value->metric-samples example-gauge-metric filled-gauge-values label-x)))
+                       (t/is (= [] (m/stored-value->metric-samples example-gauge-metric filled-gauge-values label-x)))
 
                        (t/is (= [(m/make-metric-sample (m/gauge-metric-name example-gauge-metric)
                                                        (nth labelss 0)
@@ -1481,11 +1475,9 @@
                                 (m/stored-value->metric-samples example-gauge-metric filled-gauge-values (nth labelss 0))))
                        ;; COUNTERS
                        ;; empty counter-values-map
-                       (t/is (= nil
-                                (m/stored-value->metric-samples example-counter-metric empty-counter-values label-x)))
+                       (t/is (= [] (m/stored-value->metric-samples example-counter-metric empty-counter-values label-x)))
                        ;; labels not in counter-values-map
-                       (t/is (= nil
-                                (m/stored-value->metric-samples example-counter-metric filled-counter-values label-x)))
+                       (t/is (= [] (m/stored-value->metric-samples example-counter-metric filled-counter-values label-x)))
 
                        (t/is (= [(m/make-metric-sample (m/counter-metric-name example-counter-metric)
                                                        (nth labelss 0)
@@ -1493,13 +1485,10 @@
                                                        (m/metric-value-last-update-time-ms (nth values  0)))]
                                 (m/stored-value->metric-samples example-counter-metric filled-counter-values (nth labelss 0))))
                        ;; HISTOGRAMS
-                       ;; TODO: empty vs nil!
                        ;; empty histogram-values-map
-                       (t/is (empty?
-                              (m/stored-value->metric-samples example-histogram-metric empty-histogram-values label-x)))
+                       (t/is (= [] (m/stored-value->metric-samples example-histogram-metric empty-histogram-values label-x)))
                        ;; labels not in histogram-values-map
-                       (t/is (empty?
-                              (m/stored-value->metric-samples example-histogram-metric filled-histogram-values label-x)))
+                       (t/is (= [] (m/stored-value->metric-samples example-histogram-metric filled-histogram-values label-x)))
 
                        (t/is (= [(m/make-metric-sample (str basename "_sum")
                                                        (nth labelss 0)
@@ -1715,7 +1704,7 @@
                                                                                       values)
                            basename (nth names 2)]
                        ;; GAUGES
-                       (t/is (nil? (m/get-metric-sample-set-1 empty-metric-store example-gauge-metric)))
+                       (t/is (= [] (m/get-metric-sample-set-1 empty-metric-store example-gauge-metric)))
                        (t/is (= (m/make-metric-sample-set (nth names 0)
                                                           "GAUGE"
                                                           (nth helps 0)
@@ -1737,7 +1726,7 @@
                                                                                  (m/metric-value-last-update-time-ms (nth values 3)))])
                                 (m/get-metric-sample-set-1 filled-gauge-metric-store example-gauge-metric)))
                        ;; COUNTERS
-                       (t/is (nil? (m/get-metric-sample-set-1 empty-metric-store example-counter-metric)))
+                       (t/is (= [] (m/get-metric-sample-set-1 empty-metric-store example-counter-metric)))
                        (t/is (= (m/make-metric-sample-set (nth names 1)
                                                           "COUNTER"
                                                           (nth helps 1)
@@ -1759,7 +1748,7 @@
                                                                                  (m/metric-value-last-update-time-ms (nth values 3)))])
                                 (m/get-metric-sample-set-1 filled-counter-metric-store example-counter-metric)))
                        ;; HISTOGRAMS
-                       (t/is (nil? (m/get-metric-sample-set-1 empty-metric-store example-histogram-metric)))
+                       (t/is (= [] (m/get-metric-sample-set-1 empty-metric-store example-histogram-metric)))
                        (t/is (= (m/make-metric-sample-set basename
                                                           "HISTOGRAM"
                                                           (nth helps 2)
@@ -2323,6 +2312,7 @@
                                  (m/get-all-metric-sample-sets! metric-store)))))))))
 
 ;; >>> HELPER
+
 (defn t-prune-stale-metrics!-prune-nothing
   "Metric sample set where nothing is pruned."
   [names helps labelss values basename threshold]
@@ -2893,7 +2883,7 @@
   (t/testing "Creating the `GetAllMetricSampleSets` record type works."
       (t/is (m/get-all-metric-sample-sets? (m/get-all-metric-sample-sets)))))
 
-;; run-metrics
+;; run-metrics - will not get tested
 
 (t/deftest t-record-and-get!-global-store
   (t/testing "Recording and getting the metric samples for the recorded metric

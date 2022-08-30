@@ -224,14 +224,15 @@
   :args (s/cat :name          ::metric-name
                :gauge-values  ::gauge-values
                :metric-labels ::metric-labels)
-  :ret (s/nilable (s/coll-of ::metric-sample)))
+  :ret (s/coll-of ::metric-sample))
 (defn gauge-values->metric-samples
   [name gauge-values metric-labels]
-  (when-let [metric-value (get (gauge-values-map gauge-values) metric-labels)]
+  (if-let [metric-value (get (gauge-values-map gauge-values) metric-labels)]
     [(make-metric-sample name
                          metric-labels
                          (metric-value-value               metric-value)
-                         (metric-value-last-update-time-ms metric-value))]))
+                         (metric-value-last-update-time-ms metric-value))]
+    []))
 
 (s/fdef prune-stale-gauge-values
   :args (s/cat :gauge-values ::gauge-values
@@ -309,14 +310,15 @@
   :args (s/cat :name           ::metric-name
                :counter-values ::counter-values
                :metric-labels  ::metric-labels)
-  :ret (s/nilable (s/coll-of ::metric-sample)))
+  :ret (s/coll-of ::metric-sample))
 (defn counter-values->metric-samples
   [name counter-values metric-labels]
-  (when-let [metric-value (get (counter-values-map counter-values) metric-labels)]
+  (if-let [metric-value (get (counter-values-map counter-values) metric-labels)]
     [(make-metric-sample name
                          metric-labels
                          (metric-value-value               metric-value)
-                         (metric-value-last-update-time-ms metric-value))]))
+                         (metric-value-last-update-time-ms metric-value))]
+    []))
 
 (s/fdef prune-stale-counter-values
   :args (s/cat :counter-values ::counter-values
@@ -405,7 +407,6 @@
         (lens/overhaul histogram-values-bucket-map
                        inc-metric-value metric-labels metric-value-bucket))))
 
-;; TODO: gauge/counter-values->metric-samples has nilable-return-value
 (s/fdef histogram-values->metric-samples
   :args (s/cat :basename ::metric-name
                :histogram-values ::histogram-values
@@ -603,7 +604,7 @@
   :args (s/cat :metric        ::metric
                :stored-value  ::stored-values
                :metric-labels ::metric-labels)
-  :ret (s/nilable (s/coll-of ::metric-sample)))
+  :ret (s/coll-of ::metric-sample))
 (defn stored-value->metric-samples
   [metric stored-value metric-labels]
   (cond
@@ -618,7 +619,7 @@
 (s/fdef stored-value->all-metric-samples
   :args (s/cat :metric       ::metric
                :stored-value ::stored-values)
-  :ret (s/nilable (s/coll-of ::metric-sample)))
+  :ret (s/coll-of ::metric-sample))
 (defn stored-value->all-metric-samples
   [metric stored-value]
   (cond
@@ -637,17 +638,18 @@
   :args (s/cat :metric-store  ::metric-store-map
                :metric        ::metric
                :metric-labels ::metric-labels)
-  :ret (s/nilable (s/coll-of ::metric-sample)))
+  :ret (s/coll-of ::metric-sample))
 (defn get-metric-samples-1
   [metric-store metric metric-labels]
-  (when-let [stored-value (get metric-store metric)]
-    (stored-value->metric-samples metric stored-value metric-labels)))
+  (if-let [stored-value (get metric-store metric)]
+    (stored-value->metric-samples metric stored-value metric-labels)
+    []))
 
 (s/fdef get-metric-samples!
   :args (s/cat :a-metric-store ::metric-store
                :metric         ::metric
                :labels         ::metric-labels)
-  :ret (s/nilable (s/coll-of ::metric-sample)))
+  :ret (s/coll-of ::metric-sample))
 (defn get-metric-samples!
   "Return all metric-samples for a given metric within the given
   metric-store with the given labels."
@@ -709,14 +711,15 @@
 (s/fdef get-metric-sample-set-1
   :args (s/cat :metric-store ::metric-store-map
                :metric       ::metric)
-  :ret (s/nilable ::metric-sample-set))
+  :ret ::metric-sample-set)
 (defn get-metric-sample-set-1
   [metric-store metric]
-  (when-let [stored-value (get metric-store metric)]
+  (if-let [stored-value (get metric-store metric)]
     (make-metric-sample-set (metric-name metric)
                             (metric-type-string metric)
                             (metric-help metric)
-                            (stored-value->all-metric-samples metric stored-value))))
+                            (stored-value->all-metric-samples metric stored-value))
+    []))
 
 (s/fdef get-all-metric-sample-sets-1
   :args (s/cat :metric-store ::metric-store-map)
