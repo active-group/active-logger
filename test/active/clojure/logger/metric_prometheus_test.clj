@@ -5,7 +5,7 @@
 
 
 (t/deftest t-render-metric-sets
-  (t/is (= "# HELP name help\n# TYPE name COUNTER\nname{:label=a} 23 0\n# HELP name help\n# TYPE name HISTOGRAM\nname_sum{:label=a} 23 0\nname_count{:label=a} 1 0\nname_bucket{:label=a,:le=+Inf} 1 0\nname_bucket{:label=a,:le=20} 0 0"
+  (t/is (= "# HELP name help\n# TYPE name COUNTER\nname{label=a} 23 0\n# HELP name help\n# TYPE name HISTOGRAM\nname_sum{label=a} 23 0\nname_count{label=a} 1 0\nname_bucket{label=a,le=+Inf} 1 0\nname_bucket{label=a,le=20} 0 0"
            (m/render-metric-sets [(metric-accumulator/make-metric-sample-set "name" "COUNTER" "help"
                                                                              [(metric-accumulator/make-metric-sample "name" {:label "a"} 23 0)])
                                   (metric-accumulator/make-metric-sample-set "name" "HISTOGRAM" "help"
