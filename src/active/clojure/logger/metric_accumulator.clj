@@ -225,7 +225,7 @@
                          (metric-value-value               metric-value)
                          (metric-value-last-update-time-ms metric-value))]))
 
-(s/fdef prune-stalte-gauge-values
+(s/fdef prune-stale-gauge-values
   :args (s/cat :gauge-values ::gauge-values
                :time-ms      ::metric-value-last-update-time-ms)
   :ret ::gauge-values)
@@ -750,9 +750,9 @@
   RecordMetric
   ^:private really-record-metric
   record-metric?
-  [metric record-metric-metric
-   labels record-metric-labels
-   value record-metric-value
+  [metric      record-metric-metric
+   labels      record-metric-labels
+   value       record-metric-value
    last-update record-metric-last-update])
 
 (s/def ::record-metric
@@ -762,7 +762,7 @@
 (s/fdef record-metric
   :args (s/cat :metric ::metric
                :labels ::metric-labels
-               :value ::metric-value-value
+               :value  ::metric-value-value
                :optional (s/? (s/cat :last-update (s/nilable ::metric-value-last-update-time-ms))))
   :ret ::record-metric)
 (defn record-metric
