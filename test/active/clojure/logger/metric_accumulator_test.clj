@@ -1929,8 +1929,7 @@
                                                                                   (m/metric-value-last-update-time-ms (nth values 3)))])]
                                  (m/get-all-metric-sample-sets-1 filled-metric-store)))))))))
 
-;; TODO: check where `m/metric-store` needs to be used, and where a fresh one is okay
-(t/deftest t-get-all-metric-sample-set!
+(t/deftest t-get-all-metric-sample-set!-global-store
   (t/testing "Getting all metric sample sets from the metric store (atom) works."
     (t/is (quickcheck
            (property [names     (spec (gen-distinct-metric-names  3))
@@ -1946,65 +1945,53 @@
 
                        (t/is (= [] (m/get-all-metric-sample-sets!)))
 
-                       (m/record-metric! m/metric-store
-                                         example-gauge-metric
+                       (m/record-metric! example-gauge-metric
                                          (nth labelss 0)
                                          (m/metric-value-value               (nth values 0))
                                          (m/metric-value-last-update-time-ms (nth values 0)))
-                       (m/record-metric! m/metric-store
-                                         example-gauge-metric
+                       (m/record-metric! example-gauge-metric
                                          (nth labelss 1)
                                          (m/metric-value-value               (nth values 1))
                                          (m/metric-value-last-update-time-ms (nth values 1)))
-                       (m/record-metric! m/metric-store
-                                         example-gauge-metric
+                       (m/record-metric! example-gauge-metric
                                          (nth labelss 2)
                                          (m/metric-value-value               (nth values 2))
                                          (m/metric-value-last-update-time-ms (nth values 2)))
-                       (m/record-metric! m/metric-store
-                                         example-gauge-metric
+                       (m/record-metric! example-gauge-metric
                                          (nth labelss 3)
                                          (m/metric-value-value               (nth values 3))
                                          (m/metric-value-last-update-time-ms (nth values 3)))
 
-                       (m/record-metric! m/metric-store
-                                         example-counter-metric
+                       (m/record-metric! example-counter-metric
                                          (nth labelss 0)
                                          (m/metric-value-value               (nth values 0))
                                          (m/metric-value-last-update-time-ms (nth values 0)))
-                       (m/record-metric! m/metric-store
-                                         example-counter-metric
+                       (m/record-metric! example-counter-metric
                                          (nth labelss 1)
                                          (m/metric-value-value               (nth values 1))
                                          (m/metric-value-last-update-time-ms (nth values 1)))
-                       (m/record-metric! m/metric-store
-                                         example-counter-metric
+                       (m/record-metric! example-counter-metric
                                          (nth labelss 2)
                                          (m/metric-value-value               (nth values 2))
                                          (m/metric-value-last-update-time-ms (nth values 2)))
-                       (m/record-metric! m/metric-store
-                                         example-counter-metric
+                       (m/record-metric! example-counter-metric
                                          (nth labelss 3)
                                          (m/metric-value-value               (nth values 3))
                                          (m/metric-value-last-update-time-ms (nth values 3)))
 
-                       (m/record-metric! m/metric-store
-                                         example-histogram-metric
+                       (m/record-metric! example-histogram-metric
                                          (nth labelss 0)
                                          (m/metric-value-value               (nth values 0))
                                          (m/metric-value-last-update-time-ms (nth values 0)))
-                       (m/record-metric! m/metric-store
-                                         example-histogram-metric
+                       (m/record-metric! example-histogram-metric
                                          (nth labelss 1)
                                          (m/metric-value-value               (nth values 1))
                                          (m/metric-value-last-update-time-ms (nth values 1)))
-                       (m/record-metric! m/metric-store
-                                         example-histogram-metric
+                       (m/record-metric! example-histogram-metric
                                          (nth labelss 2)
                                          (m/metric-value-value               (nth values 2))
                                          (m/metric-value-last-update-time-ms (nth values 2)))
-                       (m/record-metric! m/metric-store
-                                         example-histogram-metric
+                       (m/record-metric! example-histogram-metric
                                          (nth labelss 3)
                                          (m/metric-value-value               (nth values 3))
                                          (m/metric-value-last-update-time-ms (nth values 3)))
@@ -2115,8 +2102,301 @@
                                                                                   (if (<= (m/metric-value-value (nth values 3)) threshold) 1 0)
                                                                                   (m/metric-value-last-update-time-ms (nth values 3)))])]
                                  (m/get-all-metric-sample-sets!)))))))))
+
+(t/deftest t-get-all-metric-sample-set!
+  (t/testing "Getting all metric sample sets from the metric store (atom) works."
+    (t/is (quickcheck
+           (property [names     (spec (gen-distinct-metric-names  3))
+                      helps     (spec (gen-metric-helps           3))
+                      threshold (spec ::m/metric-value-value)
+                      labelss   (spec (gen-distinct-metric-labels 4))
+                      values    (spec (gen-metric-values          4))]
+                     (let [example-gauge-metric     (m/make-gauge-metric     (nth names 0) (nth helps 0))
+                           example-counter-metric   (m/make-counter-metric   (nth names 1) (nth helps 1))
+                           example-histogram-metric (m/make-histogram-metric (nth names 2) (nth helps 2) threshold)
+                           basename (nth names 2)
+                           metric-store (m/fresh-metric-store)]
+
+                       (t/is (= [] (m/get-all-metric-sample-sets! metric-store)))
+
+                       (m/record-metric! metric-store
+                                         example-gauge-metric
+                                         (nth labelss 0)
+                                         (m/metric-value-value               (nth values 0))
+                                         (m/metric-value-last-update-time-ms (nth values 0)))
+                       (m/record-metric! metric-store
+                                         example-gauge-metric
+                                         (nth labelss 1)
+                                         (m/metric-value-value               (nth values 1))
+                                         (m/metric-value-last-update-time-ms (nth values 1)))
+                       (m/record-metric! metric-store
+                                         example-gauge-metric
+                                         (nth labelss 2)
+                                         (m/metric-value-value               (nth values 2))
+                                         (m/metric-value-last-update-time-ms (nth values 2)))
+                       (m/record-metric! metric-store
+                                         example-gauge-metric
+                                         (nth labelss 3)
+                                         (m/metric-value-value               (nth values 3))
+                                         (m/metric-value-last-update-time-ms (nth values 3)))
+
+                       (m/record-metric! metric-store
+                                         example-counter-metric
+                                         (nth labelss 0)
+                                         (m/metric-value-value               (nth values 0))
+                                         (m/metric-value-last-update-time-ms (nth values 0)))
+                       (m/record-metric! metric-store
+                                         example-counter-metric
+                                         (nth labelss 1)
+                                         (m/metric-value-value               (nth values 1))
+                                         (m/metric-value-last-update-time-ms (nth values 1)))
+                       (m/record-metric! metric-store
+                                         example-counter-metric
+                                         (nth labelss 2)
+                                         (m/metric-value-value               (nth values 2))
+                                         (m/metric-value-last-update-time-ms (nth values 2)))
+                       (m/record-metric! metric-store
+                                         example-counter-metric
+                                         (nth labelss 3)
+                                         (m/metric-value-value               (nth values 3))
+                                         (m/metric-value-last-update-time-ms (nth values 3)))
+
+                       (m/record-metric! metric-store
+                                         example-histogram-metric
+                                         (nth labelss 0)
+                                         (m/metric-value-value               (nth values 0))
+                                         (m/metric-value-last-update-time-ms (nth values 0)))
+                       (m/record-metric! metric-store
+                                         example-histogram-metric
+                                         (nth labelss 1)
+                                         (m/metric-value-value               (nth values 1))
+                                         (m/metric-value-last-update-time-ms (nth values 1)))
+                       (m/record-metric! metric-store
+                                         example-histogram-metric
+                                         (nth labelss 2)
+                                         (m/metric-value-value               (nth values 2))
+                                         (m/metric-value-last-update-time-ms (nth values 2)))
+                       (m/record-metric! metric-store
+                                         example-histogram-metric
+                                         (nth labelss 3)
+                                         (m/metric-value-value               (nth values 3))
+                                         (m/metric-value-last-update-time-ms (nth values 3)))
+
+                       (t/is (= [(m/make-metric-sample-set (nth names 0)
+                                                          "GAUGE"
+                                                          (nth helps 0)
+                                                          [(m/make-metric-sample (nth names 0)
+                                                                                 (nth labelss 0)
+                                                                                 (m/metric-value-value               (nth values 0))
+                                                                                 (m/metric-value-last-update-time-ms (nth values 0)))
+                                                           (m/make-metric-sample (nth names 0)
+                                                                                 (nth labelss 1)
+                                                                                 (m/metric-value-value               (nth values 1))
+                                                                                 (m/metric-value-last-update-time-ms (nth values 1)))
+                                                           (m/make-metric-sample (nth names 0)
+                                                                                 (nth labelss 2)
+                                                                                 (m/metric-value-value               (nth values 2))
+                                                                                 (m/metric-value-last-update-time-ms (nth values 2)))
+                                                           (m/make-metric-sample (nth names 0)
+                                                                                 (nth labelss 3)
+                                                                                 (m/metric-value-value               (nth values 3))
+                                                                                 (m/metric-value-last-update-time-ms (nth values 3)))])
+                                 (m/make-metric-sample-set (nth names 1)
+                                                           "COUNTER"
+                                                           (nth helps 1)
+                                                           [(m/make-metric-sample (nth names 1)
+                                                                                  (nth labelss 0)
+                                                                                  (m/metric-value-value               (nth values 0))
+                                                                                  (m/metric-value-last-update-time-ms (nth values 0)))
+                                                            (m/make-metric-sample (nth names 1)
+                                                                                  (nth labelss 1)
+                                                                                  (m/metric-value-value               (nth values 1))
+                                                                                  (m/metric-value-last-update-time-ms (nth values 1)))
+                                                            (m/make-metric-sample (nth names 1)
+                                                                                  (nth labelss 2)
+                                                                                  (m/metric-value-value               (nth values 2))
+                                                                                  (m/metric-value-last-update-time-ms (nth values 2)))
+                                                            (m/make-metric-sample (nth names 1)
+                                                                                  (nth labelss 3)
+                                                                                  (m/metric-value-value               (nth values 3))
+                                                                                  (m/metric-value-last-update-time-ms (nth values 3)))])
+                                 (m/make-metric-sample-set basename
+                                                           "HISTOGRAM"
+                                                           (nth helps 2)
+                                                           [(m/make-metric-sample (str basename "_sum")
+                                                                                  (nth labelss 0)
+                                                                                  (m/metric-value-value               (nth values 0))
+                                                                                  (m/metric-value-last-update-time-ms (nth values 0)))
+                                                            (m/make-metric-sample (str basename "_count")
+                                                                                  (nth labelss 0)
+                                                                                  1
+                                                                                  (m/metric-value-last-update-time-ms (nth values 0)))
+                                                            (m/make-metric-sample (str basename "_bucket")
+                                                                                  (assoc (nth labelss 0) :le "+Inf")
+                                                                                  1
+                                                                                  (m/metric-value-last-update-time-ms (nth values 0)))
+                                                            (m/make-metric-sample (str basename "_bucket")
+                                                                                  (assoc (nth labelss 0) :le (str threshold))
+                                                                                  (if (<= (m/metric-value-value (nth values 0)) threshold) 1 0)
+                                                                                  (m/metric-value-last-update-time-ms (nth values 0)))
+                                                            (m/make-metric-sample (str basename "_sum")
+                                                                                  (nth labelss 1)
+                                                                                  (m/metric-value-value               (nth values 1))
+                                                                                  (m/metric-value-last-update-time-ms (nth values 1)))
+                                                            (m/make-metric-sample (str basename "_count")
+                                                                                  (nth labelss 1)
+                                                                                  1
+                                                                                  (m/metric-value-last-update-time-ms (nth values 1)))
+                                                            (m/make-metric-sample (str basename "_bucket")
+                                                                                  (assoc (nth labelss 1) :le "+Inf")
+                                                                                  1
+                                                                                  (m/metric-value-last-update-time-ms (nth values 1)))
+                                                            (m/make-metric-sample (str basename "_bucket")
+                                                                                  (assoc (nth labelss 1) :le (str threshold))
+                                                                                  (if (<= (m/metric-value-value (nth values 1)) threshold) 1 0)
+                                                                                  (m/metric-value-last-update-time-ms (nth values 1)))
+                                                            (m/make-metric-sample (str basename "_sum")
+                                                                                  (nth labelss 2)
+                                                                                  (m/metric-value-value               (nth values 2))
+                                                                                  (m/metric-value-last-update-time-ms (nth values 2)))
+                                                            (m/make-metric-sample (str basename "_count")
+                                                                                  (nth labelss 2)
+                                                                                  1
+                                                                                  (m/metric-value-last-update-time-ms (nth values 2)))
+                                                            (m/make-metric-sample (str basename "_bucket")
+                                                                                  (assoc (nth labelss 2) :le "+Inf")
+                                                                                  1
+                                                                                  (m/metric-value-last-update-time-ms (nth values 2)))
+                                                            (m/make-metric-sample (str basename "_bucket")
+                                                                                  (assoc (nth labelss 2) :le (str threshold))
+                                                                                  (if (<= (m/metric-value-value (nth values 2)) threshold) 1 0)
+                                                                                  (m/metric-value-last-update-time-ms (nth values 2)))
+                                                            (m/make-metric-sample (str basename "_sum")
+                                                                                  (nth labelss 3)
+                                                                                  (m/metric-value-value               (nth values 3))
+                                                                                  (m/metric-value-last-update-time-ms (nth values 3)))
+                                                            (m/make-metric-sample (str basename "_count")
+                                                                                  (nth labelss 3)
+                                                                                  1
+                                                                                  (m/metric-value-last-update-time-ms (nth values 3)))
+                                                            (m/make-metric-sample (str basename "_bucket")
+                                                                                  (assoc (nth labelss 3) :le "+Inf")
+                                                                                  1
+                                                                                  (m/metric-value-last-update-time-ms (nth values 3)))
+                                                            (m/make-metric-sample (str basename "_bucket")
+                                                                                  (assoc (nth labelss 3) :le (str threshold))
+                                                                                  (if (<= (m/metric-value-value (nth values 3)) threshold) 1 0)
+                                                                                  (m/metric-value-last-update-time-ms (nth values 3)))])]
+                                 (m/get-all-metric-sample-sets! metric-store)))))))))
 ;; >>> HELPER
 (defn t-prune-stale-metrics!-prune-nothing
+  "Metric sample set where nothing is pruned."
+  [names helps labelss values basename threshold]
+  [(m/make-metric-sample-set (nth names 0)
+                             "GAUGE"
+                             (nth helps 0)
+                             [(m/make-metric-sample (nth names 0)
+                                                    (nth labelss 0)
+                                                    (m/metric-value-value               (nth values 0))
+                                                    (m/metric-value-last-update-time-ms (nth values 0)))
+                              (m/make-metric-sample (nth names 0)
+                                                    (nth labelss 1)
+                                                    (m/metric-value-value               (nth values 1))
+                                                    (m/metric-value-last-update-time-ms (nth values 1)))
+                              (m/make-metric-sample (nth names 0)
+                                                    (nth labelss 2)
+                                                    (m/metric-value-value               (nth values 2))
+                                                    (m/metric-value-last-update-time-ms (nth values 2)))
+                              (m/make-metric-sample (nth names 0)
+                                                    (nth labelss 3)
+                                                    (m/metric-value-value               (nth values 3))
+                                                    (m/metric-value-last-update-time-ms (nth values 3)))])
+   (m/make-metric-sample-set (nth names 1)
+                             "COUNTER"
+                             (nth helps 1)
+                             [(m/make-metric-sample (nth names 1)
+                                                    (nth labelss 0)
+                                                    (m/metric-value-value               (nth values 0))
+                                                    (m/metric-value-last-update-time-ms (nth values 0)))
+                              (m/make-metric-sample (nth names 1)
+                                                    (nth labelss 1)
+                                                    (m/metric-value-value               (nth values 1))
+                                                    (m/metric-value-last-update-time-ms (nth values 1)))
+                              (m/make-metric-sample (nth names 1)
+                                                    (nth labelss 2)
+                                                    (m/metric-value-value               (nth values 2))
+                                                    (m/metric-value-last-update-time-ms (nth values 2)))
+                              (m/make-metric-sample (nth names 1)
+                                                    (nth labelss 3)
+                                                    (m/metric-value-value               (nth values 3))
+                                                    (m/metric-value-last-update-time-ms (nth values 3)))])
+   (m/make-metric-sample-set basename
+                             "HISTOGRAM"
+                             (nth helps 2)
+                             [(m/make-metric-sample (str basename "_sum")
+                                                    (nth labelss 0)
+                                                    (m/metric-value-value               (nth values 0))
+                                                    (m/metric-value-last-update-time-ms (nth values 0)))
+                              (m/make-metric-sample (str basename "_count")
+                                                    (nth labelss 0)
+                                                    1
+                                                    (m/metric-value-last-update-time-ms (nth values 0)))
+                              (m/make-metric-sample (str basename "_bucket")
+                                                    (assoc (nth labelss 0) :le "+Inf")
+                                                    1
+                                                    (m/metric-value-last-update-time-ms (nth values 0)))
+                              (m/make-metric-sample (str basename "_bucket")
+                                                    (assoc (nth labelss 0) :le (str threshold))
+                                                    (if (<= (m/metric-value-value (nth values 0)) threshold) 1 0)
+                                                    (m/metric-value-last-update-time-ms (nth values 0)))
+                              (m/make-metric-sample (str basename "_sum")
+                                                    (nth labelss 1)
+                                                    (m/metric-value-value               (nth values 1))
+                                                    (m/metric-value-last-update-time-ms (nth values 1)))
+                              (m/make-metric-sample (str basename "_count")
+                                                    (nth labelss 1)
+                                                    1
+                                                    (m/metric-value-last-update-time-ms (nth values 1)))
+                              (m/make-metric-sample (str basename "_bucket")
+                                                    (assoc (nth labelss 1) :le "+Inf")
+                                                    1
+                                                    (m/metric-value-last-update-time-ms (nth values 1)))
+                              (m/make-metric-sample (str basename "_bucket")
+                                                    (assoc (nth labelss 1) :le (str threshold))
+                                                    (if (<= (m/metric-value-value (nth values 1)) threshold) 1 0)
+                                                    (m/metric-value-last-update-time-ms (nth values 1)))
+                              (m/make-metric-sample (str basename "_sum")
+                                                    (nth labelss 2)
+                                                    (m/metric-value-value               (nth values 2))
+                                                    (m/metric-value-last-update-time-ms (nth values 2)))
+                              (m/make-metric-sample (str basename "_count")
+                                                    (nth labelss 2)
+                                                    1
+                                                    (m/metric-value-last-update-time-ms (nth values 2)))
+                              (m/make-metric-sample (str basename "_bucket")
+                                                    (assoc (nth labelss 2) :le "+Inf")
+                                                    1
+                                                    (m/metric-value-last-update-time-ms (nth values 2)))
+                              (m/make-metric-sample (str basename "_bucket")
+                                                    (assoc (nth labelss 2) :le (str threshold))
+                                                    (if (<= (m/metric-value-value (nth values 2)) threshold) 1 0)
+                                                    (m/metric-value-last-update-time-ms (nth values 2)))
+                              (m/make-metric-sample (str basename "_sum")
+                                                    (nth labelss 3)
+                                                    (m/metric-value-value               (nth values 3))
+                                                    (m/metric-value-last-update-time-ms (nth values 3)))
+                              (m/make-metric-sample (str basename "_count")
+                                                    (nth labelss 3)
+                                                    1
+                                                    (m/metric-value-last-update-time-ms (nth values 3)))
+                              (m/make-metric-sample (str basename "_bucket")
+                                                    (assoc (nth labelss 3) :le "+Inf")
+                                                    1
+                                                    (m/metric-value-last-update-time-ms (nth values 3)))
+                              (m/make-metric-sample (str basename "_bucket")
+                                                    (assoc (nth labelss 3) :le (str threshold))
+                                                    (if (<= (m/metric-value-value (nth values 3)) threshold) 1 0)
+                                                    (m/metric-value-last-update-time-ms (nth values 3)))])])(defn t-prune-stale-metrics!-prune-nothing
   "Metric sample set where nothing is pruned."
   [names helps labelss values basename threshold]
   [(m/make-metric-sample-set (nth names 0)
@@ -2289,7 +2569,7 @@
 
 ;; <<< HELPER
 
-(t/deftest t-prune-stale-metrics!
+(t/deftest t-prune-stale-metrics!-global-store
   (t/testing "Pruning all metrics in a metric store works."
     (t/is (quickcheck
            (property [names     (spec (gen-distinct-metric-names  3))
@@ -2306,85 +2586,170 @@
                            basename (nth names 2)]
 
                        (m/reset-global-metric-store!)
-                       (m/prune-stale-metrics! m/metric-store 1)
+                       (m/prune-stale-metrics! 1)
                        (t/is (= [] (m/get-all-metric-sample-sets!)))
 
-                       (m/record-metric! m/metric-store
+                       (m/record-metric! example-gauge-metric
+                                         (nth labelss 0)
+                                         (m/metric-value-value               (nth values 0))
+                                         (m/metric-value-last-update-time-ms (nth values 0)))
+                       (m/record-metric! example-gauge-metric
+                                         (nth labelss 1)
+                                         (m/metric-value-value               (nth values 1))
+                                         (m/metric-value-last-update-time-ms (nth values 1)))
+                       (m/record-metric! example-gauge-metric
+                                         (nth labelss 2)
+                                         (m/metric-value-value               (nth values 2))
+                                         (m/metric-value-last-update-time-ms (nth values 2)))
+                       (m/record-metric! example-gauge-metric
+                                         (nth labelss 3)
+                                         (m/metric-value-value               (nth values 3))
+                                         (m/metric-value-last-update-time-ms (nth values 3)))
+
+                       (m/record-metric! example-counter-metric
+                                         (nth labelss 0)
+                                         (m/metric-value-value               (nth values 0))
+                                         (m/metric-value-last-update-time-ms (nth values 0)))
+                       (m/record-metric! example-counter-metric
+                                         (nth labelss 1)
+                                         (m/metric-value-value               (nth values 1))
+                                         (m/metric-value-last-update-time-ms (nth values 1)))
+                       (m/record-metric! example-counter-metric
+                                         (nth labelss 2)
+                                         (m/metric-value-value               (nth values 2))
+                                         (m/metric-value-last-update-time-ms (nth values 2)))
+                       (m/record-metric! example-counter-metric
+                                         (nth labelss 3)
+                                         (m/metric-value-value               (nth values 3))
+                                         (m/metric-value-last-update-time-ms (nth values 3)))
+
+                       (m/record-metric! example-histogram-metric
+                                         (nth labelss 0)
+                                         (m/metric-value-value               (nth values 0))
+                                         (m/metric-value-last-update-time-ms (nth values 0)))
+                       (m/record-metric! example-histogram-metric
+                                         (nth labelss 1)
+                                         (m/metric-value-value               (nth values 1))
+                                         (m/metric-value-last-update-time-ms (nth values 1)))
+                       (m/record-metric! example-histogram-metric
+                                         (nth labelss 2)
+                                         (m/metric-value-value               (nth values 2))
+                                         (m/metric-value-last-update-time-ms (nth values 2)))
+                       (m/record-metric! example-histogram-metric
+                                         (nth labelss 3)
+                                         (m/metric-value-value               (nth values 3))
+                                         (m/metric-value-last-update-time-ms (nth values 3)))
+                       ;; ;; not older
+                       (m/prune-stale-metrics! 9)
+
+                       (t/is (= (t-prune-stale-metrics!-prune-nothing names helps labelss values basename threshold)
+                                (m/get-all-metric-sample-sets!)))
+                       ;; ;; the same
+                       (m/prune-stale-metrics! 10)
+                       (t/is (= (t-prune-stale-metrics!-prune-nothing names helps labelss values basename threshold)
+                                (m/get-all-metric-sample-sets!)))
+
+                       ;; ;; mixture
+                       (m/prune-stale-metrics! 13)
+                       (t/is (= (t-prune-stale-metrics!-prune-some names helps labelss values basename threshold)
+                                (m/get-all-metric-sample-sets!)))))))))
+
+(t/deftest t-prune-stale-metrics!
+  (t/testing "Pruning all metrics in a metric store works."
+    (t/is (quickcheck
+           (property [names     (spec (gen-distinct-metric-names  3))
+                      helps     (spec (gen-metric-helps           3))
+                      threshold (spec ::m/metric-value-value)
+                      labelss   (spec (gen-distinct-metric-labels 4))]
+                     (let [values                        [(m/make-metric-value 300 10)
+                                                          (m/make-metric-value 300 12)
+                                                          (m/make-metric-value 300 13)
+                                                          (m/make-metric-value 300 15)]
+                           example-gauge-metric          (m/make-gauge-metric     (nth names 0) (nth helps 0))
+                           example-counter-metric        (m/make-counter-metric   (nth names 1) (nth helps 1))
+                           example-histogram-metric      (m/make-histogram-metric (nth names 2) (nth helps 2) threshold)
+                           basename (nth names 2)
+                           metric-store (m/fresh-metric-store)]
+
+                       (m/prune-stale-metrics! metric-store 1)
+                       (t/is (= [] (m/get-all-metric-sample-sets! metric-store)))
+
+                       (m/record-metric! metric-store
                                          example-gauge-metric
                                          (nth labelss 0)
                                          (m/metric-value-value               (nth values 0))
                                          (m/metric-value-last-update-time-ms (nth values 0)))
-                       (m/record-metric! m/metric-store
+                       (m/record-metric! metric-store
                                          example-gauge-metric
                                          (nth labelss 1)
                                          (m/metric-value-value               (nth values 1))
                                          (m/metric-value-last-update-time-ms (nth values 1)))
-                       (m/record-metric! m/metric-store
+                       (m/record-metric! metric-store
                                          example-gauge-metric
                                          (nth labelss 2)
                                          (m/metric-value-value               (nth values 2))
                                          (m/metric-value-last-update-time-ms (nth values 2)))
-                       (m/record-metric! m/metric-store
+                       (m/record-metric! metric-store
                                          example-gauge-metric
                                          (nth labelss 3)
                                          (m/metric-value-value               (nth values 3))
                                          (m/metric-value-last-update-time-ms (nth values 3)))
 
-                       (m/record-metric! m/metric-store
+                       (m/record-metric! metric-store
                                          example-counter-metric
                                          (nth labelss 0)
                                          (m/metric-value-value               (nth values 0))
                                          (m/metric-value-last-update-time-ms (nth values 0)))
-                       (m/record-metric! m/metric-store
+                       (m/record-metric! metric-store
                                          example-counter-metric
                                          (nth labelss 1)
                                          (m/metric-value-value               (nth values 1))
                                          (m/metric-value-last-update-time-ms (nth values 1)))
-                       (m/record-metric! m/metric-store
+                       (m/record-metric! metric-store
                                          example-counter-metric
                                          (nth labelss 2)
                                          (m/metric-value-value               (nth values 2))
                                          (m/metric-value-last-update-time-ms (nth values 2)))
-                       (m/record-metric! m/metric-store
+                       (m/record-metric! metric-store
                                          example-counter-metric
                                          (nth labelss 3)
                                          (m/metric-value-value               (nth values 3))
                                          (m/metric-value-last-update-time-ms (nth values 3)))
 
-                       (m/record-metric! m/metric-store
+                       (m/record-metric! metric-store
                                          example-histogram-metric
                                          (nth labelss 0)
                                          (m/metric-value-value               (nth values 0))
                                          (m/metric-value-last-update-time-ms (nth values 0)))
-                       (m/record-metric! m/metric-store
+                       (m/record-metric! metric-store
                                          example-histogram-metric
                                          (nth labelss 1)
                                          (m/metric-value-value               (nth values 1))
                                          (m/metric-value-last-update-time-ms (nth values 1)))
-                       (m/record-metric! m/metric-store
+                       (m/record-metric! metric-store
                                          example-histogram-metric
                                          (nth labelss 2)
                                          (m/metric-value-value               (nth values 2))
                                          (m/metric-value-last-update-time-ms (nth values 2)))
-                       (m/record-metric! m/metric-store
+                       (m/record-metric! metric-store
                                          example-histogram-metric
                                          (nth labelss 3)
                                          (m/metric-value-value               (nth values 3))
                                          (m/metric-value-last-update-time-ms (nth values 3)))
                        ;; ;; not older
-                       (m/prune-stale-metrics! m/metric-store 9)
+                       (m/prune-stale-metrics! metric-store 9)
 
                        (t/is (= (t-prune-stale-metrics!-prune-nothing names helps labelss values basename threshold)
-                                (m/get-all-metric-sample-sets!)))
+                                (m/get-all-metric-sample-sets! metric-store)))
                        ;; ;; the same
-                       (m/prune-stale-metrics! m/metric-store 10)
+                       (m/prune-stale-metrics! metric-store 10)
                        (t/is (= (t-prune-stale-metrics!-prune-nothing names helps labelss values basename threshold)
-                                (m/get-all-metric-sample-sets!)))
+                                (m/get-all-metric-sample-sets! metric-store)))
 
                        ;; ;; mixture
-                       (m/prune-stale-metrics! m/metric-store 13)
+                       (m/prune-stale-metrics! metric-store 13)
                        (t/is (= (t-prune-stale-metrics!-prune-some names helps labelss values basename threshold)
-                                (m/get-all-metric-sample-sets!)))))))))
+                                (m/get-all-metric-sample-sets! metric-store)))))))))
 
 ;; COMMANDS on raw metrics
 
@@ -2497,8 +2862,7 @@
 
 ;; run-metrics
 
-;; TODO: testing optional last-update?
-(t/deftest t-record-and-get!
+(t/deftest t-record-and-get!-global-store
   (t/testing "Recording and getting the metric samples for the recorded metric
   with the given labels works."
     (t/is (quickcheck
@@ -2578,6 +2942,120 @@
                                   example-record-and-get!)))
 
                        (let [example-record-and-get! (m/record-and-get! example-histogram-metric
+                                                                        labels
+                                                                        (m/metric-value-value               (nth values 1))
+                                                                        (m/metric-value-last-update-time-ms (nth values 1)))]
+                         (t/is (= [(m/make-metric-sample (str (nth names 2) "_sum")
+                                                         labels
+                                                         (+ (m/metric-value-value (nth values 0))
+                                                            (m/metric-value-value (nth values 1)))
+                                                         (m/metric-value-last-update-time-ms (nth values 1)))
+                                   (m/make-metric-sample (str (nth names 2) "_count")
+                                                         labels
+                                                         2
+                                                         (m/metric-value-last-update-time-ms (nth values 1)))
+                                   (m/make-metric-sample (str (nth names 2) "_bucket")
+                                                         (assoc labels :le "+Inf")
+                                                         2
+                                                         (m/metric-value-last-update-time-ms (nth values 1)))
+                                   (m/make-metric-sample (str (nth names 2) "_bucket")
+                                                         (assoc labels :le (str threshold))
+                                                         (cond (and (<= (m/metric-value-value (nth values 0)) threshold)
+                                                                    (<= (m/metric-value-value (nth values 1)) threshold))
+                                                               2
+                                                               (or  (<= (m/metric-value-value (nth values 0)) threshold)
+                                                                    (<= (m/metric-value-value (nth values 1)) threshold))
+                                                               1
+                                                               :else
+                                                               0)
+                                                         (m/metric-value-last-update-time-ms (nth values 1)))]
+                                  example-record-and-get!)))))))))
+
+(t/deftest t-record-and-get!
+  (t/testing "Recording and getting the metric samples for the recorded metric
+  with the given labels works."
+    (t/is (quickcheck
+           (property [names     (spec (gen-distinct-metric-names  3))
+                      helps     (spec (gen-metric-helps           3))
+                      threshold (spec ::m/metric-value-value)
+                      labels    (spec ::m/metric-labels)
+                      values    (spec (gen-metric-values          2))]
+                     (let [example-gauge-metric     (m/make-gauge-metric     (nth names 0) (nth helps 0))
+                           example-counter-metric   (m/make-counter-metric   (nth names 1) (nth helps 1))
+                           example-histogram-metric (m/make-histogram-metric (nth names 2) (nth helps 2) threshold)
+                           metric-store             (m/fresh-metric-store)]
+
+                       ;; GAUGES
+                       (let [example-record-and-get! (m/record-and-get! metric-store
+                                                                        example-gauge-metric
+                                                                        labels
+                                                                        (m/metric-value-value               (nth values 0))
+                                                                        (m/metric-value-last-update-time-ms (nth values 0)))]
+                         (t/is (= [(m/make-metric-sample (nth names 0)
+                                                         labels
+                                                         (m/metric-value-value               (nth values 0))
+                                                         (m/metric-value-last-update-time-ms (nth values 0)))]
+                                  example-record-and-get!)))
+                       (let [example-record-and-get! (m/record-and-get! metric-store
+                                                                        example-gauge-metric
+                                                                        labels
+                                                                        (m/metric-value-value               (nth values 1))
+                                                                        (m/metric-value-last-update-time-ms (nth values 1)))]
+                         (t/is (= [(m/make-metric-sample (nth names 0)
+                                                         labels
+                                                         (m/metric-value-value               (nth values 1))
+                                                         (m/metric-value-last-update-time-ms (nth values 1)))]
+                                  example-record-and-get!)))
+
+                       ;; COUNTERS
+                       (let [example-record-and-get! (m/record-and-get! metric-store
+                                                                        example-counter-metric
+                                                                        labels
+                                                                        (m/metric-value-value               (nth values 0))
+                                                                        (m/metric-value-last-update-time-ms (nth values 0)))]
+                         (t/is (= [(m/make-metric-sample (nth names 1)
+                                                         labels
+                                                         (m/metric-value-value               (nth values 0))
+                                                         (m/metric-value-last-update-time-ms (nth values 0)))]
+                                  example-record-and-get!)))
+                       (let [example-record-and-get! (m/record-and-get! metric-store
+                                                                        example-counter-metric
+                                                                        labels
+                                                                        (m/metric-value-value               (nth values 1))
+                                                                        (m/metric-value-last-update-time-ms (nth values 1)))]
+                         (t/is (= [(m/make-metric-sample (nth names 1)
+                                                         labels
+                                                         (+ (m/metric-value-value (nth values 0))
+                                                            (m/metric-value-value (nth values 1)))
+                                                         (m/metric-value-last-update-time-ms (nth values 1)))]
+                                  example-record-and-get!)))
+
+                       ;; HISTOGRAMS
+                       (let [example-record-and-get! (m/record-and-get! metric-store
+                                                                        example-histogram-metric
+                                                                        labels
+                                                                        (m/metric-value-value               (nth values 0))
+                                                                        (m/metric-value-last-update-time-ms (nth values 0)))]
+                         (t/is (= [(m/make-metric-sample (str (nth names 2) "_sum")
+                                                         labels
+                                                         (m/metric-value-value               (nth values 0))
+                                                         (m/metric-value-last-update-time-ms (nth values 0)))
+                                   (m/make-metric-sample (str (nth names 2) "_count")
+                                                         labels
+                                                         1
+                                                         (m/metric-value-last-update-time-ms (nth values 0)))
+                                   (m/make-metric-sample (str (nth names 2) "_bucket")
+                                                         (assoc labels :le "+Inf")
+                                                         1
+                                                         (m/metric-value-last-update-time-ms (nth values 0)))
+                                   (m/make-metric-sample (str (nth names 2) "_bucket")
+                                                         (assoc labels :le (str threshold))
+                                                         (if (<= (m/metric-value-value (nth values 0)) threshold) 1 0)
+                                                         (m/metric-value-last-update-time-ms (nth values 0)))]
+                                  example-record-and-get!)))
+
+                       (let [example-record-and-get! (m/record-and-get! metric-store
+                                                                        example-histogram-metric
                                                                         labels
                                                                         (m/metric-value-value               (nth values 1))
                                                                         (m/metric-value-last-update-time-ms (nth values 1)))]
