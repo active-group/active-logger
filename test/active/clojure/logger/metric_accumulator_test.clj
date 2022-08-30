@@ -5,7 +5,10 @@
             [clojure.spec.alpha :as s]
 
             [clojure.spec.test.alpha :as stest]
-            [clojure.test.check.generators :as tgen])
+            [clojure.test.check.generators :as tgen]
+
+            [active.clojure.monad :as monad]
+            [active.clojure.mock-monad :as mock-monad])
   (:use [active.quickcheck]))
 
 ;; (t/use-fixtures :each (fn [f] (m/reset-global-raw-metric-store!) (f)))
@@ -3085,10 +3088,141 @@
                                                          (m/metric-value-last-update-time-ms (nth values 1)))]
                                   example-record-and-get!)))))))))
 
-;; record-and-get
-;; (s/fdef record-and-get
-;;   :args (s/cat :metric ::metric
-;;                :labels ::metric-labels
-;;                :value  ::metric-value-value
-;;                :optional (s/? (s/cat :last-update (s/nilable ::metric-value-last-update-time-ms))))
-;;   :ret  (s/coll-of ::metric-sample))
+(t/deftest t-record-and-get
+  (t/testing "Monadically recording and getting the metric samples for the
+  recorded metric with the given labels works."
+    (t/is (quickcheck
+           (property [names     (spec (gen-distinct-metric-names  3))
+                      helps     (spec (gen-metric-helps           3))
+                      threshold (spec ::m/metric-value-value)
+                      labels    (spec ::m/metric-labels)
+                      values    (spec (gen-metric-values          2))]
+                     (let [example-gauge-metric     (m/make-gauge-metric     (nth names 0) (nth helps 0))
+                           example-counter-metric   (m/make-counter-metric   (nth names 1) (nth helps 1))
+                           example-histogram-metric (m/make-histogram-metric (nth names 2) (nth helps 2) threshold)]
+
+                       (m/reset-global-metric-store!)
+
+                       ;; GAUGES
+                       (let [[example-record-and-get-1 example-record-and-get-2]
+                             (mock-monad/mock-run-monad
+                              m/monad-command-config
+                              []
+                              (monad/monadic
+                               [example-record-and-get-1
+                                (m/record-and-get example-gauge-metric
+                                                  labels
+                                                  (m/metric-value-value               (nth values 0))
+                                                  (m/metric-value-last-update-time-ms (nth values 0)))]
+                               [example-record-and-get-2
+                                (m/record-and-get example-gauge-metric
+                                                  labels
+                                                  (m/metric-value-value               (nth values 1))
+                                                  (m/metric-value-last-update-time-ms (nth values 1)))]
+                               (monad/return [example-record-and-get-1 example-record-and-get-2])))]
+                         (t/is (= [(m/make-metric-sample (nth names 0)
+                                                         labels
+                                                         (m/metric-value-value               (nth values 0))
+                                                         (m/metric-value-last-update-time-ms (nth values 0)))]
+                                  example-record-and-get-1))
+                         (t/is (= [(m/make-metric-sample (nth names 0)
+                                                         labels
+                                                         (m/metric-value-value               (nth values 1))
+                                                         (m/metric-value-last-update-time-ms (nth values 1)))]
+                                  example-record-and-get-2)))
+
+                       (m/reset-global-metric-store!)
+
+                       ;; COUNTERS
+                       (let [[example-record-and-get-1 example-record-and-get-2]
+                             (mock-monad/mock-run-monad
+                              m/monad-command-config
+                              []
+                              (monad/monadic
+                               [example-record-and-get-1
+                                (m/record-and-get example-counter-metric
+                                                  labels
+                                                  (m/metric-value-value               (nth values 0))
+                                                  (m/metric-value-last-update-time-ms (nth values 0)))]
+                               [example-record-and-get-2
+                                (m/record-and-get example-counter-metric
+                                                  labels
+                                                  (m/metric-value-value               (nth values 1))
+                                                  (m/metric-value-last-update-time-ms (nth values 1)))]
+
+                               (monad/return [example-record-and-get-1 example-record-and-get-2])))]
+                         (t/is (= [(m/make-metric-sample (nth names 1)
+                                                         labels
+                                                         (m/metric-value-value               (nth values 0))
+                                                         (m/metric-value-last-update-time-ms (nth values 0)))]
+                                  example-record-and-get-1))
+                         (t/is (= [(m/make-metric-sample (nth names 1)
+                                                         labels
+                                                         (+ (m/metric-value-value (nth values 0))
+                                                            (m/metric-value-value (nth values 1)))
+                                                         (m/metric-value-last-update-time-ms (nth values 1)))]
+                                  example-record-and-get-2)))
+
+                       (m/reset-global-metric-store!)
+
+                       ;; HISTOGRAMS
+                       (let [[example-record-and-get-1 example-record-and-get-2]
+                             (mock-monad/mock-run-monad
+                              m/monad-command-config
+                              []
+                              (monad/monadic
+                               [example-record-and-get-1
+
+                                (m/record-and-get example-histogram-metric
+                                                  labels
+                                                  (m/metric-value-value               (nth values 0))
+                                                  (m/metric-value-last-update-time-ms (nth values 0)))]
+                               [example-record-and-get-2
+                                (m/record-and-get example-histogram-metric
+                                                  labels
+                                                  (m/metric-value-value               (nth values 1))
+                                                  (m/metric-value-last-update-time-ms (nth values 1)))]
+                               (monad/return [example-record-and-get-1 example-record-and-get-2])))]
+                         (t/is (= [(m/make-metric-sample (str (nth names 2) "_sum")
+                                                         labels
+                                                         (m/metric-value-value               (nth values 0))
+                                                         (m/metric-value-last-update-time-ms (nth values 0)))
+                                   (m/make-metric-sample (str (nth names 2) "_count")
+                                                         labels
+                                                         1
+                                                         (m/metric-value-last-update-time-ms (nth values 0)))
+                                   (m/make-metric-sample (str (nth names 2) "_bucket")
+                                                         (assoc labels :le "+Inf")
+                                                         1
+                                                         (m/metric-value-last-update-time-ms (nth values 0)))
+                                   (m/make-metric-sample (str (nth names 2) "_bucket")
+                                                         (assoc labels :le (str threshold))
+                                                         (if (<= (m/metric-value-value (nth values 0)) threshold) 1 0)
+                                                         (m/metric-value-last-update-time-ms (nth values 0)))]
+                                  example-record-and-get-1))
+
+                         (t/is (= [(m/make-metric-sample (str (nth names 2) "_sum")
+                                                         labels
+                                                         (+ (m/metric-value-value (nth values 0))
+                                                            (m/metric-value-value (nth values 1)))
+                                                         (m/metric-value-last-update-time-ms (nth values 1)))
+                                   (m/make-metric-sample (str (nth names 2) "_count")
+                                                         labels
+                                                         2
+                                                         (m/metric-value-last-update-time-ms (nth values 1)))
+                                   (m/make-metric-sample (str (nth names 2) "_bucket")
+                                                         (assoc labels :le "+Inf")
+                                                         2
+                                                         (m/metric-value-last-update-time-ms (nth values 1)))
+                                   (m/make-metric-sample (str (nth names 2) "_bucket")
+                                                         (assoc labels :le (str threshold))
+                                                         (cond (and (<= (m/metric-value-value (nth values 0)) threshold)
+                                                                    (<= (m/metric-value-value (nth values 1)) threshold))
+                                                               2
+                                                               (or  (<= (m/metric-value-value (nth values 0)) threshold)
+                                                                    (<= (m/metric-value-value (nth values 1)) threshold))
+                                                               1
+                                                               :else
+                                                               0)
+                                                         (m/metric-value-last-update-time-ms (nth values 1)))]
+                                  example-record-and-get-2)))))))))
