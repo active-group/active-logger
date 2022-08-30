@@ -111,7 +111,7 @@
   ([?metric-samples ?mp]
    `(emit-metrics! ~?metric-samples ~?mp ~(str *ns*)))
   ([?metric-samples ?mp ?ns]
-   `(emit-metric-samples!-internal ~(str *ns*) ~?metric-samples ~?mp)))
+   `(emit-metric-samples!-internal ~?ns ~?metric-samples ~?mp)))
 
 (defmacro emit-metric
   ([?metric-sample]
@@ -119,7 +119,7 @@
   ([?metric-sample ?mp]
    `(emit-metric ~?metric-sample ~?mp ~(str *ns*)))
   ([?metric-sample ?mp ?ns]
-   `(make-emit-metric ~(str *ns*) ~?metric-sample ~?mp)))
+   `(make-emit-metric ~?ns ~?metric-sample ~?mp)))
 
 (defmacro emit-metrics
   ([?metric-samples]
