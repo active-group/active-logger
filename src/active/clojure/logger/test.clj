@@ -2,13 +2,13 @@
   (:require [active.clojure.logger.timbre :as timbre-config]
             [active.clojure.logger.event :as event]
             [active.clojure.logger.state-change :as state-change]
-            [active.clojure.logger.metric :as metric]
+            [active.clojure.logger.metric-emitter :as metric-emitter]
             [taoensso.timbre :as timbre]))
 
 (defn- log-config-test-fixture [config f]
   (event/set-global-log-events-config! config)
   (state-change/set-global-log-state-changes-config! (state-change/configure-state-changes-logging nil :events))
-  (metric/set-global-log-metrics-config! (metric/configure-metrics-logging nil :events))
+  (metric-emitter/set-global-log-metrics-config! (metric-emitter/configure-metrics-logging nil :events))
   ;; Note: set-global-log-events-config! uses timbre/set-config!,
   ;; which in turn used alter-var-root, but apparently using
   ;; with-config, which uses `binding` has a better effect of logs
