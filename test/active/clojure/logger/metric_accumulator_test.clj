@@ -1254,7 +1254,7 @@
                                   example-histogram-metric (nth labelss 5) (nth values 5))
                                  example-histogram-metric (nth labelss 3))))))))))
 
-;; TODO: optional metric-value-last-update-time-ms
+;; TODO: cleaning store in between?
 (t/deftest t-record-metric!-get-metric-samples!
   (t/testing "`record-metric!` and `get-metric-samples!` work."
     (t/is (quickcheck
@@ -1300,11 +1300,12 @@
                                          (nth labelss 3)
                                          (m/metric-value-value               (nth values 3))
                                          (m/metric-value-last-update-time-ms (nth values 3)))
+                       ;; update-time: nil
                        (m/record-metric! a-metric-store
                                          example-gauge-metric
                                          (nth labelss 4)
                                          (m/metric-value-value               (nth values 4))
-                                         (m/metric-value-last-update-time-ms (nth values 4)))
+                                         nil)
                        (m/record-metric! a-metric-store
                                          example-gauge-metric
                                          (nth labelss 5)
@@ -1318,7 +1319,13 @@
                                                        (m/metric-value-last-update-time-ms (nth values 3)))]
                                 (m/get-metric-samples! a-metric-store example-gauge-metric (nth labelss 3))))
 
-                       ;; TODO: do we need/want to clean the store before the counter tests?
+                       ;; update-time: nil
+                       (let [example-metric-sample (nth (m/get-metric-samples! a-metric-store example-gauge-metric (nth labelss 4)) 0)]
+                         (t/is (= (nth names   0) (m/metric-sample-name   example-metric-sample)))
+                         (t/is (= (nth labelss 4) (m/metric-sample-labels example-metric-sample)))
+                         (t/is (= (m/metric-value-value (nth values 4))
+                                  (m/metric-sample-value example-metric-sample)))
+                         (t/is (nat-int? (m/metric-sample-timestamp example-metric-sample))))
 
                        ;; COUNTERS
                        ;; metric is not in the store
@@ -1352,11 +1359,12 @@
                                          (nth labelss 3)
                                          (m/metric-value-value               (nth values 3))
                                          (m/metric-value-last-update-time-ms (nth values 3)))
+                       ;; update-time: nil
                        (m/record-metric! a-metric-store
                                          example-counter-metric
                                          (nth labelss 4)
                                          (m/metric-value-value               (nth values 4))
-                                         (m/metric-value-last-update-time-ms (nth values 4)))
+                                         nil)
                        (m/record-metric! a-metric-store
                                          example-counter-metric
                                          (nth labelss 5)
@@ -1369,8 +1377,13 @@
                                                        (m/metric-value-value               (nth values 3))
                                                        (m/metric-value-last-update-time-ms (nth values 3)))]
                                 (m/get-metric-samples! a-metric-store example-counter-metric (nth labelss 3))))
-
-                       ;; TODO: do we need/want to clean the store before the histogram tests?
+                       ;; update-time: nil
+                       (let [example-metric-sample (nth (m/get-metric-samples! a-metric-store example-counter-metric (nth labelss 4)) 0)]
+                         (t/is (= (nth names   1) (m/metric-sample-name   example-metric-sample)))
+                         (t/is (= (nth labelss 4) (m/metric-sample-labels example-metric-sample)))
+                         (t/is (= (m/metric-value-value (nth values 4))
+                                  (m/metric-sample-value example-metric-sample)))
+                         (t/is (nat-int? (m/metric-sample-timestamp example-metric-sample))))
 
                        ;; HISTOGRAMS
                        ;; metric is not in the store
@@ -1416,11 +1429,12 @@
                                          (nth labelss 3)
                                          (m/metric-value-value               (nth values 3))
                                          (m/metric-value-last-update-time-ms (nth values 3)))
+                       ;; update-time: nil
                        (m/record-metric! a-metric-store
                                          example-histogram-metric
                                          (nth labelss 4)
                                          (m/metric-value-value               (nth values 4))
-                                         (m/metric-value-last-update-time-ms (nth values 4)))
+                                         nil)
                        (m/record-metric! a-metric-store
                                          example-histogram-metric
                                          (nth labelss 5)
@@ -1443,7 +1457,50 @@
                                                        (assoc (nth labelss 3) :le (str threshold))
                                                        (if (<= (m/metric-value-value (nth values 3)) threshold) 1 0)
                                                        (m/metric-value-last-update-time-ms (nth values 3)))]
-                                (m/get-metric-samples! a-metric-store example-histogram-metric (nth labelss 3))))))))))
+                                (m/get-metric-samples! a-metric-store example-histogram-metric (nth labelss 3))))
+
+                       ;; TODO: commented to tests due to "method code too large"
+                       ;; update-time: nil
+                       (let [example-metric-sample-sum
+                             (nth (m/get-metric-samples! a-metric-store example-histogram-metric (nth labelss 4)) 0)
+                             example-metric-sample-count
+                             (nth (m/get-metric-samples! a-metric-store example-histogram-metric (nth labelss 4)) 1)
+                             example-metric-sample-inf
+                             (nth (m/get-metric-samples! a-metric-store example-histogram-metric (nth labelss 4)) 2)
+                             example-metric-sample-bucket
+                             (nth (m/get-metric-samples! a-metric-store example-histogram-metric (nth labelss 4)) 3)]
+
+                         (t/is (= (str (nth names 2) "_sum")
+                                  (m/metric-sample-name   example-metric-sample-sum)))
+                         (t/is (= (nth labelss 4)
+                                  (m/metric-sample-labels example-metric-sample-sum)))
+                         (t/is (= (m/metric-value-value (nth values 4))
+                                  (m/metric-sample-value example-metric-sample-sum)))
+                         (t/is (nat-int? (m/metric-sample-timestamp example-metric-sample-sum)))
+                         (t/is (= (str (nth names 2) "_count")
+                                  (m/metric-sample-name   example-metric-sample-count)))
+                         (t/is (= (nth labelss 4)
+                                  (m/metric-sample-labels example-metric-sample-count)))
+                         (t/is (= 1
+                                  (m/metric-sample-value example-metric-sample-count)))
+                         (t/is (nat-int? (m/metric-sample-timestamp example-metric-sample-count)))
+                         ;; (t/is (= (str (nth names 2) "_bucket")
+                         ;;          (m/metric-sample-name   example-metric-sample-inf)))
+                         (t/is (= (assoc (nth labelss 4) :le "+Inf")
+                                  (m/metric-sample-labels example-metric-sample-inf)))
+                         (t/is (= 1
+                                  (m/metric-sample-value example-metric-sample-inf)))
+                         (t/is (nat-int? (m/metric-sample-timestamp example-metric-sample-inf)))
+                         ;; (t/is (= (str (nth names 2) "_bucket")
+                         ;;          (m/metric-sample-name   example-metric-sample-bucket)))
+                         (t/is (= (assoc (nth labelss 4) :le (str threshold))
+                                  (m/metric-sample-labels example-metric-sample-bucket)))
+                         (t/is (= (if (<= (m/metric-value-value (nth values 4)) threshold) 1 0)
+                                  (m/metric-sample-value example-metric-sample-bucket)))
+                         (t/is (nat-int? (m/metric-sample-timestamp example-metric-sample-bucket))))))))))
+
+;; t-record-metric!-get-metric-samples!-global-store
+;; including timestamp nil and not given for record-metric!
 
 (t/deftest t-stored-value->metric-samples
   (t/testing "Getting metric-samples for a specific label from stored values
@@ -1818,7 +1875,7 @@
                                                                                  (m/metric-value-last-update-time-ms (nth values 3)))])
                                 (m/get-metric-sample-set-1 filled-histogram-metric-store example-histogram-metric)))))))))
 
-(t/deftest t-get-all-metric-sample-set-1
+(t/deftest t-get-all-metric-sample-sets-1
   (t/testing "Getting all metric sample sets from a metric store works."
     (t/is (quickcheck
            (property [names     (spec (gen-distinct-metric-names  3))
@@ -1951,7 +2008,7 @@
                                                                                   (m/metric-value-last-update-time-ms (nth values 3)))])]
                                  (m/get-all-metric-sample-sets-1 filled-metric-store)))))))))
 
-(t/deftest t-get-all-metric-sample-set!-global-store
+(t/deftest t-get-all-metric-sample-sets!-global-store
   (t/testing "Getting all metric sample sets from the metric store (atom) works."
     (t/is (quickcheck
            (property [names     (spec (gen-distinct-metric-names  3))
@@ -2125,7 +2182,7 @@
                                                                                   (m/metric-value-last-update-time-ms (nth values 3)))])]
                                  (m/get-all-metric-sample-sets!)))))))))
 
-(t/deftest t-get-all-metric-sample-set!
+(t/deftest t-get-all-metric-sample-sets!
   (t/testing "Getting all metric sample sets from the metric store (atom) works."
     (t/is (quickcheck
            (property [names     (spec (gen-distinct-metric-names  3))

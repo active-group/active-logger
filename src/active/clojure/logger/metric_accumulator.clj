@@ -582,11 +582,11 @@
                                   (make-stored-values metric metric-labels metric-value)))))
 
 (s/fdef record-metric!
-  :args (s/cat :optional-1     (s/? (s/cat :a-metric-store ::metric-store))
-               :metric         ::metric
-               :labels         ::metric-labels
-               :value-value    ::metric-value-value
-               :optional-2     (s/? (s/cat :last-update (s/nilable ::metric-value-last-update-time-ms))))
+  :args (s/cat :optional-1  (s/? (s/cat :a-metric-store ::metric-store))
+               :metric      ::metric
+               :labels      ::metric-labels
+               :value-value ::metric-value-value
+               :optional-2  (s/? (s/cat :last-update (s/nilable ::metric-value-last-update-time-ms))))
   :ret nil)
 (defn record-metric!
   "Record a metric."
