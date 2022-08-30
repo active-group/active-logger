@@ -3,6 +3,7 @@
   (:require [active.clojure.logger.riemann :as riemann-config]
             [active.clojure.logger.internal :as internal]
             [active.clojure.logger.metric-accumulator :as metric-accumulator]
+            [active.clojure.logger.metric-prometheus :as metric-prometheus]
             [active.clojure.monad :as monad]
             [active.clojure.config :as config]
             [active.clojure.record :refer [define-record-type]]))
@@ -47,17 +48,17 @@
    map emit-metric-map])
 
 (defn emit-metric-to-events!
-  [namespace label value mp]
+  [namespace metric-name metric-labels metric-value mp]
   (internal/log-event!-internal "metric"
                                 namespace
                                 :info
-                                (merge mp {:label label :metric value})
+                                (merge mp {:label metric-name :metric metric-value})
                                 (delay
-                                  [(str "Metric " label " = " value)])))
+                                  [(str "Metric " metric-name (metric-prometheus/render-labels metric-labels) " " metric-value)])))
 
 (defn emit-metric-to-riemann!
-  [config label value mp]
-  (riemann-config/send-event-to-riemann! config "metric" mp {:label label :metric value}))
+  [config metric-name metric-value mp]
+  (riemann-config/send-event-to-riemann! config "metric" mp {:label metric-name :metric metric-value}))
 
 (defn emit-metric-sample!-internal
   ([namespace metric-sample context-map]
@@ -69,7 +70,7 @@
            metric-value  (metric-accumulator/metric-sample-value metric-sample)
            labels-context-map (merge metric-labels context-map)]
        (case scconf
-         :events (emit-metric-to-events! namespace metric-name metric-value labels-context-map)
+         :events (emit-metric-to-events! namespace metric-name metric-labels metric-value labels-context-map)
          (emit-metric-to-riemann! scconf metric-name metric-value labels-context-map))))))
 
 (defn emit-metric-samples!-internal
