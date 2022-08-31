@@ -152,7 +152,6 @@
     (t/is (quickcheck
            (property [example-metric-value-1 (spec ::m/metric-value)
                       example-metric-value-2 (spec ::m/metric-value)]
-                     ;; TODO: Can we add the nil to the specs? (s/or nil? (spec ::m/metric-value))
                      ;; If there is no base value, just take the second.
                      (t/is (= example-metric-value-2
                               (m/update-metric-value + nil example-metric-value-2)))
