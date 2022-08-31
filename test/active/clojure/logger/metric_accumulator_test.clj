@@ -1672,36 +1672,36 @@
   (t/testing "Creating a metric-sample-set works."
     (t/is (quickcheck
            (property [name        (spec ::m/metric-name)
-                      type-string (spec ::m/metric-type-string)
+                      type (spec ::m/metric-type)
                       help        (spec ::m/metric-help)
                       ;; FIXME
                       ;; samples     (spec (gen-metric-samples 4))
                       ]
                      (let [samples-1 []
                            example-metric-sample-set-1 (m/make-metric-sample-set name
-                                                                                 type-string
+                                                                                 type
                                                                                  help
                                                                                  samples-1)
 ;;                            example-metric-sample-set (m/make-metric-sample-set name
-;;                                                                                type-string
+;;                                                                                type
 ;;                                                                                help
 ;;                                                                                samples)
                            ]
                        (t/is                (m/metric-sample-set?            example-metric-sample-set-1))
                        (t/is (= name        (m/metric-sample-set-name        example-metric-sample-set-1)))
-                       (t/is (= type-string (m/metric-sample-set-type-string example-metric-sample-set-1)))
+                       (t/is (= type (m/metric-sample-set-type example-metric-sample-set-1)))
                        (t/is (= help        (m/metric-sample-set-help        example-metric-sample-set-1)))
                        (t/is (= samples-1   (m/metric-sample-set-samples     example-metric-sample-set-1)))))))))
 
-(t/deftest t-metric-type-string
+(t/deftest t-metric-type
   (t/testing "Getting the metric type as string works."
     (t/is (quickcheck
            (property [example-gauge-metric     (spec ::m/gauge-metric)
                       example-counter-metric   (spec ::m/counter-metric)
                       example-histogram-metric (spec ::m/histogram-metric)]
-                     (t/is (= "GAUGE"     (m/metric-type-string example-gauge-metric)))
-                     (t/is (= "COUNTER"   (m/metric-type-string example-counter-metric)))
-                     (t/is (= "HISTOGRAM" (m/metric-type-string example-histogram-metric))))))))
+                     (t/is (= :gauge     (m/metric-type example-gauge-metric)))
+                     (t/is (= :counter   (m/metric-type example-counter-metric)))
+                     (t/is (= :histogram (m/metric-type example-histogram-metric))))))))
 
 (t/deftest t-metric-name
   (t/testing "Getting the metric name works."
@@ -1763,7 +1763,7 @@
                        ;; GAUGES
                        (t/is (= [] (m/get-metric-sample-set-1 empty-metric-store example-gauge-metric)))
                        (t/is (= (m/make-metric-sample-set (nth names 0)
-                                                          "GAUGE"
+                                                          :gauge
                                                           (nth helps 0)
                                                           [(m/make-metric-sample (nth names 0)
                                                                                  (nth labelss 0)
@@ -1785,7 +1785,7 @@
                        ;; COUNTERS
                        (t/is (= [] (m/get-metric-sample-set-1 empty-metric-store example-counter-metric)))
                        (t/is (= (m/make-metric-sample-set (nth names 1)
-                                                          "COUNTER"
+                                                          :counter
                                                           (nth helps 1)
                                                           [(m/make-metric-sample (nth names 1)
                                                                                  (nth labelss 0)
@@ -1807,7 +1807,7 @@
                        ;; HISTOGRAMS
                        (t/is (= [] (m/get-metric-sample-set-1 empty-metric-store example-histogram-metric)))
                        (t/is (= (m/make-metric-sample-set basename
-                                                          "HISTOGRAM"
+                                                          :histogram
                                                           (nth helps 2)
                                                           [(m/make-metric-sample (str basename "_sum")
                                                                                  (nth labelss 0)
@@ -1902,7 +1902,7 @@
                            basename (nth names 2)]
                        (t/is (= [] (m/get-all-metric-sample-sets-1 empty-metric-store)))
                        (t/is (= [(m/make-metric-sample-set (nth names 0)
-                                                          "GAUGE"
+                                                          :gauge
                                                           (nth helps 0)
                                                           [(m/make-metric-sample (nth names 0)
                                                                                  (nth labelss 0)
@@ -1921,7 +1921,7 @@
                                                                                  (m/metric-value-value               (nth values 3))
                                                                                  (m/metric-value-last-update-time-ms (nth values 3)))])
                                  (m/make-metric-sample-set (nth names 1)
-                                                           "COUNTER"
+                                                           :counter
                                                            (nth helps 1)
                                                            [(m/make-metric-sample (nth names 1)
                                                                                   (nth labelss 0)
@@ -1940,7 +1940,7 @@
                                                                                   (m/metric-value-value               (nth values 3))
                                                                                   (m/metric-value-last-update-time-ms (nth values 3)))])
                                  (m/make-metric-sample-set basename
-                                                           "HISTOGRAM"
+                                                           :histogram
                                                            (nth helps 2)
                                                            [(m/make-metric-sample (str basename "_sum")
                                                                                   (nth labelss 0)
@@ -2076,7 +2076,7 @@
                                          (m/metric-value-last-update-time-ms (nth values 3)))
 
                        (t/is (= [(m/make-metric-sample-set (nth names 0)
-                                                          "GAUGE"
+                                                          :gauge
                                                           (nth helps 0)
                                                           [(m/make-metric-sample (nth names 0)
                                                                                  (nth labelss 0)
@@ -2095,7 +2095,7 @@
                                                                                  (m/metric-value-value               (nth values 3))
                                                                                  (m/metric-value-last-update-time-ms (nth values 3)))])
                                  (m/make-metric-sample-set (nth names 1)
-                                                           "COUNTER"
+                                                           :counter
                                                            (nth helps 1)
                                                            [(m/make-metric-sample (nth names 1)
                                                                                   (nth labelss 0)
@@ -2114,7 +2114,7 @@
                                                                                   (m/metric-value-value               (nth values 3))
                                                                                   (m/metric-value-last-update-time-ms (nth values 3)))])
                                  (m/make-metric-sample-set basename
-                                                           "HISTOGRAM"
+                                                           :histogram
                                                            (nth helps 2)
                                                            [(m/make-metric-sample (str basename "_sum")
                                                                                   (nth labelss 0)
@@ -2262,7 +2262,7 @@
                                          (m/metric-value-last-update-time-ms (nth values 3)))
 
                        (t/is (= [(m/make-metric-sample-set (nth names 0)
-                                                          "GAUGE"
+                                                          :gauge
                                                           (nth helps 0)
                                                           [(m/make-metric-sample (nth names 0)
                                                                                  (nth labelss 0)
@@ -2281,7 +2281,7 @@
                                                                                  (m/metric-value-value               (nth values 3))
                                                                                  (m/metric-value-last-update-time-ms (nth values 3)))])
                                  (m/make-metric-sample-set (nth names 1)
-                                                           "COUNTER"
+                                                           :counter
                                                            (nth helps 1)
                                                            [(m/make-metric-sample (nth names 1)
                                                                                   (nth labelss 0)
@@ -2300,7 +2300,7 @@
                                                                                   (m/metric-value-value               (nth values 3))
                                                                                   (m/metric-value-last-update-time-ms (nth values 3)))])
                                  (m/make-metric-sample-set basename
-                                                           "HISTOGRAM"
+                                                           :histogram
                                                            (nth helps 2)
                                                            [(m/make-metric-sample (str basename "_sum")
                                                                                   (nth labelss 0)
@@ -2374,7 +2374,7 @@
   "Metric sample set where nothing is pruned."
   [names helps labelss values basename threshold]
   [(m/make-metric-sample-set (nth names 0)
-                             "GAUGE"
+                             :gauge
                              (nth helps 0)
                              [(m/make-metric-sample (nth names 0)
                                                     (nth labelss 0)
@@ -2393,7 +2393,7 @@
                                                     (m/metric-value-value               (nth values 3))
                                                     (m/metric-value-last-update-time-ms (nth values 3)))])
    (m/make-metric-sample-set (nth names 1)
-                             "COUNTER"
+                             :counter
                              (nth helps 1)
                              [(m/make-metric-sample (nth names 1)
                                                     (nth labelss 0)
@@ -2412,7 +2412,7 @@
                                                     (m/metric-value-value               (nth values 3))
                                                     (m/metric-value-last-update-time-ms (nth values 3)))])
    (m/make-metric-sample-set basename
-                             "HISTOGRAM"
+                             :histogram
                              (nth helps 2)
                              [(m/make-metric-sample (str basename "_sum")
                                                     (nth labelss 0)
@@ -2481,7 +2481,7 @@
   "Metric sample set where nothing is pruned."
   [names helps labelss values basename threshold]
   [(m/make-metric-sample-set (nth names 0)
-                             "GAUGE"
+                             :gauge
                              (nth helps 0)
                              [(m/make-metric-sample (nth names 0)
                                                     (nth labelss 0)
@@ -2500,7 +2500,7 @@
                                                     (m/metric-value-value               (nth values 3))
                                                     (m/metric-value-last-update-time-ms (nth values 3)))])
    (m/make-metric-sample-set (nth names 1)
-                             "COUNTER"
+                             :counter
                              (nth helps 1)
                              [(m/make-metric-sample (nth names 1)
                                                     (nth labelss 0)
@@ -2519,7 +2519,7 @@
                                                     (m/metric-value-value               (nth values 3))
                                                     (m/metric-value-last-update-time-ms (nth values 3)))])
    (m/make-metric-sample-set basename
-                             "HISTOGRAM"
+                             :histogram
                              (nth helps 2)
                              [(m/make-metric-sample (str basename "_sum")
                                                     (nth labelss 0)
@@ -2590,7 +2590,7 @@
   "Metric sample set where some were pruned."
   [names helps labelss values basename threshold]
   [(m/make-metric-sample-set (nth names 0)
-                             "GAUGE"
+                             :gauge
                              (nth helps 0)
                              [(m/make-metric-sample (nth names 0)
                                                     (nth labelss 2)
@@ -2601,7 +2601,7 @@
                                                     (m/metric-value-value               (nth values 3))
                                                     (m/metric-value-last-update-time-ms (nth values 3)))])
    (m/make-metric-sample-set (nth names 1)
-                             "COUNTER"
+                             :counter
                              (nth helps 1)
                              [(m/make-metric-sample (nth names 1)
                                                     (nth labelss 2)
@@ -2612,7 +2612,7 @@
                                                     (m/metric-value-value               (nth values 3))
                                                     (m/metric-value-last-update-time-ms (nth values 3)))])
    (m/make-metric-sample-set basename
-                             "HISTOGRAM"
+                             :histogram
                              (nth helps 2)
                              [(m/make-metric-sample (str basename "_sum")
                                                     (nth labelss 2)

@@ -26,6 +26,13 @@
        " " (metric-accumulator/metric-sample-value metric-sample)
        (maybe-render-timestamp (metric-accumulator/metric-sample-timestamp metric-sample))))
 
+(defn render-metric-type
+  [metric-type]
+  (case metric-type
+    :gauge "gauge"
+    :counter "counter"
+    :histogram "histogram"))
+
 (defn render-metric-set
   [metric-sample-set]
   (string/join "\n"
@@ -33,7 +40,7 @@
                  [(str "# HELP " (metric-accumulator/metric-sample-set-name metric-sample-set) " "
                        (metric-accumulator/metric-sample-set-help metric-sample-set))
                   (str "# TYPE " (metric-accumulator/metric-sample-set-name metric-sample-set) " "
-                       (metric-accumulator/metric-sample-set-type-string metric-sample-set))]
+                       (render-metric-type (metric-accumulator/metric-sample-set-type metric-sample-set)))]
                  (mapv render-metric-sample (metric-accumulator/metric-sample-set-samples metric-sample-set)))))
 
 (defn render-metric-sets

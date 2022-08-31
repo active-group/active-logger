@@ -36,7 +36,7 @@
 
 (t/deftest t-log-metric!-internal
   (m/log-metric!-internal (str *ns*) (metric-accumulator/make-gauge-metric "name" "help") {:label "a"} 23 {:context "b"})
-  (t/is (= [(metric-accumulator/make-metric-sample-set "name" "GAUGE" "help"
+  (t/is (= [(metric-accumulator/make-metric-sample-set "name" :gauge "help"
                                                        [(metric-accumulator/make-metric-sample "name" {:label "a"} 23 0)])]
            (strip-timestamps-in-sample-sets (metric-accumulator/get-all-metric-sample-sets!)))))
 
@@ -47,25 +47,25 @@
                 (monad/monadic
                  (m/log-metric-internal (str *ns*) (metric-accumulator/make-gauge-metric "name" "help") {:label "a"} 23 {:context "b"})
                  (metric-accumulator/get-all-metric-sample-sets)))]
-    (t/is (= [(metric-accumulator/make-metric-sample-set "name" "GAUGE" "help"
+    (t/is (= [(metric-accumulator/make-metric-sample-set "name" :gauge "help"
                                                         [(metric-accumulator/make-metric-sample "name" {:label "a"} 23 0)])]
              (strip-timestamps-in-sample-sets result)))))
 
 (t/deftest t-log-metric!-2
   (m/log-metric! (metric-accumulator/make-gauge-metric "name" "help") {:label "a"} 23)
-  (t/is (= [(metric-accumulator/make-metric-sample-set "name" "GAUGE" "help"
+  (t/is (= [(metric-accumulator/make-metric-sample-set "name" :gauge "help"
                                                       [(metric-accumulator/make-metric-sample "name" {:label "a"} 23 0)])]
            (strip-timestamps-in-sample-sets (metric-accumulator/get-all-metric-sample-sets!)))))
 
 (t/deftest t-log-metric!-3
   (m/log-metric! (metric-accumulator/make-gauge-metric "name" "help") {:label "a"} 23 {:context "b"})
-  (t/is (= [(metric-accumulator/make-metric-sample-set "name" "GAUGE" "help"
+  (t/is (= [(metric-accumulator/make-metric-sample-set "name" :gauge "help"
                                                       [(metric-accumulator/make-metric-sample "name" {:label "a"} 23 0)])]
            (strip-timestamps-in-sample-sets (metric-accumulator/get-all-metric-sample-sets!)))))
 
 (t/deftest t-log-metric!-4
   (m/log-metric! (metric-accumulator/make-gauge-metric "name" "help") {:label "a"} 23 {:context "b"} (str *ns*))
-  (t/is (= [(metric-accumulator/make-metric-sample-set "name" "GAUGE" "help"
+  (t/is (= [(metric-accumulator/make-metric-sample-set "name" :gauge "help"
                                                       [(metric-accumulator/make-metric-sample "name" {:label "a"} 23 0)])]
            (strip-timestamps-in-sample-sets (metric-accumulator/get-all-metric-sample-sets!)))))
 
@@ -77,7 +77,7 @@
                 (monad/monadic
                  (m/log-metric (metric-accumulator/make-gauge-metric "name" "help") {:label "a"} 23)
                  (metric-accumulator/get-all-metric-sample-sets)))]
-    (t/is (= [(metric-accumulator/make-metric-sample-set "name" "GAUGE" "help"
+    (t/is (= [(metric-accumulator/make-metric-sample-set "name" :gauge "help"
                                                         [(metric-accumulator/make-metric-sample "name" {:label "a"} 23 0)])]
              (strip-timestamps-in-sample-sets result)))))
 
@@ -88,7 +88,7 @@
                 (monad/monadic
                  (m/log-metric (metric-accumulator/make-gauge-metric "name" "help") {:label "a"} 23 {:context "b"})
                  (metric-accumulator/get-all-metric-sample-sets)))]
-    (t/is (= [(metric-accumulator/make-metric-sample-set "name" "GAUGE" "help"
+    (t/is (= [(metric-accumulator/make-metric-sample-set "name" :gauge "help"
                                                         [(metric-accumulator/make-metric-sample "name" {:label "a"} 23 0)])]
              (strip-timestamps-in-sample-sets result)))))
 
@@ -99,37 +99,37 @@
                 (monad/monadic
                  (m/log-metric (metric-accumulator/make-gauge-metric "name" "help") {:label "a"} 23 {:context "b"} (str *ns*))
                  (metric-accumulator/get-all-metric-sample-sets)))]
-    (t/is (= [(metric-accumulator/make-metric-sample-set "name" "GAUGE" "help"
+    (t/is (= [(metric-accumulator/make-metric-sample-set "name" :gauge "help"
                                                         [(metric-accumulator/make-metric-sample "name" {:label "a"} 23 0)])]
              (strip-timestamps-in-sample-sets result)))))
 
 (t/deftest t-log-gauge-metric!-2
   (m/log-gauge-metric! "name" 23)
-  (t/is (= [(metric-accumulator/make-metric-sample-set "name" "GAUGE" "name"
+  (t/is (= [(metric-accumulator/make-metric-sample-set "name" :gauge "name"
                                                       [(metric-accumulator/make-metric-sample "name" {} 23 0)])]
            (strip-timestamps-in-sample-sets (metric-accumulator/get-all-metric-sample-sets!)))))
 
 (t/deftest t-log-gauge-metric!-3
   (m/log-gauge-metric! "name" {:label "a"} 23)
-  (t/is (= [(metric-accumulator/make-metric-sample-set "name" "GAUGE" "name"
+  (t/is (= [(metric-accumulator/make-metric-sample-set "name" :gauge "name"
                                                       [(metric-accumulator/make-metric-sample "name" {:label "a"} 23 0)])]
            (strip-timestamps-in-sample-sets (metric-accumulator/get-all-metric-sample-sets!)))))
 
 (t/deftest t-log-gauge-metric!-4
   (m/log-gauge-metric! "name" {:label "a"} "help" 23)
-  (t/is (= [(metric-accumulator/make-metric-sample-set "name" "GAUGE" "help"
+  (t/is (= [(metric-accumulator/make-metric-sample-set "name" :gauge "help"
                                                       [(metric-accumulator/make-metric-sample "name" {:label "a"} 23 0)])]
            (strip-timestamps-in-sample-sets (metric-accumulator/get-all-metric-sample-sets!)))))
 
 (t/deftest t-log-gauge-metric!-5
   (m/log-gauge-metric! "name" {:label "a"} "help" 23 {:context "b"})
-  (t/is (= [(metric-accumulator/make-metric-sample-set "name" "GAUGE" "help"
+  (t/is (= [(metric-accumulator/make-metric-sample-set "name" :gauge "help"
                                                       [(metric-accumulator/make-metric-sample "name" {:label "a"} 23 0)])]
            (strip-timestamps-in-sample-sets (metric-accumulator/get-all-metric-sample-sets!)))))
 
 (t/deftest t-log-gauge-metric!-6
   (m/log-gauge-metric! "name" {:label "a"} "help" 23 {:context "b"} (str *ns*))
-  (t/is (= [(metric-accumulator/make-metric-sample-set "name" "GAUGE" "help"
+  (t/is (= [(metric-accumulator/make-metric-sample-set "name" :gauge "help"
                                                       [(metric-accumulator/make-metric-sample "name" {:label "a"} 23 0)])]
            (strip-timestamps-in-sample-sets (metric-accumulator/get-all-metric-sample-sets!)))))
 
@@ -140,7 +140,7 @@
                 (monad/monadic
                  (m/log-gauge-metric "name" 23)
                  (metric-accumulator/get-all-metric-sample-sets)))]
-    (t/is (= [(metric-accumulator/make-metric-sample-set "name" "GAUGE" "name"
+    (t/is (= [(metric-accumulator/make-metric-sample-set "name" :gauge "name"
                                                         [(metric-accumulator/make-metric-sample "name" {} 23 0)])]
              (strip-timestamps-in-sample-sets result)))))
 
@@ -151,7 +151,7 @@
                 (monad/monadic
                  (m/log-gauge-metric "name" {:label "a"} 23)
                  (metric-accumulator/get-all-metric-sample-sets)))]
-    (t/is (= [(metric-accumulator/make-metric-sample-set "name" "GAUGE" "name"
+    (t/is (= [(metric-accumulator/make-metric-sample-set "name" :gauge "name"
                                                         [(metric-accumulator/make-metric-sample "name" {:label "a"} 23 0)])]
              (strip-timestamps-in-sample-sets result)))))
 
@@ -162,7 +162,7 @@
                 (monad/monadic
                  (m/log-gauge-metric "name" {:label "a"} "help" 23)
                  (metric-accumulator/get-all-metric-sample-sets)))]
-    (t/is (= [(metric-accumulator/make-metric-sample-set "name" "GAUGE" "help"
+    (t/is (= [(metric-accumulator/make-metric-sample-set "name" :gauge "help"
                                                         [(metric-accumulator/make-metric-sample "name" {:label "a"} 23 0)])]
              (strip-timestamps-in-sample-sets result)))))
 
@@ -173,7 +173,7 @@
                 (monad/monadic
                  (m/log-gauge-metric "name" {:label "a"} "help" 23 {:context "b"})
                  (metric-accumulator/get-all-metric-sample-sets)))]
-    (t/is (= [(metric-accumulator/make-metric-sample-set "name" "GAUGE" "help"
+    (t/is (= [(metric-accumulator/make-metric-sample-set "name" :gauge "help"
                                                         [(metric-accumulator/make-metric-sample "name" {:label "a"} 23 0)])]
              (strip-timestamps-in-sample-sets result)))))
 
@@ -184,37 +184,37 @@
                 (monad/monadic
                  (m/log-gauge-metric "name" {:label "a"} "help" 23 {:context "b"} (str *ns*))
                  (metric-accumulator/get-all-metric-sample-sets)))]
-    (t/is (= [(metric-accumulator/make-metric-sample-set "name" "GAUGE" "help"
+    (t/is (= [(metric-accumulator/make-metric-sample-set "name" :gauge "help"
                                                         [(metric-accumulator/make-metric-sample "name" {:label "a"} 23 0)])]
              (strip-timestamps-in-sample-sets result)))))
 
 (t/deftest t-log-counter-metric!-2
   (m/log-counter-metric! "name" 23)
-  (t/is (= [(metric-accumulator/make-metric-sample-set "name" "COUNTER" "name"
+  (t/is (= [(metric-accumulator/make-metric-sample-set "name" :counter "name"
                                                       [(metric-accumulator/make-metric-sample "name" {} 23 0)])]
            (strip-timestamps-in-sample-sets (metric-accumulator/get-all-metric-sample-sets!)))))
 
 (t/deftest t-log-counter-metric!-3
   (m/log-counter-metric! "name" {:label "a"} 23)
-  (t/is (= [(metric-accumulator/make-metric-sample-set "name" "COUNTER" "name"
+  (t/is (= [(metric-accumulator/make-metric-sample-set "name" :counter "name"
                                                       [(metric-accumulator/make-metric-sample "name" {:label "a"} 23 0)])]
            (strip-timestamps-in-sample-sets (metric-accumulator/get-all-metric-sample-sets!)))))
 
 (t/deftest t-log-counter-metric!-4
   (m/log-counter-metric! "name" {:label "a"} "help" 23)
-  (t/is (= [(metric-accumulator/make-metric-sample-set "name" "COUNTER" "help"
+  (t/is (= [(metric-accumulator/make-metric-sample-set "name" :counter "help"
                                                       [(metric-accumulator/make-metric-sample "name" {:label "a"} 23 0)])]
            (strip-timestamps-in-sample-sets (metric-accumulator/get-all-metric-sample-sets!)))))
 
 (t/deftest t-log-counter-metric!-5
   (m/log-counter-metric! "name" {:label "a"} "help" 23 {:context "b"})
-  (t/is (= [(metric-accumulator/make-metric-sample-set "name" "COUNTER" "help"
+  (t/is (= [(metric-accumulator/make-metric-sample-set "name" :counter "help"
                                                       [(metric-accumulator/make-metric-sample "name" {:label "a"} 23 0)])]
            (strip-timestamps-in-sample-sets (metric-accumulator/get-all-metric-sample-sets!)))))
 
 (t/deftest t-log-counter-metric!-6
   (m/log-counter-metric! "name" {:label "a"} "help" 23 {:context "b"} (str *ns*))
-  (t/is (= [(metric-accumulator/make-metric-sample-set "name" "COUNTER" "help"
+  (t/is (= [(metric-accumulator/make-metric-sample-set "name" :counter "help"
                                                       [(metric-accumulator/make-metric-sample "name" {:label "a"} 23 0)])]
            (strip-timestamps-in-sample-sets (metric-accumulator/get-all-metric-sample-sets!)))))
 
@@ -225,7 +225,7 @@
                 (monad/monadic
                  (m/log-counter-metric "name" 23)
                  (metric-accumulator/get-all-metric-sample-sets)))]
-    (t/is (= [(metric-accumulator/make-metric-sample-set "name" "COUNTER" "name"
+    (t/is (= [(metric-accumulator/make-metric-sample-set "name" :counter "name"
                                                         [(metric-accumulator/make-metric-sample "name" {} 23 0)])]
              (strip-timestamps-in-sample-sets result)))))
 
@@ -236,7 +236,7 @@
                 (monad/monadic
                  (m/log-counter-metric "name" {:label "a"} 23)
                  (metric-accumulator/get-all-metric-sample-sets)))]
-    (t/is (= [(metric-accumulator/make-metric-sample-set "name" "COUNTER" "name"
+    (t/is (= [(metric-accumulator/make-metric-sample-set "name" :counter "name"
                                                         [(metric-accumulator/make-metric-sample "name" {:label "a"} 23 0)])]
              (strip-timestamps-in-sample-sets result)))))
 
@@ -247,7 +247,7 @@
                 (monad/monadic
                  (m/log-counter-metric "name" {:label "a"} "help" 23)
                  (metric-accumulator/get-all-metric-sample-sets)))]
-    (t/is (= [(metric-accumulator/make-metric-sample-set "name" "COUNTER" "help"
+    (t/is (= [(metric-accumulator/make-metric-sample-set "name" :counter "help"
                                                         [(metric-accumulator/make-metric-sample "name" {:label "a"} 23 0)])]
              (strip-timestamps-in-sample-sets result)))))
 
@@ -258,7 +258,7 @@
                 (monad/monadic
                  (m/log-counter-metric "name" {:label "a"} "help" 23 {:context "b"})
                  (metric-accumulator/get-all-metric-sample-sets)))]
-    (t/is (= [(metric-accumulator/make-metric-sample-set "name" "COUNTER" "help"
+    (t/is (= [(metric-accumulator/make-metric-sample-set "name" :counter "help"
                                                         [(metric-accumulator/make-metric-sample "name" {:label "a"} 23 0)])]
              (strip-timestamps-in-sample-sets result)))))
 
@@ -269,13 +269,13 @@
                 (monad/monadic
                  (m/log-counter-metric "name" {:label "a"} "help" 23 {:context "b"} (str *ns*))
                  (metric-accumulator/get-all-metric-sample-sets)))]
-    (t/is (= [(metric-accumulator/make-metric-sample-set "name" "COUNTER" "help"
+    (t/is (= [(metric-accumulator/make-metric-sample-set "name" :counter "help"
                                                         [(metric-accumulator/make-metric-sample "name" {:label "a"} 23 0)])]
              (strip-timestamps-in-sample-sets result)))))
 
 (t/deftest t-log-histogram-metric!-3
   (m/log-histogram-metric! "name" 20 23)
-  (t/is (= [(metric-accumulator/make-metric-sample-set "name" "HISTOGRAM" "name"
+  (t/is (= [(metric-accumulator/make-metric-sample-set "name" :histogram "name"
                                                       [(metric-accumulator/make-metric-sample "name_sum" {} 23 0)
                                                        (metric-accumulator/make-metric-sample "name_count" {} 1 0)
                                                        (metric-accumulator/make-metric-sample "name_bucket" {:le "+Inf"} 1 0)
@@ -284,7 +284,7 @@
 
 (t/deftest t-log-histogram-metric!-4
   (m/log-histogram-metric! "name" 20 {:label "a"} 23)
-  (t/is (= [(metric-accumulator/make-metric-sample-set "name" "HISTOGRAM" "name"
+  (t/is (= [(metric-accumulator/make-metric-sample-set "name" :histogram "name"
                                                       [(metric-accumulator/make-metric-sample "name_sum" {:label "a"} 23 0)
                                                        (metric-accumulator/make-metric-sample "name_count" {:label "a"} 1 0)
                                                        (metric-accumulator/make-metric-sample "name_bucket" {:label "a" :le "+Inf"} 1 0)
@@ -293,7 +293,7 @@
 
 (t/deftest t-log-histogram-metric!-5
   (m/log-histogram-metric! "name" 20 {:label "a"} "help" 23)
-  (t/is (= [(metric-accumulator/make-metric-sample-set "name" "HISTOGRAM" "help"
+  (t/is (= [(metric-accumulator/make-metric-sample-set "name" :histogram "help"
                                                       [(metric-accumulator/make-metric-sample "name_sum" {:label "a"} 23 0)
                                                        (metric-accumulator/make-metric-sample "name_count" {:label "a"} 1 0)
                                                        (metric-accumulator/make-metric-sample "name_bucket" {:label "a" :le "+Inf"} 1 0)
@@ -302,7 +302,7 @@
 
 (t/deftest t-log-histogram-metric!-6
   (m/log-histogram-metric! "name" 20 {:label "a"} "help" 23 {:context "b"})
-  (t/is (= [(metric-accumulator/make-metric-sample-set "name" "HISTOGRAM" "help"
+  (t/is (= [(metric-accumulator/make-metric-sample-set "name" :histogram "help"
                                                       [(metric-accumulator/make-metric-sample "name_sum" {:label "a"} 23 0)
                                                        (metric-accumulator/make-metric-sample "name_count" {:label "a"} 1 0)
                                                        (metric-accumulator/make-metric-sample "name_bucket" {:label "a" :le "+Inf"} 1 0)
@@ -311,7 +311,7 @@
 
 (t/deftest t-log-histogram-metric!-7
   (m/log-histogram-metric! "name" 20 {:label "a"} "help" 23 {:context "b"} (str *ns*))
-  (t/is (= [(metric-accumulator/make-metric-sample-set "name" "HISTOGRAM" "help"
+  (t/is (= [(metric-accumulator/make-metric-sample-set "name" :histogram "help"
                                                       [(metric-accumulator/make-metric-sample "name_sum" {:label "a"} 23 0)
                                                        (metric-accumulator/make-metric-sample "name_count" {:label "a"} 1 0)
                                                        (metric-accumulator/make-metric-sample "name_bucket" {:label "a" :le "+Inf"} 1 0)
@@ -325,7 +325,7 @@
                 (monad/monadic
                  (m/log-histogram-metric "name" 20 23)
                  (metric-accumulator/get-all-metric-sample-sets)))]
-    (t/is (= [(metric-accumulator/make-metric-sample-set "name" "HISTOGRAM" "name"
+    (t/is (= [(metric-accumulator/make-metric-sample-set "name" :histogram "name"
                                                         [(metric-accumulator/make-metric-sample "name_sum" {} 23 0)
                                                          (metric-accumulator/make-metric-sample "name_count" {} 1 0)
                                                          (metric-accumulator/make-metric-sample "name_bucket" {:le "+Inf"} 1 0)
@@ -339,7 +339,7 @@
                 (monad/monadic
                  (m/log-histogram-metric "name" 20 {:label "a"} 23)
                  (metric-accumulator/get-all-metric-sample-sets)))]
-    (t/is (= [(metric-accumulator/make-metric-sample-set "name" "HISTOGRAM" "name"
+    (t/is (= [(metric-accumulator/make-metric-sample-set "name" :histogram "name"
                                                         [(metric-accumulator/make-metric-sample "name_sum" {:label "a"} 23 0)
                                                          (metric-accumulator/make-metric-sample "name_count" {:label "a"} 1 0)
                                                          (metric-accumulator/make-metric-sample "name_bucket" {:label "a" :le "+Inf"} 1 0)
@@ -353,7 +353,7 @@
                 (monad/monadic
                  (m/log-histogram-metric "name" 20 {:label "a"} "help" 23)
                  (metric-accumulator/get-all-metric-sample-sets)))]
-    (t/is (= [(metric-accumulator/make-metric-sample-set "name" "HISTOGRAM" "help"
+    (t/is (= [(metric-accumulator/make-metric-sample-set "name" :histogram "help"
                                                         [(metric-accumulator/make-metric-sample "name_sum" {:label "a"} 23 0)
                                                          (metric-accumulator/make-metric-sample "name_count" {:label "a"} 1 0)
                                                          (metric-accumulator/make-metric-sample "name_bucket" {:label "a" :le "+Inf"} 1 0)
@@ -367,7 +367,7 @@
                 (monad/monadic
                  (m/log-histogram-metric "name" 20 {:label "a"} "help" 23 {:context "b"})
                  (metric-accumulator/get-all-metric-sample-sets)))]
-    (t/is (= [(metric-accumulator/make-metric-sample-set "name" "HISTOGRAM" "help"
+    (t/is (= [(metric-accumulator/make-metric-sample-set "name" :histogram "help"
                                                         [(metric-accumulator/make-metric-sample "name_sum" {:label "a"} 23 0)
                                                          (metric-accumulator/make-metric-sample "name_count" {:label "a"} 1 0)
                                                          (metric-accumulator/make-metric-sample "name_bucket" {:label "a" :le "+Inf"} 1 0)
@@ -381,7 +381,7 @@
                 (monad/monadic
                  (m/log-histogram-metric "name" 20 {:label "a"} "help" 23 {:context "b"} (str *ns*))
                  (metric-accumulator/get-all-metric-sample-sets)))]
-    (t/is (= [(metric-accumulator/make-metric-sample-set "name" "HISTOGRAM" "help"
+    (t/is (= [(metric-accumulator/make-metric-sample-set "name" :histogram "help"
                                                         [(metric-accumulator/make-metric-sample "name_sum" {:label "a"} 23 0)
                                                          (metric-accumulator/make-metric-sample "name_count" {:label "a"} 1 0)
                                                          (metric-accumulator/make-metric-sample "name_bucket" {:label "a" :le "+Inf"} 1 0)

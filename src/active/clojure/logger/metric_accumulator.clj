@@ -661,32 +661,32 @@
   ^:private really-make-metric-sample-set
   metric-sample-set?
   [name metric-sample-set-name
-   type-string metric-sample-set-type-string
+   type metric-sample-set-type
    help metric-sample-set-help
    samples metric-sample-set-samples])
 
 (s/def ::metric-sample-set (s/spec (partial instance? MetricSampleSet)))
-(s/def ::metric-type-string #{"GAUGE" "COUNTER" "HISTOGRAM"})
+(s/def ::metric-type #{:gauge :counter :histogram})
 
 (s/fdef make-metric-sample-set
   :args (s/cat :name        ::metric-name
-               :type-string ::metric-type-string
+               :type ::metric-type
                :help        ::metric-help
                :samples     (s/coll-of ::metric-sample))
   :ret ::metric-sample-set)
 (defn make-metric-sample-set
-  [name type-string help samples]
-  (really-make-metric-sample-set name type-string help samples))
+  [name type help samples]
+  (really-make-metric-sample-set name type help samples))
 
-(s/fdef metric-type-string
+(s/fdef metric-type
   :args (s/cat :metric ::metric)
-  :ret ::metric-type-string)
-(defn metric-type-string
+  :ret ::metric-type)
+(defn metric-type
   [metric]
   (cond
-    (gauge-metric?     metric) "GAUGE"
-    (counter-metric?   metric) "COUNTER"
-    (histogram-metric? metric) "HISTOGRAM"))
+    (gauge-metric?     metric) :gauge
+    (counter-metric?   metric) :counter
+    (histogram-metric? metric) :histogram))
 
 (s/fdef metric-name
   :args (s/cat :metric ::metric)
@@ -716,7 +716,7 @@
   [metric-store metric]
   (if-let [stored-value (get metric-store metric)]
     (make-metric-sample-set (metric-name metric)
-                            (metric-type-string metric)
+                            (metric-type metric)
                             (metric-help metric)
                             (stored-value->all-metric-samples metric stored-value))
     []))
