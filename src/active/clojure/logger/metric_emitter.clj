@@ -54,7 +54,7 @@
                                 :info
                                 (merge mp {:label metric-name :metric metric-value})
                                 (delay
-                                  [(str "Metric " metric-name (metric-prometheus/render-labels metric-labels) " " metric-value)])))
+                                  [(str "Metric " (metric-prometheus/cleanup-non-prometheus-label-characters metric-name) (metric-prometheus/render-labels metric-labels) " " metric-value)])))
 
 (defn emit-metric-to-riemann!
   [config metric-name metric-value mp]
