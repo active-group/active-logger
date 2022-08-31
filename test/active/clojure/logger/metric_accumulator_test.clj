@@ -17,29 +17,19 @@
 
 (defn gen-distinct-metric-names
   [num-elems]
-  (s/spec (s/coll-of ::m/metric-name :into [])
-          :gen (fn []
-                 (tgen/list-distinct (s/gen ::m/metric-name) {:num-elements num-elems}))))
+  (s/spec (s/coll-of ::m/metric-name :distinct true :into [] :count num-elems)))
 
-;; TODO: Does not need to be distinct
 (defn gen-metric-helps
   [num-elems]
-   (s/spec (s/coll-of ::m/metric-help :into [])
-           :gen (fn []
-                  (tgen/list-distinct (s/gen ::m/metric-help) {:num-elements num-elems}))))
+   (s/spec (s/coll-of ::m/metric-help :distinct false :into [] :count num-elems)))
 
 (defn gen-distinct-metric-labels
   [num-elems]
-  (s/spec (s/coll-of ::m/metric-labels :into [])
-          :gen (fn []
-                 (tgen/list-distinct (s/gen ::m/metric-labels) {:num-elements num-elems}))))
+  (s/spec (s/coll-of ::m/metric-labels :distinct true :into [] :count num-elems)))
 
-;; TODO: Does not need to be distinct
 (defn gen-metric-values
   [num-elems]
-  (s/spec (s/coll-of ::m/metric-value :into [])
-          :gen (fn []
-                 (tgen/list-distinct (s/gen ::m/metric-value) {:num-elements num-elems}))))
+  (s/spec (s/coll-of ::m/metric-value :distinct false :into [] :count num-elems)))
 
 (defn gen-filled-gauge-values
   [gauge-values labelss values]
@@ -1254,7 +1244,6 @@
                                   example-histogram-metric (nth labelss 5) (nth values 5))
                                  example-histogram-metric (nth labelss 3))))))))))
 
-;; TODO: cleaning store in between?
 (t/deftest t-record-metric!-get-metric-samples!
   (t/testing "`record-metric!` and `get-metric-samples!` work."
     (t/is (quickcheck
