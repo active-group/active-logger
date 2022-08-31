@@ -76,14 +76,9 @@
        rest-labelss
        rest-values))))
 
-;; FIXME: Looks like that this function or the metric-sample-generation is
-;;        creating NullPointerExceptions
-;; TODO: Does not need to be distinct
-;; (defn gen-metric-samples
-;;   [num-elems]
-;;   (s/spec (s/coll-of ::m/metric-sample :into [])
-;;           :gen (fn []
-;;                  (tgen/list-distinct (s/gen ::m/metric-sample) {:num-elements num-elems}))))
+(defn gen-metric-samples
+  [num-elems]
+  (s/spec (s/coll-of ::m/metric-sample :distinct false :into [] :count num-elems)))
 
 ;; -----------------------------------------------
 
@@ -1663,24 +1658,17 @@
            (property [name        (spec ::m/metric-name)
                       type (spec ::m/metric-type)
                       help        (spec ::m/metric-help)
-                      ;; FIXME
-                      ;; samples     (spec (gen-metric-samples 4))
+                      samples     (spec (gen-metric-samples 4))
                       ]
-                     (let [samples-1 []
-                           example-metric-sample-set-1 (m/make-metric-sample-set name
-                                                                                 type
-                                                                                 help
-                                                                                 samples-1)
-;;                            example-metric-sample-set (m/make-metric-sample-set name
-;;                                                                                type
-;;                                                                                help
-;;                                                                                samples)
-                           ]
-                       (t/is                (m/metric-sample-set?            example-metric-sample-set-1))
-                       (t/is (= name        (m/metric-sample-set-name        example-metric-sample-set-1)))
-                       (t/is (= type (m/metric-sample-set-type example-metric-sample-set-1)))
-                       (t/is (= help        (m/metric-sample-set-help        example-metric-sample-set-1)))
-                       (t/is (= samples-1   (m/metric-sample-set-samples     example-metric-sample-set-1)))))))))
+                     (let [example-metric-sample-set (m/make-metric-sample-set name
+                                                                               type
+                                                                               help
+                                                                               samples)]
+                       (t/is                (m/metric-sample-set?            example-metric-sample-set))
+                       (t/is (= name        (m/metric-sample-set-name        example-metric-sample-set)))
+                       (t/is (= type        (m/metric-sample-set-type example-metric-sample-set)))
+                       (t/is (= help        (m/metric-sample-set-help        example-metric-sample-set)))
+                       (t/is (= samples     (m/metric-sample-set-samples     example-metric-sample-set)))))))))
 
 (t/deftest t-metric-type
   (t/testing "Getting the metric type as string works."

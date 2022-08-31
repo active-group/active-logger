@@ -534,7 +534,6 @@
    value     metric-sample-value
    timestamp metric-sample-timestamp])
 
-;; FIXME: This might not work? NullPointerExceptions?
 (s/def ::metric-sample
   (s/spec
    (partial instance? MetricSample)
@@ -546,11 +545,11 @@
                        (make-metric-sample metric-name
                                            metric-labels
                                            metric-value-value
-                                           metric-value-last-update-time-ms)
-                       (s/gen (s/keys :req-un [::metric-name
-                                               ::metric-labels
-                                               ::metric-value-value
-                                               ::metric-value-last-update-time-ms])))))))
+                                           metric-value-last-update-time-ms))
+                     (s/gen (s/keys :req-un [::metric-name
+                                             ::metric-labels
+                                             ::metric-value-value
+                                             ::metric-value-last-update-time-ms]))))))
 
 (s/fdef make-metric-sample
   :args (s/cat :name      ::metric-name
