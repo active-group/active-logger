@@ -4,7 +4,7 @@
 
 (defn render-label
   [k v]
-  (str (name k) "=\"" v "\""))
+  (str (string/replace (name k) "-" "_") "=\"" v "\""))
 
 (defn render-labels
   [labels]
