@@ -165,7 +165,8 @@ login.  The command config for monadic logging is
 
 - Counters with ~log-counter-metric!~ and the monadic ~log-counter-metric~,
 - Gauges with ~log-gauge-metric!~ and the monadic ~log-gauge-metric~, and
-- Histograms with ~log-histogram-metric!~ and the monadic ~log-histogram-metric~.
+- Histograms with ~log-histogram-metric!~ and the monadic ~log-histogram-metric~
+  that supports an arbitrary number of buckets.
 
 Counters and histograms are state-based, which means that their next value
 depends on previous values and that they accumulate over time and need to be

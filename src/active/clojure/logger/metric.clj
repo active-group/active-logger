@@ -84,28 +84,28 @@
    `(log-metric (metric-accumulator/make-counter-metric ~?name ~?help) ~?labels ~?value ~?mp ~?ns)))
 
 (defmacro log-histogram-metric!
-  ([?name ?threshold ?value]
-   `(log-histogram-metric! ~?name ~?threshold {} ~?name ~?value nil ~(str *ns*)))
-  ([?name ?threshold ?labels ?value]
-   `(log-histogram-metric! ~?name ~?threshold ~?labels ~?name ~?value nil ~(str *ns*)))
-  ([?name ?threshold ?labels ?help ?value]
-   `(log-histogram-metric! ~?name ~?threshold ~?labels ~?help ~?value nil ~(str *ns*)))
-  ([?name ?threshold ?labels ?help ?value ?mp]
-   `(log-histogram-metric! ~?name ~?threshold ~?labels ~?help ~?value ~?mp ~(str *ns*)))
-  ([?name ?threshold ?labels ?help ?value ?mp ?ns]
-   `(log-metric! (metric-accumulator/make-histogram-metric ~?name ~?help ~?threshold) ~?labels ~?value ~?mp ~?ns)))
+  ([?name ?thresholds ?value]
+   `(log-histogram-metric! ~?name ~?thresholds {} ~?name ~?value nil ~(str *ns*)))
+  ([?name ?thresholds ?labels ?value]
+   `(log-histogram-metric! ~?name ~?thresholds ~?labels ~?name ~?value nil ~(str *ns*)))
+  ([?name ?thresholds ?labels ?help ?value]
+   `(log-histogram-metric! ~?name ~?thresholds ~?labels ~?help ~?value nil ~(str *ns*)))
+  ([?name ?thresholds ?labels ?help ?value ?mp]
+   `(log-histogram-metric! ~?name ~?thresholds ~?labels ~?help ~?value ~?mp ~(str *ns*)))
+  ([?name ?thresholds ?labels ?help ?value ?mp ?ns]
+   `(log-metric! (metric-accumulator/make-histogram-metric ~?name ~?help ~?thresholds) ~?labels ~?value ~?mp ~?ns)))
 
 (defmacro log-histogram-metric
-  ([?name ?threshold ?value]
-   `(log-histogram-metric ~?name ~?threshold {} ~?name ~?value nil ~(str *ns*)))
-  ([?name ?threshold ?labels ?value]
-   `(log-histogram-metric ~?name ~?threshold ~?labels ~?name ~?value nil ~(str *ns*)))
-  ([?name ?threshold ?labels ?help ?value]
-   `(log-histogram-metric ~?name ~?threshold ~?labels ~?help ~?value nil ~(str *ns*)))
-  ([?name ?threshold ?labels ?help ?value ?mp]
-   `(log-histogram-metric ~?name ~?threshold ~?labels ~?help ~?value ~?mp ~(str *ns*)))
-  ([?name ?threshold ?labels ?help ?value ?mp ?ns]
-   `(log-metric (metric-accumulator/make-histogram-metric ~?name ~?help ~?threshold) ~?labels ~?value ~?mp ~?ns)))
+  ([?name ?thresholds ?value]
+   `(log-histogram-metric ~?name ~?thresholds {} ~?name ~?value nil ~(str *ns*)))
+  ([?name ?thresholds ?labels ?value]
+   `(log-histogram-metric ~?name ~?thresholds ~?labels ~?name ~?value nil ~(str *ns*)))
+  ([?name ?thresholds ?labels ?help ?value]
+   `(log-histogram-metric ~?name ~?thresholds ~?labels ~?help ~?value nil ~(str *ns*)))
+  ([?name ?thresholds ?labels ?help ?value ?mp]
+   `(log-histogram-metric ~?name ~?thresholds ~?labels ~?help ~?value ~?mp ~(str *ns*)))
+  ([?name ?thresholds ?labels ?help ?value ?mp ?ns]
+   `(log-metric (metric-accumulator/make-histogram-metric ~?name ~?help ~?thresholds) ~?labels ~?value ~?mp ~?ns)))
 
 (def monad-command-config
   (monad/combine-monad-command-configs metric-accumulator/monad-command-config metric-emitter/log-metrics-command-config))
