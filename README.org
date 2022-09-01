@@ -149,10 +149,158 @@ Functions to log events can be found in =active.clojure.logger.event=.
 ** Metrics
 *Metrics* can be used to log metrics for specified parts of your system. 
 Functions to log events can be found in =active.clojure.logger.metric=.
+
+Metrics use Prometheus-style metric types, for more details see
+https://prometheus.io/docs/concepts/metric_types/.
+
+As for Events described above, we have an effectful logging and an monadic
+login.  The command config for monadic logging is
+~active.clojure.logger.metric/monad-command-config~.  We currently implement:
+
+- Counters with ~log-counter-metric!~ and the monadic ~log-counter-metric~,
+- Gauges with ~log-gauge-metric!~ and the monadic ~log-gauge-metric~, and
+- Histograms with ~log-histogram-metric!~ and the monadic ~log-histogram-metric~.
+
+Counters and histograms are state-based, which means that their next value
+depends on previous values and that they accumulate over time and need to be
+stored.  The metric store is internal to the implementation and there are
+functions for (re-)setting the store, most useful is
+~active.clojure.logger.metric-accumulator/reset-global-metric-store!~ to reset
+the store.  This resets the store for both the effectful and monadic
+implementation as both implementation can be used concurrently and share the
+same store.
+
+Since the existence of metrics, respectively the absence of metrics may hold
+important information about the health of a system, the library comes with
+functionality to prune stale metrics, that is to clean the metric store from
+metrics that have not been updated in a while.  Without pruning old metrics,
+they will still be in the store and may be cause wrong conclusions about the
+system.  You can use
+~active.clojure.logger.metric-accumulator/prune-stale-metrics!~ or as a
+convenience start a thread that prunes stale metrics periodically with
+~active.clojure.logger.metric-accumulator/start-prune-stale-metrics-thread!~.
+
+*** Emitter
+
+Metrics can be emitted
+
+- as Events and use the events configuration.  This is the default and by
+  default it logs the events with log level ~:info~.  This can be changed to
+  ~:debug~ for example:
+
+#+begin_src Clojure
+(active.clojure.logger.metric-emitter/set-global-log-metrics-config! 
+  active.clojure.logger.metric-emitter/configure-metrics-loging :events :debug)
+#+end_src
+
+- to Riemann by passing the result of
+  ~(active.clojure.logger.metric-emitter/configure-metrics-logging
+  riemann-config :riemann)~ to
+  ~active.clojure.logger.metric-emitter/set-global-log-metrics-config~;
+  ~riemann-config~ is a Riemann configuration object, see below.
+
+- not at all -- this can be set with
+  ~(active.clojure.logger.metric-emitter/set-global-log-metrics-config! :no-push)~
+
+Not emitting metrics at all is the recommended configuration when using
+Prometheus, see next section.
+
+*** Integrate with Prometheus
+
+Prometheus scrapes metrics from its targets from their HTTP endpoints.  The
+namespace ~active.clojure.logger.metric-prometheus~ provides functionality for
+providing such an endpoint, the most important functions are:
+
+- ~(render-metrics!)~ that returns the Prometheus-parseable string of all
+  metrics in the store, and
+
+- ~(wrap-prometheus-metrics-ring-handler handler)~ which is a ring handler that
+  returns the rendered page on the endpoint ~/metrics~.  This is a convenient
+  way to hook the route into your already existing webserver.
+
+**** Example webserver
+
+Here is an example on how to add a webserver that serves the metrics to your
+application using the [[https://github.com/http-kit/http-kit][HTTP Kit webserver]]:
+
+#+begin_src Clojure
+(ns example.webserver
+  (:require [org.httpkit.server :as http]
+            [active.clojure.config :as config]
+            [active.clojure.logger.metric-prometheus :as metric-prometheus]
+            [active.clojure.logger.metric :as metrics]
+            [active.clojure.logger.event :as events]))
+
+(def webserver-host
+  (config/setting
+   :host
+   "Where the webserver is hosted."
+   (config/default-string-range "0.0.0.0")))
+
+(def webserver-port
+  (config/setting
+   :port
+   "The port the webserver is listening on."
+   (config/integer-between-range 1024 49151 8002)))
+
+(def webserver-section
+  (config/section
+   :webserver
+   (config/schema "Configuration for the webserver."
+                  webserver-host
+                  webserver-port)))
+
+(defn record-http-requests-total-handler
+  [handler]
+  (fn [req]
+    (let [res (handler req)]
+      (metrics/log-counter-metric! "http_requests_total"
+                                  (merge
+                                    {:uri (:uri req)}
+                                    (when-let [status (:status res)]
+                                      {:status status}))
+                                  1)
+      res)))
+
+(def app
+  (record-http-requests-total-handler
+    (metric-prometheus/wrap-prometheus-metrics-ring-handler
+     (fn [_req]
+       {:status 404 :headers {"Content-Type" "text/plain"} :body "not found"}))))
+
+(defn start-webserver!
+  ([webserver-config]
+   (let [host (config/access webserver-config webserver-host)
+         port (config/access webserver-config webserver-port)]
+     (start-webserver! host port)))
+  ([host port]
+   (events/log-event :info (str "Starting webserver on " host ":" port))
+   (let [stop-server! (http/run-server app {:ip host :port port})]
+     (fn []
+       (stop-server! :timeout 100)
+       (events/log-event :info "Stopped webserver.")))))
+#+end_src
+
+This example uses ~active.clojure.config~ to configure the host and port of the
+webserver, you can hook the ~webserver-section~ into your already existing
+~active.clojure.config~ setup.
+
+It also records a metric that counts all the HTTP requests that reach the
+webserver.  An example output when pointing a browser to the endpoint might look
+like:
+
+#+begin_src
+# HELP http_requests_total http_requests_total
+# TYPE http_requests_total counter
+panakeia_http_requests_total{uri="/metrics",status="200"} 5 1662025543973
+#+end_src
+
 ** Timed Metrics
-*Timed metrics* can be used to log timing characteristics specified parts of 
-your system. 
-Functions to log events can be found in =active.clojure.logger.timed-metric=.
+*Timed metrics* can be used to log timing characteristics specified parts of
+your system.  Functions to log events can be found in
+=active.clojure.logger.timed-metric=.  Basically syntactic sugar around
+=active.clojure.logger.metric= -- setup and configuration of Metrics applies to
+Timed metrics as well.
 ** State Change
 *State changes* are for monitoring the live operation of a system. 
 They announce for a certain system component its state, its /service/.
