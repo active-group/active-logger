@@ -759,6 +759,22 @@
                        old-metric-store)))
    nil))
 
+(defn start-prune-stale-metrics-thread!
+  "Start a thread that prunes stale metrics every `seconds` seconds.  If called
+  without an argument, it prunes every 60 seconds."
+  [& [seconds]]
+  (let [milliseconds (* (or seconds 60) 1000)]
+    (doto (Thread.
+           (fn []
+             (loop []
+               (let [now (time/get-milli-time!)
+                     earlier (- now milliseconds)]
+                 (prune-stale-metrics! earlier)
+                 (Thread/sleep milliseconds)
+                 (recur)))))
+      (.setDaemon true)
+      (.start))))
+
 ;; COMMANDS on raw metrics
 
 (define-record-type ^{:doc "Monadic command for recording a metric."}
