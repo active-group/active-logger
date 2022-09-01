@@ -15,7 +15,7 @@
 (defn reset-global-state-for-tests!
   [f]
   (metric-accumulator/reset-global-metric-store!)
-  (metric-emitter/set-global-log-metrics-config! (metric-emitter/configure-metrics-logging {} :no-push))
+  (metric-emitter/set-global-log-metrics-config! (metric-emitter/configure-metrics-logging :no-push))
   (f))
 
 (t/use-fixtures :each reset-global-state-for-tests!)

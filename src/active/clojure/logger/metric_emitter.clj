@@ -19,14 +19,19 @@
 (def metrics-config-default :events)
 (defonce metrics-config (atom metrics-config-default))
 
+(define-record-type EventsConfig
+  make-events-config
+  events-config?
+  [level events-config-level])
+
 (defn configure-metrics-logging
   "Returns an object that can be fed to
   [[set-global-log-metrics-config!]]."
-  [riemann-config desc]
+  [desc & [opt-config]]
   (case desc
-    :events  :events
+    :events (make-events-config (or opt-config :info))
     :no-push :no-push
-    :riemann (riemann-config/make-riemann-config riemann-config)))
+    :riemann (riemann-config/make-riemann-config opt-config)))
 
 (defn set-global-log-metrics-config!
   [scc]
@@ -48,10 +53,10 @@
    map emit-metric-map])
 
 (defn emit-metric-to-events!
-  [namespace metric-name metric-labels metric-value mp]
+  [namespace level metric-name metric-labels metric-value mp]
   (internal/log-event!-internal "metric"
                                 namespace
-                                :info
+                                level
                                 (merge mp {:label metric-name :metric metric-value})
                                 (delay
                                   [(str "Metric " (metric-prometheus/cleanup-non-prometheus-label-characters metric-name) (metric-prometheus/render-labels metric-labels) " " metric-value)])))
@@ -69,8 +74,10 @@
            metric-labels (metric-accumulator/metric-sample-labels metric-sample)
            metric-value  (metric-accumulator/metric-sample-value metric-sample)
            labels-context-map (merge metric-labels context-map)]
-       (case scconf
-         :events (emit-metric-to-events! namespace metric-name metric-labels metric-value labels-context-map)
+       (cond
+         (events-config? scconf)
+         (emit-metric-to-events! namespace (events-config-level scconf) metric-name metric-labels metric-value labels-context-map)
+         :else
          (emit-metric-to-riemann! scconf metric-name metric-value labels-context-map))))))
 
 (defn emit-metric-samples!-internal

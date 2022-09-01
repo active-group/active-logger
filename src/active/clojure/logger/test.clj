@@ -8,7 +8,7 @@
 (defn- log-config-test-fixture [config f]
   (event/set-global-log-events-config! config)
   (state-change/set-global-log-state-changes-config! (state-change/configure-state-changes-logging nil :events))
-  (metric-emitter/set-global-log-metrics-config! (metric-emitter/configure-metrics-logging nil :events))
+  (metric-emitter/set-global-log-metrics-config! (metric-emitter/configure-metrics-logging :events))
   ;; Note: set-global-log-events-config! uses timbre/set-config!,
   ;; which in turn used alter-var-root, but apparently using
   ;; with-config, which uses `binding` has a better effect of logs
