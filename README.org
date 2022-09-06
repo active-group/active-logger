@@ -1,6 +1,6 @@
 #+TITLE: active-logger
 
-Utilities and DSL for logging on top of [[https://github.com/ptaoussanis/timbre][Timbre]] with support for [[https://github.com/riemann/riemann][Riemann]], 
+Utilities and DSL for logging on top of [[https://github.com/ptaoussanis/timbre][Timbre]] with support for [[https://github.com/riemann/riemann][Riemann]],
 [[https://www.elastic.co/de/logstash][Logstash]], and more.
 
 Currently =active-logger= supports hijacking log messages from Log4j,
@@ -31,7 +31,7 @@ start logging events.
       #+end_src
       The default configuration logs via =println= to =stdout=.
 
-      See [[examples/][examples/]] for example projects.
+      See [[./examples][examples/]] for example projects.
 
 ** Change configuration
 
@@ -94,22 +94,22 @@ depend on it:
 SLF4J: Class path contains multiple SLF4J bindings.
 #+end_src
 * Usage
-=active-logger= is intended to be used alongside [[https://github.com/active-group/active-clojure][active-clojure]] and follows 
-the same naming scheme (all =active-logger= namespaces can be found under 
+=active-logger= is intended to be used alongside [[https://github.com/active-group/active-clojure][active-clojure]] and follows
+the same naming scheme (all =active-logger= namespaces can be found under
 =active.clojure.logger=).
 
-There are two basic ways to do logging with =active-logger=: Effectful and 
+There are two basic ways to do logging with =active-logger=: Effectful and
 monadic.
-In general, both of theses options are available for each logging function in 
+In general, both of theses options are available for each logging function in
 =active-logger=.
 ** Effectful
-/Effectful/ logging refers to logging functions that immediately execute.
-Usually they are signified by a bang (=!=) at the end of the var's name 
+*Effectful* logging refers to logging functions that immediately execute.
+Usually they are signified by a bang (=!=) at the end of the var's name
 (i. e. =active.clojure.logger.event/log-event!=).
-In any non-monadic execution context, use these functions for logging, 
+In any non-monadic execution context, use these functions for logging,
 metrics, etc.
 ** Monadic
-/Monadic/ logging refers to logging functions that can be used to formulate 
+*Monadic* logging refers to logging functions that can be used to formulate
 the intent on logging at this location when executing a monadic program.
 The log function will only be executed when the monadic program is run.
 
@@ -124,10 +124,10 @@ Monadic in this context means programs defined using =active.clojure.monad=.
 
   ;; NOTE: Initialize as shown in TL;DR section.
 
-  ;; Effectful logging 
+  ;; Effectful logging
   (let [res (+ 2 2)]
     (event-logger/log-event! :trace (str "res =" res))
-    res)     
+    res)
   ;; 2020-07-11 15:19:02.659 host INFO [my.ns] TRACE - res = 4
   ;; => 4
 
@@ -137,7 +137,7 @@ Monadic in this context means programs defined using =active.clojure.monad=.
                      (event-logger/log-event :trace (str "res =" res))
                      (monad/return 4)))
 
-  (monad/run-free-reader-state-exception 
+  (monad/run-free-reader-state-exception
    event-logger/log-events-command-config
    prog)
   ;; 2020-07-11 15:19:02.659 host INFO [my.ns] TRACE - res = 4
@@ -146,14 +146,14 @@ Monadic in this context means programs defined using =active.clojure.monad=.
 * Components
 =active-logger= includes several different entities that can be logged.
 ** Event
-*Events* are reports of things that the system did that may be of interest 
-for later perusal by system administrator in case of failures or by 
-developers. 
-Each event carries a /namespace/ saying where the event came from, and a 
+*Events* are reports of things that the system did that may be of interest
+for later perusal by system administrators in case of failures or by
+developers.
+Each event carries a /namespace/ saying where the event came from, and a
 /level/ that specifies how “important” the event is.
 Functions to log events can be found in =active.clojure.logger.event=.
 ** Metrics
-*Metrics* can be used to log metrics for specified parts of your system. 
+*Metrics* can be used to log metrics for specified parts of your system.
 Functions to log events can be found in =active.clojure.logger.metric=.
 
 Metrics use Prometheus-style metric types, for more details see
@@ -172,10 +172,9 @@ Counters and histograms are state-based, which means that their next value
 depends on previous values and that they accumulate over time and need to be
 stored.  The metric store is internal to the implementation and there are
 functions for (re-)setting the store, most useful is
-~active.clojure.logger.metric-accumulator/reset-global-metric-store!~ to reset
-the store.  This resets the store for both the effectful and monadic
-implementation as both implementation can be used concurrently and share the
-same store.
+~active.clojure.logger.metric-accumulator/reset-global-metric-store!~.  This
+resets the store for both the effectful and monadic implementation as both
+implementations can be used concurrently and share the same store.
 
 Since the existence of metrics, respectively the absence of metrics may hold
 important information about the health of a system, the library comes with
@@ -196,7 +195,7 @@ Metrics can be emitted
   ~:debug~ for example:
 
 #+begin_src Clojure
-(active.clojure.logger.metric-emitter/set-global-log-metrics-config! 
+(active.clojure.logger.metric-emitter/set-global-log-metrics-config!
   active.clojure.logger.metric-emitter/configure-metrics-loging :events :debug)
 #+end_src
 
@@ -299,7 +298,7 @@ like:
 #+begin_src
 # HELP http_requests_total http_requests_total
 # TYPE http_requests_total counter
-panakeia_http_requests_total{uri="/metrics",status="200"} 5 1662025543973
+http_requests_total{uri="/metrics",status="200"} 5 1662025543973
 #+end_src
 
 ** Timed Metrics
@@ -309,22 +308,22 @@ your system.  Functions to log events can be found in
 =active.clojure.logger.metric= -- setup and configuration of Metrics applies to
 Timed metrics as well.
 ** State Change
-*State changes* are for monitoring the live operation of a system. 
+*State changes* are for monitoring the live operation of a system.
 They announce for a certain system component its state, its /service/.
 Functions to log events can be found in =active.clojure.logger.state-change=.
 * Configuration
 =active-logger= comes with two basic configuration sections: Timbre and Riemann.
 For more information on =active.clojure.config=, refer to [[https://github.com/active-group/active-clojure][active-clojure]]'s documentation on the topic.
-  
+
 In general, to provide a configuration means to supply a map that contains
-only keys and values according to some schema defined as a 
-=active.clojure.config/schema= and consumed by 
+only keys and values according to some schema defined as a
+=active.clojure.config/schema= and consumed by
 =active.clojure.config/make-configuration=.
 ** Timbre
 There are lots of configuration options to define how the event logger should
 behave.
 For a full list of options, refer to [[./src/active/clojure/logger/config/timbre.clj][the respective sources]].
-   
+
 Here, we will cover the most important options:
 *** =:level=
 *default*: =:debug=
@@ -333,16 +332,16 @@ The minimum level a message must have to be printed.
 Possible values are =#{:trace :debug :info :warn :error :fatal :report}=.
 *** =:appenders=
 *default*: ={:println (println)}=
-    
+
 Defines how messages are printed (=stdout=, to a file, ...).
-An appender spec is a list starting with one of 
+An appender spec is a list starting with one of
 ={spit, rotor, logstash, println}=,
 followed by keyword parameters corresponding to the respective appender.
-    
+
 Multiple appenders can be configured and active at the same time.
-A full example of an appender configuration might look like this:
+A full example of an appender configuration might looks like this:
 #+begin_src clojure
-  {:appenders {:split   (spit {:fname "/tmp/app.log"})
+  {:appenders {:spit    (spit {:fname "/tmp/app.log"})
                :riemann (riemann {:host "localhost"
                                   :port 5555})
                :println (println)}}
@@ -352,17 +351,17 @@ Specifies an appender that writes to a file, specified via the =:fname=
 setting.
 Example: ={:spit (spit {:fname "my.log"})}=
 **** Appender: rotor
-Specifies an appender that writes to a file and rotates the file when it 
-reaches a given file size. 
+Specifies an appender that writes to a file and rotates the file when it
+reaches a given file size.
 It accepts the following settings:
 | option      | description                                                                            | default                |
 |-------------+----------------------------------------------------------------------------------------+------------------------|
-| =:path=     | Path to log file. file, historical versions are suffixed with a 3-digit index.         | ="./timbre-rotor.log"= |
+| =:path=     | Path to log file. Historical versions are suffixed with a 3-digit index.               | ="./timbre-rotor.log"= |
 | =:max-size= | Maximum size of a log file in bytes. Log files are rotated when they exceed this size. | 1.048.576 bytes (1~MB) |
 | =:backlog=  | Number of rotated logs to keep.                                                        | =5=                    |
 Example:
 #+begin_src clojure
-  {:rotor (rotor {:path "/tmp/project.log" 
+  {:rotor (rotor {:path "/tmp/project.log"
                   :max-size 1073741824
                   :backlog 999})}
 #+end_src
@@ -379,10 +378,10 @@ It accepts the following settings:
 | option  | description                       | default     |
 |---------+-----------------------------------+-------------|
 | =:host= | The host Riemann is served on.    | "localhost" |
-| =:port= | The host Riemann is listening on. | 5555        |
+| =:port= | The port Riemann is listening on. | 5555        |
 Example
 #+begin_src clojure
-  {:riemann (riemann {:host "localhost" 
+  {:riemann (riemann {:host "localhost"
                       :port 5555})}
 #+end_src
 *** =:ns-blacklist=
@@ -395,24 +394,24 @@ Converse of =ns-blacklist=: All specified patterns are included in the log
 output, everything else is ignored.
 Example:  ={:ns-whitelist ["nothing.else.matters"]}=
 *** =:timestamp-opts=
-Section containing three settings related to how timestamps are formatted in 
-logs: 
+Section containing three settings related to how timestamps are formatted in
+logs:
 | option      | description                                                                                                                                                                                                                                                      |
 |-------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | =:pattern=  | Pattern for the timestamp (see [[http://docs.oracle.com/javase/7/docs/api/java/text/SimpleDateFormat.html][SimpleDateFormat]])                                                                                                                                                                                                                 |
 | =:locale=   | This is an IETF BCP 47 language tag string specifying the locale such as ="de-DE"= or ="en-US"= or =:jvm-default=.                                                                                                                                               |
 | =:timezone= | This is an ID for the time zone relative to which log entry dates should formatted. This can be a full name such as ="Germany/Berlin"=, or a custom ID such as ="GMT-8:00"=. The value may also be =:jvm-default= for the default time zone, and =:utc= for UTC. |
 ** Riemann
-Here are the configuration settings for Riemann. They happen in the 
+Here are the configuration settings for Riemann. They happen in the
 =:riemann= section:
-| option     | description                                                                                  | default      |
-|------------+----------------------------------------------------------------------------------------------+--------------|
-| =:host=    | String specifying the host where Riemann runs.                                               | ="127.0.0.1= |
-| =:port=    | Port where Riemann runs.                                                                     | =5555=       |
-| =:tls?=    | Specifies whether the communication with Riemann should use TLS. It can be =true= or =false= | =false=      |
-| =:key=     | If =:tls?= is true, use the specified TLS key-file.                                          | -            |
-| =:cert=    | If =:tls?= is true, use the specified TSL cert-file.                                         | -            |
-| =:ca-cert= | If =:tls?= is true, use the specified TSL CA cert-file.                                      | -            |
+| option     | description                                                                                   | default      |
+|------------+-----------------------------------------------------------------------------------------------+--------------|
+| =:host=    | String specifying the host where Riemann runs.                                                | ="127.0.0.1= |
+| =:port=    | Port where Riemann runs.                                                                      | =5555=       |
+| =:tls?=    | Specifies whether the communication with Riemann should use TLS. It can be =true= or =false=. | =false=      |
+| =:key=     | If =:tls?= is true, use the specified TLS key-file.                                           | -            |
+| =:cert=    | If =:tls?= is true, use the specified TLS cert-file.                                          | -            |
+| =:ca-cert= | If =:tls?= is true, use the specified TLS CA cert-file.                                       | -            |
 * Troubleshooting/Bad Players
 Certain libraries and frameworks are notorious for emitting log
 messages as soon as their namespaces are included.  This will happen
@@ -430,7 +429,7 @@ Logging to org.slf4j.impl.Log4jLoggerAdapter(org.eclipse.jetty.util.log) via org
 Logging initialized @18641ms to org.eclipse.jetty.util.log.Slf4jLog
 #+end_src
 
-The solution is to disable the message is to
+The solution to disable the message is to
 
 - create a namespace, i.e. =my-project.disable-jetty-logs= that turns
   off this message in particular
