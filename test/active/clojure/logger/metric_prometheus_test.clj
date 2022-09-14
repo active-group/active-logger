@@ -5,7 +5,7 @@
 
 
 (t/deftest t-render-metric-sets
-  (t/is (= "# HELP name_with_blanks help\n# TYPE name_with_blanks counter\nname_with_blanks{label_with_dashes=\"a\"} 23 0\n# HELP name help\n# TYPE name histogram\nname_sum{label=\"a\"} 23 0\nname_count{label=\"a\"} 1 0\nname_bucket{label=\"a\",le=\"+Inf\"} 1 0\nname_bucket{label=\"a\",le=\"20\"} 0 0"
+  (t/is (= "# HELP name_with_blanks help\n# TYPE name_with_blanks counter\nname_with_blanks{label_with_dashes=\"a\"} 23.0 0\n# HELP name help\n# TYPE name histogram\nname_sum{label=\"a\"} 23.0 0\nname_count{label=\"a\"} 1.0 0\nname_bucket{label=\"a\",le=\"+Inf\"} 1.0 0\nname_bucket{label=\"a\",le=\"20\"} 0.0 0"
            (m/render-metric-sets [(metric-accumulator/make-metric-sample-set "name with blanks" :counter "help"
                                                                              [(metric-accumulator/make-metric-sample "name with blanks" {:label-with*dashes "a"} 23 0)])
                                   (metric-accumulator/make-metric-sample-set "name" :histogram "help"

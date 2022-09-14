@@ -18,6 +18,10 @@
          (string/join "," (mapv render-label (keys labels) (vals labels)))
          "}")))
 
+(defn render-value
+  [v]
+  (double v))
+
 (defn maybe-render-timestamp
   [maybe-timestamp]
   (when maybe-timestamp
@@ -27,7 +31,7 @@
   [metric-sample]
   (str (cleanup-non-prometheus-label-characters (metric-accumulator/metric-sample-name metric-sample))
        (render-labels (metric-accumulator/metric-sample-labels metric-sample))
-       " " (metric-accumulator/metric-sample-value metric-sample)
+       " " (render-value (metric-accumulator/metric-sample-value metric-sample))
        (maybe-render-timestamp (metric-accumulator/metric-sample-timestamp metric-sample))))
 
 (defn render-metric-type
