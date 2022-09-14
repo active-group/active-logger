@@ -17,7 +17,7 @@
 ;; applied. Note that appenders defined here, are completely replace
 ;; with the configured appenders.
 (def basic-timbre-config ;; TODO: tune that a little
-  timbre/example-config)
+  timbre/default-config)
 
 (defn destroy-timbre-config!
   "Cleans up resources that might be held in result of [[make-timbre-config]] resp. [[configure-events-logging]]"
