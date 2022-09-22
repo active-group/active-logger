@@ -16,8 +16,11 @@
 ;; Basic and initial timbre config, before the config is loaded and
 ;; applied. Note that appenders defined here, are completely replace
 ;; with the configured appenders.
-(def basic-timbre-config ;; TODO: tune that a little
-  timbre/default-config)
+(def basic-timbre-config ;; TODO: tune that a little timbre/example-config is
+  ;; `example-config` is deprectated in timbre > 5.0.0; but since we need to use
+  ;; timbre 4.7.2 in some environments because of dependency hell, especially
+  ;; when Riemann is involved, we cannot move to `default-config` for now.
+  timbre/example-config)
 
 (defn destroy-timbre-config!
   "Cleans up resources that might be held in result of [[make-timbre-config]] resp. [[configure-events-logging]]"
