@@ -19,7 +19,7 @@ start logging events.
    1. Add =active-logger= and =active-clojure= to your =deps.edn=:
       #+begin_src clojure
         {:deps {de.active-group/active-clojure {:mvn/version "0.41.0"}
-                de.active-group/active-logger  {:mvn/version "0.8.1"}}}
+                de.active-group/active-logger  {:mvn/version "0.8.2"}}}
       #+end_src
    2. Start logging some events:
       #+begin_src clojure
@@ -185,6 +185,11 @@ system.  You can use
 ~active.clojure.logger.metric-accumulator/prune-stale-metrics!~ or as a
 convenience start a thread that prunes stale metrics periodically with
 ~active.clojure.logger.metric-accumulator/start-prune-stale-metrics-thread!~.
+
+(We also implemnt ~set-counter-metric!~ and the monadic ~set-counter-metric~ for
+metrics that represent counters but can be used by gauges by setting the value
+instead of incrementing the value.  Use this only if you know what you are
+doing.)
 
 *** Emitter
 

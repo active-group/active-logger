@@ -83,6 +83,30 @@
   ([?name ?labels ?help ?value ?mp ?ns]
    `(log-metric (metric-accumulator/make-counter-metric ~?name ~?help) ~?labels ~?value ~?mp ~?ns)))
 
+(defmacro set-counter-metric!
+  ([?name ?value]
+   `(set-counter-metric! ~?name {} ~?name ~?value nil ~(str *ns*)))
+  ([?name ?labels ?value]
+   `(set-counter-metric! ~?name ~?labels ~?name ~?value nil ~(str *ns*)))
+  ([?name ?labels ?help ?value]
+   `(set-counter-metric! ~?name ~?labels ~?help ~?value nil ~(str *ns*)))
+  ([?name ?labels ?help ?value ?mp]
+   `(set-counter-metric! ~?name ~?labels ~?help ~?value ~?mp ~(str *ns*)))
+  ([?name ?labels ?help ?value ?mp ?ns]
+   `(log-metric! (metric-accumulator/make-counter-metric ~?name ~?help true) ~?labels ~?value ~?mp ~?ns)))
+
+(defmacro set-counter-metric
+  ([?name ?value]
+   `(set-counter-metric ~?name {} ~?name ~?value nil ~(str *ns*)))
+  ([?name ?labels ?value]
+   `(set-counter-metric ~?name ~?labels ~?name ~?value nil ~(str *ns*)))
+  ([?name ?labels ?help ?value]
+   `(set-counter-metric ~?name ~?labels ~?help ~?value nil ~(str *ns*)))
+  ([?name ?labels ?help ?value ?mp]
+   `(set-counter-metric ~?name ~?labels ~?help ~?value ~?mp ~(str *ns*)))
+  ([?name ?labels ?help ?value ?mp ?ns]
+   `(log-metric (metric-accumulator/make-counter-metric ~?name ~?help true) ~?labels ~?value ~?mp ~?ns)))
+
 (defmacro log-histogram-metric!
   ([?name ?thresholds ?value]
    `(log-histogram-metric! ~?name ~?thresholds {} ~?name ~?value nil ~(str *ns*)))

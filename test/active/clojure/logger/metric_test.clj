@@ -273,6 +273,101 @@
                                                         [(metric-accumulator/make-metric-sample "name" {:label "a"} 23 0)])]
              (strip-timestamps-in-sample-sets result)))))
 
+(t/deftest t-set-counter-metric!-2
+  (m/set-counter-metric! "name" 23)
+  (m/set-counter-metric! "name" 42)
+  (t/is (= [(metric-accumulator/make-metric-sample-set "name" :counter "name"
+                                                      [(metric-accumulator/make-metric-sample "name" {} 42 0)])]
+           (strip-timestamps-in-sample-sets (metric-accumulator/get-all-metric-sample-sets!)))))
+
+(t/deftest t-set-counter-metric!-3
+  (m/set-counter-metric! "name" {:label "a"} 23)
+  (m/set-counter-metric! "name" {:label "a"} 42)
+  (t/is (= [(metric-accumulator/make-metric-sample-set "name" :counter "name"
+                                                      [(metric-accumulator/make-metric-sample "name" {:label "a"} 42 0)])]
+           (strip-timestamps-in-sample-sets (metric-accumulator/get-all-metric-sample-sets!)))))
+
+(t/deftest t-set-counter-metric!-4
+  (m/set-counter-metric! "name" {:label "a"} "help" 23)
+  (m/set-counter-metric! "name" {:label "a"} "help" 42)
+  (t/is (= [(metric-accumulator/make-metric-sample-set "name" :counter "help"
+                                                      [(metric-accumulator/make-metric-sample "name" {:label "a"} 42 0)])]
+           (strip-timestamps-in-sample-sets (metric-accumulator/get-all-metric-sample-sets!)))))
+
+(t/deftest t-set-counter-metric!-5
+  (m/set-counter-metric! "name" {:label "a"} "help" 23 {:context "b"})
+  (m/set-counter-metric! "name" {:label "a"} "help" 42 {:context "b"})
+  (t/is (= [(metric-accumulator/make-metric-sample-set "name" :counter "help"
+                                                      [(metric-accumulator/make-metric-sample "name" {:label "a"} 42 0)])]
+           (strip-timestamps-in-sample-sets (metric-accumulator/get-all-metric-sample-sets!)))))
+
+(t/deftest t-set-counter-metric!-6
+  (m/set-counter-metric! "name" {:label "a"} "help" 23 {:context "b"} (str *ns*))
+  (m/set-counter-metric! "name" {:label "a"} "help" 42 {:context "b"} (str *ns*))
+  (t/is (= [(metric-accumulator/make-metric-sample-set "name" :counter "help"
+                                                      [(metric-accumulator/make-metric-sample "name" {:label "a"} 42 0)])]
+           (strip-timestamps-in-sample-sets (metric-accumulator/get-all-metric-sample-sets!)))))
+
+(t/deftest t-set-counter-metric-2
+  (let [result (mock-run-monad
+                m/monad-command-config
+                []
+                (monad/monadic
+                 (m/set-counter-metric "name" 23)
+                 (m/set-counter-metric "name" 42)
+                 (metric-accumulator/get-all-metric-sample-sets)))]
+    (t/is (= [(metric-accumulator/make-metric-sample-set "name" :counter "name"
+                                                        [(metric-accumulator/make-metric-sample "name" {} 42 0)])]
+             (strip-timestamps-in-sample-sets result)))))
+
+(t/deftest t-set-counter-metric-3
+  (let [result (mock-run-monad
+                m/monad-command-config
+                []
+                (monad/monadic
+                 (m/set-counter-metric "name" {:label "a"} 23)
+                 (m/set-counter-metric "name" {:label "a"} 42)
+                 (metric-accumulator/get-all-metric-sample-sets)))]
+    (t/is (= [(metric-accumulator/make-metric-sample-set "name" :counter "name"
+                                                        [(metric-accumulator/make-metric-sample "name" {:label "a"} 42 0)])]
+             (strip-timestamps-in-sample-sets result)))))
+
+(t/deftest t-set-counter-metric-4
+  (let [result (mock-run-monad
+                m/monad-command-config
+                []
+                (monad/monadic
+                 (m/set-counter-metric "name" {:label "a"} "help" 23)
+                 (m/set-counter-metric "name" {:label "a"} "help" 42)
+                 (metric-accumulator/get-all-metric-sample-sets)))]
+    (t/is (= [(metric-accumulator/make-metric-sample-set "name" :counter "help"
+                                                        [(metric-accumulator/make-metric-sample "name" {:label "a"} 42 0)])]
+             (strip-timestamps-in-sample-sets result)))))
+
+(t/deftest t-set-counter-metric-5
+  (let [result (mock-run-monad
+                m/monad-command-config
+                []
+                (monad/monadic
+                 (m/set-counter-metric "name" {:label "a"} "help" 23 {:context "b"})
+                 (m/set-counter-metric "name" {:label "a"} "help" 42 {:context "b"})
+                 (metric-accumulator/get-all-metric-sample-sets)))]
+    (t/is (= [(metric-accumulator/make-metric-sample-set "name" :counter "help"
+                                                        [(metric-accumulator/make-metric-sample "name" {:label "a"} 42 0)])]
+             (strip-timestamps-in-sample-sets result)))))
+
+(t/deftest t-set-counter-metric-6
+  (let [result (mock-run-monad
+                m/monad-command-config
+                []
+                (monad/monadic
+                 (m/set-counter-metric "name" {:label "a"} "help" 23 {:context "b"} (str *ns*))
+                 (m/set-counter-metric "name" {:label "a"} "help" 42 {:context "b"} (str *ns*))
+                 (metric-accumulator/get-all-metric-sample-sets)))]
+    (t/is (= [(metric-accumulator/make-metric-sample-set "name" :counter "help"
+                                                        [(metric-accumulator/make-metric-sample "name" {:label "a"} 42 0)])]
+             (strip-timestamps-in-sample-sets result)))))
+
 (t/deftest t-log-histogram-metric!-3
   (m/log-histogram-metric! "name" [20] 23)
   (t/is (= [(metric-accumulator/make-metric-sample-set "name" :histogram "name"

@@ -3302,3 +3302,14 @@
       (m/record-and-get! histogram-metric {} value 0))
     (t/is (= [expected-sample-set] (m/get-all-metric-sample-sets!)))
     (m/reset-global-metric-store!)))
+
+(t/deftest t-use-counter-like-gauge
+  (let [metric-name "http_request_total"
+        counter-metric (m/make-counter-metric metric-name "HELP" true)]
+    (m/reset-global-metric-store!)
+    (m/record-and-get! counter-metric {} 23 0)
+    (m/record-and-get! counter-metric {} 42 1)
+    (t/is (= [(m/make-metric-sample-set "http_request_total" :counter "HELP"
+                                      [(m/make-metric-sample "http_request_total" {} 42 1)])]
+             (m/get-all-metric-sample-sets!)))
+    (m/reset-global-metric-store!)))

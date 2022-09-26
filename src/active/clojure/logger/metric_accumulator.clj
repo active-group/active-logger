@@ -253,7 +253,8 @@
   ^:private really-make-counter-metric
   counter-metric?
   [name counter-metric-name
-   help counter-metric-help])
+   help counter-metric-help
+   set-value? counter-metric-set-value?])
 
 (declare make-counter-metric)
 (s/def ::counter-metric
@@ -266,11 +267,12 @@
 
 (s/fdef make-counter-metric
   :args (s/cat :metric-name ::metric-name
-               :metric-help ::metric-help)
+               :metric-help ::metric-help
+               :optional (s/? (s/cat :set-value? boolean)))
   :ret ::counter-metric)
 (defn make-counter-metric
-  [metric-name metric-help]
-  (really-make-counter-metric metric-name metric-help))
+  [metric-name metric-help & [set-value?]]
+  (really-make-counter-metric metric-name metric-help set-value?))
 
 (define-record-type ^{:doc "Stored Counter values, i.e. a map from labels to
   metric-values."}
@@ -497,7 +499,7 @@
   (update-stored-values
    (cond
      (gauge-metric?     metric) (make-gauge-values)
-     (counter-metric?   metric) (make-counter-values)
+     (counter-metric?   metric) (if (counter-metric-set-value? metric) (make-gauge-values) (make-counter-values))
      (histogram-metric? metric) (make-histogram-values (histogram-metric-thresholds metric)))
    metric-labels metric-value))
 
@@ -605,6 +607,8 @@
      (swap! a-metric-store record-metric-1 metric labels metric-value))
    nil))
 
+(declare metric-name)
+
 (s/fdef stored-value->metric-samples
   :args (s/cat :metric        ::metric
                :stored-value  ::stored-values
@@ -613,13 +617,12 @@
 (defn stored-value->metric-samples
   [metric stored-value metric-labels]
   (cond
-    ;; INVARIANT: type of stored-value is expected to match type of metric
     (gauge-values? stored-value)
-    (gauge-values->metric-samples (gauge-metric-name metric) stored-value metric-labels)
+    (gauge-values->metric-samples (metric-name metric) stored-value metric-labels)
     (counter-values? stored-value)
-    (counter-values->metric-samples (counter-metric-name metric) stored-value metric-labels)
+    (counter-values->metric-samples (metric-name metric) stored-value metric-labels)
     (histogram-values? stored-value)
-    (histogram-values->metric-samples (histogram-metric-name metric) stored-value metric-labels)))
+    (histogram-values->metric-samples (metric-name metric) stored-value metric-labels)))
 
 (s/fdef stored-value->all-metric-samples
   :args (s/cat :metric       ::metric
@@ -628,15 +631,14 @@
 (defn stored-value->all-metric-samples
   [metric stored-value]
   (cond
-    ;; INVARIANT: type of stored-value is expected to match type of metric
     (gauge-values? stored-value)
-    (mapcat (fn [metric-labels] (gauge-values->metric-samples (gauge-metric-name metric) stored-value metric-labels))
+    (mapcat (fn [metric-labels] (gauge-values->metric-samples (metric-name metric) stored-value metric-labels))
             (keys (gauge-values-map stored-value)))
     (counter-values? stored-value)
-    (mapcat (fn [metric-labels] (counter-values->metric-samples (counter-metric-name metric) stored-value metric-labels))
+    (mapcat (fn [metric-labels] (counter-values->metric-samples (metric-name metric) stored-value metric-labels))
             (keys (counter-values-map stored-value)))
     (histogram-values? stored-value)
-    (mapcat (fn [metric-labels] (histogram-values->metric-samples (histogram-metric-name metric) stored-value metric-labels))
+    (mapcat (fn [metric-labels] (histogram-values->metric-samples (metric-name metric) stored-value metric-labels))
             (keys (histogram-values-sum-map stored-value)))))
 
 (s/fdef get-metric-samples-1
