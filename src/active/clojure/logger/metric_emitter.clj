@@ -17,7 +17,7 @@
                   (config/one-of-range #{:riemann :events :no-push} :events)))
 
 (def metrics-config-default :events)
-(defonce metrics-config (atom metrics-config-default))
+(defonce metrics-config (atom (configure-metrics-logging metrics-config-default)))
 
 (define-record-type EventsConfig
   make-events-config
