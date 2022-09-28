@@ -16,9 +16,6 @@
                   ;; TODO allow port/host settings
                   (config/one-of-range #{:riemann :events :no-push} :events)))
 
-(def metrics-config-default :events)
-(defonce metrics-config (atom (configure-metrics-logging metrics-config-default)))
-
 (define-record-type EventsConfig
   make-events-config
   events-config?
@@ -32,6 +29,9 @@
     :events (make-events-config (or opt-config :info))
     :no-push :no-push
     :riemann (riemann-config/make-riemann-config opt-config)))
+
+(def metrics-config-default :events)
+(defonce metrics-config (atom (configure-metrics-logging metrics-config-default)))
 
 (defn set-global-log-metrics-config!
   [scc]
@@ -136,4 +136,3 @@
    `(emit-metrics ~?metric-samples ~?mp ~(str *ns*)))
   ([?metric-samples ?mp ?ns]
    `(monad/sequ_ (mapv #(emit-metric % ~?mp ~?ns) ~?metric-samples))))
-
