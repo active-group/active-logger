@@ -4,7 +4,7 @@
             [active.clojure.logger.metric :as metric]
             [active.clojure.logger.time :as time]
             [active.clojure.monad :as monad]
-            [active.clojure.record :refer :all]))
+            [active.clojure.record :refer [define-record-type]]))
 
 ;; Simple timing
 
