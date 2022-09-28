@@ -8,6 +8,8 @@
 
 ;; Simple timing
 
+;; TODO: implement this by using the "sophisticated" API below
+
 (defn logging-timing*
   [origin label m]
   (monad/monadic
@@ -26,6 +28,8 @@
   `(logging-timing* ~(str *ns*) ~?label ~?m))
 
 ;; More sophisticated API
+
+;; TODO: Use histograms instead of gauges
 
 (define-record-type TimerName
   (make-timer-name namespace metric map)
