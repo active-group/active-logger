@@ -108,6 +108,8 @@
    `(log-metric (metric-accumulator/make-counter-metric ~?name ~?help true) ~?labels ~?value ~?mp ~?ns)))
 
 (defmacro log-histogram-metric!
+  ([?name ?value]
+   `(log-histogram-metric! ~?name [] {} ~?name ~?value nil ~(str *ns*)))
   ([?name ?thresholds ?value]
    `(log-histogram-metric! ~?name ~?thresholds {} ~?name ~?value nil ~(str *ns*)))
   ([?name ?thresholds ?labels ?value]
@@ -120,6 +122,8 @@
    `(log-metric! (metric-accumulator/make-histogram-metric ~?name ~?help ~?thresholds) ~?labels ~?value ~?mp ~?ns)))
 
 (defmacro log-histogram-metric
+  ([?name ?value]
+   `(log-histogram-metric ~?name [] {} ~?name ~?value nil ~(str *ns*)))
   ([?name ?thresholds ?value]
    `(log-histogram-metric ~?name ~?thresholds {} ~?name ~?value nil ~(str *ns*)))
   ([?name ?thresholds ?labels ?value]

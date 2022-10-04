@@ -368,6 +368,14 @@
                                                         [(metric-accumulator/make-metric-sample "name" {:label "a"} 42 0)])]
              (strip-timestamps-in-sample-sets result)))))
 
+(t/deftest t-log-histogram-metric!-2
+  (m/log-histogram-metric! "name" 23)
+  (t/is (= [(metric-accumulator/make-metric-sample-set "name" :histogram "name"
+                                                      [(metric-accumulator/make-metric-sample "name_sum" {} 23 0)
+                                                       (metric-accumulator/make-metric-sample "name_count" {} 1 0)
+                                                       (metric-accumulator/make-metric-sample "name_bucket" {:le "+Inf"} 1 0)])]
+           (strip-timestamps-in-sample-sets (metric-accumulator/get-all-metric-sample-sets!)))))
+
 (t/deftest t-log-histogram-metric!-3
   (m/log-histogram-metric! "name" [20] 23)
   (t/is (= [(metric-accumulator/make-metric-sample-set "name" :histogram "name"
@@ -412,6 +420,19 @@
                                                        (metric-accumulator/make-metric-sample "name_bucket" {:label "a" :le "+Inf"} 1 0)
                                                        (metric-accumulator/make-metric-sample "name_bucket" {:label "a" :le "20"} 0 0)])]
            (strip-timestamps-in-sample-sets (metric-accumulator/get-all-metric-sample-sets!)))))
+
+(t/deftest t-log-histogram-metric-2
+  (let [result (mock-run-monad
+                m/monad-command-config
+                []
+                (monad/monadic
+                 (m/log-histogram-metric "name" [] 23)
+                 (metric-accumulator/get-all-metric-sample-sets)))]
+    (t/is (= [(metric-accumulator/make-metric-sample-set "name" :histogram "name"
+                                                        [(metric-accumulator/make-metric-sample "name_sum" {} 23 0)
+                                                         (metric-accumulator/make-metric-sample "name_count" {} 1 0)
+                                                         (metric-accumulator/make-metric-sample "name_bucket" {:le "+Inf"} 1 0)])]
+             (strip-timestamps-in-sample-sets result)))))
 
 (t/deftest t-log-histogram-metric-3
   (let [result (mock-run-monad
@@ -481,4 +502,17 @@
                                                          (metric-accumulator/make-metric-sample "name_count" {:label "a"} 1 0)
                                                          (metric-accumulator/make-metric-sample "name_bucket" {:label "a" :le "+Inf"} 1 0)
                                                          (metric-accumulator/make-metric-sample "name_bucket" {:label "a" :le "20"} 0 0)])]
+             (strip-timestamps-in-sample-sets result)))))
+
+(t/deftest t-log-histogram-metric-no-buckets
+  (let [result (mock-run-monad
+                m/monad-command-config
+                []
+                (monad/monadic
+                 (m/log-histogram-metric "name" [] {:label "a"} "help" 23 {:context "b"} (str *ns*))
+                 (metric-accumulator/get-all-metric-sample-sets)))]
+    (t/is (= [(metric-accumulator/make-metric-sample-set "name" :histogram "help"
+                                                        [(metric-accumulator/make-metric-sample "name_sum" {:label "a"} 23 0)
+                                                         (metric-accumulator/make-metric-sample "name_count" {:label "a"} 1 0)
+                                                         (metric-accumulator/make-metric-sample "name_bucket" {:label "a" :le "+Inf"} 1 0)])]
              (strip-timestamps-in-sample-sets result)))))
