@@ -865,16 +865,19 @@
   (really-get-all-metric-sample-sets))
 
 (defn run-metrics
-  [_run-any _env state m]
+  [run-any env state m]
   (let [a-metric-store metric-store]
     (cond
       (record-metric? m)
-      [(record-metric! a-metric-store
-                       (record-metric-metric m)
-                       (record-metric-labels m)
-                       (record-metric-value m)
-                       (record-metric-last-update m))
-       state]
+      (let [[milli-time state'] (if-let [maybe-last-update (record-metric-last-update m)]
+                                  [maybe-last-update state]
+                                  (run-any env state time/get-milli-time))]
+        [(record-metric! a-metric-store
+                         (record-metric-metric m)
+                         (record-metric-labels m)
+                         (record-metric-value m)
+                         milli-time)
+         state'])
 
       (get-metric-samples? m)
       [(get-metric-samples! a-metric-store

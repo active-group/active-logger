@@ -100,14 +100,6 @@
   [& ?args]
   `(reset-global-state-for-tests! (fn [] (mock-monad/mock-run-monad ~@?args))))
 
-(defn strip-timestamps-in-samples
-  [samples]
-  (mapv #(metric-accumulator/metric-sample-timestamp % 0) samples))
-
-(defn strip-timestamps-in-sample-sets
-  [sets]
-  (mapv #(lens/overhaul % metric-accumulator/metric-sample-set-samples strip-timestamps-in-samples) sets))
-
 (def monad-command-config-gauges
   (monad/combine-monad-command-configs
    (monad/make-monad-command-config timed-metric/run-timed-metrics-as-gauges {} {})
@@ -135,24 +127,26 @@
     (let [result (mock-run-monad
                   monad-command-config-gauges
                   [(mock-monad/mock-result time/get-elapsed-time 10)
-                   (mock-monad/mock-result time/get-elapsed-time 20)]
+                   (mock-monad/mock-result time/get-elapsed-time 20)
+                   (mock-monad/mock-result time/get-milli-time 12345)]
                   (monad/monadic
                    (timed-metric/logging-timing "example-metric" (monad/return nil))
                    (metric-accumulator/get-all-metric-sample-sets)))]
       (is (= [(metric-accumulator/make-metric-sample-set "example-metric" :gauge "example-metric"
-                                                         [(metric-accumulator/make-metric-sample "example-metric" {} 10 0)])]
-             (strip-timestamps-in-sample-sets result)))))
+                                                         [(metric-accumulator/make-metric-sample "example-metric" {} 10 12345)])]
+             result))))
 
   (testing "Simple timing works with histograms: checking metric-store"
     (let [result (mock-run-monad
                   monad-command-config-histograms
                   [(mock-monad/mock-result time/get-elapsed-time 10)
-                   (mock-monad/mock-result time/get-elapsed-time 20)]
+                   (mock-monad/mock-result time/get-elapsed-time 20)
+                   (mock-monad/mock-result time/get-milli-time 12345)]
                   (monad/monadic
                    (timed-metric/logging-timing "example-metric" (monad/return nil))
                    (metric-accumulator/get-all-metric-sample-sets)))]
       (is (= [(metric-accumulator/make-metric-sample-set "example-metric" :histogram "example-metric"
-                                                         [(metric-accumulator/make-metric-sample "example-metric_sum" {} 10 0)
-                                                          (metric-accumulator/make-metric-sample "example-metric_count" {} 1 0)
-                                                          (metric-accumulator/make-metric-sample "example-metric_bucket" {:le "+Inf"} 1 0)])]
-             (strip-timestamps-in-sample-sets result))))))
+                                                         [(metric-accumulator/make-metric-sample "example-metric_sum" {} 10 12345)
+                                                          (metric-accumulator/make-metric-sample "example-metric_count" {} 1 12345)
+                                                          (metric-accumulator/make-metric-sample "example-metric_bucket" {:le "+Inf"} 1 12345)])]
+             result)))))
