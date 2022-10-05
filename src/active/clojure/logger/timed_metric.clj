@@ -40,14 +40,17 @@
 (defmacro logging-timing
   "A monadic command that executes `m` and returns its result, and
   also makes a debug log messages about the time it took to execute
-  it, where the message begins with the given `text`."
+  it, where the message contains the given `label` as name and help string."
   [?label ?m]
   `(logging-timing* ~(str *ns*) ~?label ~?m))
 
 ;; More sophisticated API
 
 (defn start-metric-timer-1
-  "Starts a metric timer, identified by `ns`, `metric` and `more`."
+  "Starts a metric timer, identified by `ns`, `metric` and `more`.
+
+  `more` is a map that is merged with the log context that's already active,
+  if present."
   [ns metric more]
   (monad/monadic
    [time time/get-elapsed-time]
