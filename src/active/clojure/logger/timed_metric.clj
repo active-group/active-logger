@@ -8,6 +8,23 @@
 
 ;; Simple timing
 
+(define-record-type TimerName
+  (make-timer-name namespace metric map)
+  timer-name?
+  [^{:doc "String"}
+   namespace timer-name-namespace
+   ^{:doc "Name of the metric that will be logged."}
+   metric timer-name-metric
+   ^{:doc "Map with log context info, keywords to strings."}
+   map timer-name-map])
+
+(define-record-type LogTimedMetric
+  ^{:doc "Monadic command for logging a timed metric."}
+  log-timed-metric
+  log-timed-metric?
+  [timer-name log-timed-metric-timer-name
+   timer log-timed-metric-timer])
+
 ;; TODO: implement this by using the "sophisticated" API below
 
 (defn logging-timing*
@@ -17,7 +34,7 @@
     r m
     e time/get-elapsed-time]
    ;; use label as metric's name and help string
-   (metric/log-gauge-metric label nil label (- e st) nil origin)
+   (log-timed-metric (make-timer-name origin label {}) (- e st))
    (monad/return r)))
 
 (defmacro logging-timing
@@ -28,18 +45,6 @@
   `(logging-timing* ~(str *ns*) ~?label ~?m))
 
 ;; More sophisticated API
-
-;; TODO: Use histograms instead of gauges
-
-(define-record-type TimerName
-  (make-timer-name namespace metric map)
-  timer-name?
-  [^{:doc "String"}
-   namespace timer-name-namespace
-   ^{:doc "Name of the metric that will be logged."}
-   metric timer-name-metric
-   ^{:doc "Map with log context info, keywords to strings."}
-   map timer-name-map])
 
 (defn start-metric-timer-1
   "Starts a metric timer, identified by `ns`, `metric` and `more`."
@@ -84,8 +89,7 @@
    [timer (stop-metric-timer timer-name)]
    (if timer
      (monad/monadic
-       ;; use label as metric's name and help string
-      (metric/log-gauge-metric (timer-name-metric timer-name) (timer-name-map timer-name) (timer-name-metric timer-name) timer nil (timer-name-namespace timer-name))
+      (log-timed-metric timer-name timer)
       (monad/return timer))
      (monad/return nil))))
 
@@ -125,3 +129,27 @@
         (stop-and-log-metric-timer-1 (make-timer-name ~(str *ns*) thing# nil)))))
   ([?metric ?more]
    `(stop-and-log-metric-timer-1 (make-timer-name ~(str *ns*) ~?metric ~?more))))
+
+(defn run-timed-metrics-as-gauges
+  [run-any env state m]
+  (cond
+    (log-timed-metric m)
+    (let [timer-name (log-timed-metric-timer-name m)
+          timer (log-timed-metric-timer m)]
+      (run-any env state
+               ;; use label as metric's name and help string
+               (metric/log-gauge-metric (timer-name-metric timer-name) (timer-name-map timer-name) (timer-name-metric timer-name) timer nil (timer-name-namespace timer-name))))
+
+    :else
+      monad/unknown-command))
+
+(def timed-metrics-as-gauges-command-config
+  (monad/combine-monad-command-configs
+   (monad/make-monad-command-config
+    run-timed-metrics-as-gauges
+    {} {})
+   time/monad-command-config))
+
+
+;; TODO: Add `times-metrics-as-histograms-command-config
+

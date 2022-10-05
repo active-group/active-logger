@@ -67,4 +67,17 @@
             [name (timed-metric/start-metric-timer "test metric" :id-1)]
             (timed-metric/cancel-metric-timer "test metric" :id-1)
             (timed-metric/stop-and-log-metric-timer "test metric" :id-1)))]
-      (is (nil? result)))))
+      (is (nil? result))))
+
+  (testing "Stopping and logging a timer causes it to get logged"
+    (with-bindings {#'*ns* *ns*}
+      (let [result
+            (mock-monad/mock-run-monad
+             ignore-log-event-command-config
+             [(mock-monad/mock-result time/get-elapsed-time 10)
+              (mock-monad/mock-result time/get-elapsed-time 20)
+              (mock-monad/mock-result (timed-metric/log-timed-metric (timed-metric/make-timer-name "active.clojure.logger.timed-metric-test" "test metric" :id-1) 10) nil)]
+             (monad/monadic
+              [name (timed-metric/start-metric-timer "test metric" :id-1)]
+              (timed-metric/stop-and-log-metric-timer name)))]
+        (is (= 10 result))))))
