@@ -4,7 +4,7 @@
             [active.clojure.logger.metric :as metric]
             [active.clojure.logger.time :as time]
             [active.clojure.monad :as monad]
-            [active.clojure.record :refer :all]))
+            [active.clojure.record :refer [define-record-type]]))
 
 ;; Simple timing
 
@@ -25,29 +25,32 @@
   [timer-name log-timed-metric-timer-name
    timer log-timed-metric-timer])
 
-;; TODO: implement this by using the "sophisticated" API below
+(declare start-metric-timer-1)
+(declare stop-and-log-metric-timer-1)
 
 (defn logging-timing*
   [origin label m]
   (monad/monadic
-   [st time/get-elapsed-time
+   ;;                     TimerName: ns metric map
+   [timer-name (start-metric-timer-1 origin label {})
     r m
-    e time/get-elapsed-time]
-   ;; use label as metric's name and help string
-   (log-timed-metric (make-timer-name origin label {}) (- e st))
+    _ (stop-and-log-metric-timer-1 timer-name)]
    (monad/return r)))
 
 (defmacro logging-timing
   "A monadic command that executes `m` and returns its result, and
   also makes a debug log messages about the time it took to execute
-  it, where the message begins with the given `text`."
+  it, where the message contains the given `label` as name and help string."
   [?label ?m]
   `(logging-timing* ~(str *ns*) ~?label ~?m))
 
 ;; More sophisticated API
 
 (defn start-metric-timer-1
-  "Starts a metric timer, identified by `ns`, `metric` and `more`."
+  "Starts a metric timer, identified by `ns`, `metric` and `more`.
+
+  `more` is a map that is merged with the log context that's already active,
+  if present."
   [ns metric more]
   (monad/monadic
    [time time/get-elapsed-time]
@@ -133,7 +136,7 @@
 (defn run-timed-metrics-as-gauges
   [run-any env state m]
   (cond
-    (log-timed-metric m)
+    (log-timed-metric? m)
     (let [timer-name (log-timed-metric-timer-name m)
           timer (log-timed-metric-timer m)]
       (run-any env state
@@ -150,6 +153,22 @@
     {} {})
    time/monad-command-config))
 
+(defn run-timed-metrics-as-histograms
+  [run-any env state m]
+  (cond
+    (log-timed-metric? m)
+    (let [timer-name (log-timed-metric-timer-name m)
+          timer (log-timed-metric-timer m)]
+      (run-any env state
+               ;; use label as metric's name and help string
+               (metric/log-histogram-metric (timer-name-metric timer-name) [] (timer-name-map timer-name) (timer-name-metric timer-name) timer nil (timer-name-namespace timer-name))))
 
-;; TODO: Add `times-metrics-as-histograms-command-config
+    :else
+    monad/unknown-command))
 
+(def timed-metrics-as-histograms-command-config
+  (monad/combine-monad-command-configs
+   (monad/make-monad-command-config
+    run-timed-metrics-as-histograms
+    {} {})
+   time/monad-command-config))
