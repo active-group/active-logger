@@ -136,7 +136,7 @@
 (defn run-timed-metrics-as-gauges
   [run-any env state m]
   (cond
-    (log-timed-metric m)
+    (log-timed-metric? m)
     (let [timer-name (log-timed-metric-timer-name m)
           timer (log-timed-metric-timer m)]
       (run-any env state
@@ -155,4 +155,3 @@
 
 
 ;; TODO: Add `times-metrics-as-histograms-command-config
-
