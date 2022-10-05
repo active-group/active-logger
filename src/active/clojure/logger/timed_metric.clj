@@ -25,16 +25,16 @@
   [timer-name log-timed-metric-timer-name
    timer log-timed-metric-timer])
 
-;; TODO: implement this by using the "sophisticated" API below
+(declare start-metric-timer-1)
+(declare stop-and-log-metric-timer-1)
 
 (defn logging-timing*
   [origin label m]
   (monad/monadic
-   [st time/get-elapsed-time
+   ;;                     TimerName: ns metric map
+   [timer-name (start-metric-timer-1 origin label {})
     r m
-    e time/get-elapsed-time]
-   ;; use label as metric's name and help string
-   (log-timed-metric (make-timer-name origin label {}) (- e st))
+    _ (stop-and-log-metric-timer-1 timer-name)]
    (monad/return r)))
 
 (defmacro logging-timing
