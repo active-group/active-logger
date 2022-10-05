@@ -15,10 +15,10 @@
                                                                               (metric-accumulator/make-metric-sample "name_bucket" {:label "a" :le "20"} 0 0)])]))))
 
 (t/deftest t-render-metrics!
-  (t/is (= "" (m/render-metrics!))))
+  (t/is (= "" (m/render-metrics! []))))
 
 (t/deftest t-wrap-prometheus-metrics-ring-handler
   (t/is (= "ELSE"
            (:body ((m/wrap-prometheus-metrics-ring-handler (constantly {:body "ELSE"})) {:uri "/something-else"}))))
-  (t/is (= (m/render-metrics!)
-           (:body ((m/wrap-prometheus-metrics-ring-handler (constantly "ELSE")) {:uri "/metrics"})))))
+  (t/is (not= "ELSE"
+              (:body ((m/wrap-prometheus-metrics-ring-handler (constantly "ELSE")) {:uri "/metrics"})))))

@@ -25,6 +25,14 @@
   [timer-name log-timed-metric-timer-name
    timer log-timed-metric-timer])
 
+(defmacro log-time-metric!
+  [?log-metric-fn! ?body]
+  `(let [s# (time/get-milli-time!)
+        r# ~?body
+        e# (time/get-milli-time!)]
+     (~?log-metric-fn! (- e# s#))
+    r#))
+
 (declare start-metric-timer-1)
 (declare stop-and-log-metric-timer-1)
 

@@ -1,5 +1,6 @@
 (ns active.clojure.logger.metric-prometheus
   (:require [active.clojure.logger.metric-accumulator :as metric-accumulator]
+            [active.clojure.logger.timed-metric :as timed-metrics]
             [active.clojure.logger.metric-prometheus-util :as util]
             [clojure.string :as string]))
 
@@ -34,9 +35,33 @@
                (mapv render-metric-set ms)))
 
 (defn render-metrics!
-  []
-  (let [all-metric-sets (metric-accumulator/get-all-metric-sample-sets!)]
-    (render-metric-sets all-metric-sets)))
+  [& [metric-sets]]
+  (metric-accumulator/record-metric!
+   (metric-accumulator/make-counter-metric "active_clojure_logger_metric_prometheus_render_metrics_total"
+                                           "Total number of calls to `render-metrics`.") {}
+   1)
+  (let [duration-metric (metric-accumulator/make-histogram-metric "active_clojure_logger_metric_render_metrics_duration_milliseconds"
+                                                                  "Duration of rendering metrics." [])
+        all-metric-sets (timed-metrics/log-time-metric!
+                         #(metric-accumulator/record-metric! duration-metric {:slice "get"} %)
+                         (or metric-sets (metric-accumulator/get-all-metric-sample-sets!)))
+        sorted-metric-sets (timed-metrics/log-time-metric!
+                            #(metric-accumulator/record-metric! duration-metric {:slice "sort"} %)
+                            (sort-by metric-accumulator/metric-sample-set-name all-metric-sets))]
+    (timed-metrics/log-time-metric!
+     #(metric-accumulator/record-metric! duration-metric {:slice "count"} %)
+     (do
+       (metric-accumulator/record-metric!
+        (metric-accumulator/make-gauge-metric "active_clojure_logger_metric_prometheus_metric_sets_total"
+                                              "Total number stored metric sets.") {}
+        (count sorted-metric-sets))
+       (metric-accumulator/record-metric!
+        (metric-accumulator/make-gauge-metric "active_clojure_logger_metric_prometheus_metric_samples_total"
+                                              "Total number stored metric samples.") {}
+        (reduce + 0 (map #(count (metric-accumulator/metric-sample-set-samples %)) sorted-metric-sets)))))
+    (timed-metrics/log-time-metric!
+     #(metric-accumulator/record-metric! duration-metric {:slice "render"} %)
+     (render-metric-sets sorted-metric-sets))))
 
 (defn wrap-prometheus-metrics-ring-handler
   [handler]
