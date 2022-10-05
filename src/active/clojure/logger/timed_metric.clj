@@ -153,5 +153,22 @@
     {} {})
    time/monad-command-config))
 
+(defn run-timed-metrics-as-histograms
+  [run-any env state m]
+  (cond
+    (log-timed-metric? m)
+    (let [timer-name (log-timed-metric-timer-name m)
+          timer (log-timed-metric-timer m)]
+      (run-any env state
+               ;; use label as metric's name and help string
+               (metric/log-histogram-metric (timer-name-metric timer-name) [] (timer-name-map timer-name) (timer-name-metric timer-name) timer nil (timer-name-namespace timer-name))))
 
-;; TODO: Add `times-metrics-as-histograms-command-config
+    :else
+    monad/unknown-command))
+
+(def timed-metrics-as-histograms-command-config
+  (monad/combine-monad-command-configs
+   (monad/make-monad-command-config
+    run-timed-metrics-as-histograms
+    {} {})
+   time/monad-command-config))
