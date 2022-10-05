@@ -3,7 +3,7 @@
   (:require [active.clojure.logger.riemann :as riemann-config]
             [active.clojure.logger.internal :as internal]
             [active.clojure.logger.metric-accumulator :as metric-accumulator]
-            [active.clojure.logger.metric-prometheus :as metric-prometheus]
+            [active.clojure.logger.metric-prometheus-util :as metric-prometheus]
             [active.clojure.monad :as monad]
             [active.clojure.config :as config]
             [active.clojure.record :refer [define-record-type]]))

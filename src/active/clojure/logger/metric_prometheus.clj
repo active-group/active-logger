@@ -1,38 +1,14 @@
 (ns active.clojure.logger.metric-prometheus
   (:require [active.clojure.logger.metric-accumulator :as metric-accumulator]
+            [active.clojure.logger.metric-prometheus-util :as util]
             [clojure.string :as string]))
-
-(defn cleanup-non-prometheus-label-characters
-  [s]
-  (string/replace s #"[^a-zA-Z0-9_:]" "_"))
-
-(defn render-label
-  [k v]
-  (str (cleanup-non-prometheus-label-characters (name k)) "=\"" v "\""))
-
-(defn render-labels
-  [labels]
-  (if (empty? labels)
-    ""
-    (str "{"
-         (string/join "," (mapv render-label (keys labels) (vals labels)))
-         "}")))
-
-(defn render-value
-  [v]
-  (double v))
-
-(defn maybe-render-timestamp
-  [maybe-timestamp]
-  (when maybe-timestamp
-    (format " %d" maybe-timestamp)))
 
 (defn render-metric-sample
   [metric-sample]
-  (str (cleanup-non-prometheus-label-characters (metric-accumulator/metric-sample-name metric-sample))
-       (render-labels (metric-accumulator/metric-sample-labels metric-sample))
-       " " (render-value (metric-accumulator/metric-sample-value metric-sample))
-       (maybe-render-timestamp (metric-accumulator/metric-sample-timestamp metric-sample))))
+  (str (util/cleanup-non-prometheus-label-characters (metric-accumulator/metric-sample-name metric-sample))
+       (util/render-labels (metric-accumulator/metric-sample-labels metric-sample))
+       " " (util/render-value (metric-accumulator/metric-sample-value metric-sample))
+       (util/maybe-render-timestamp (metric-accumulator/metric-sample-timestamp metric-sample))))
 
 (defn render-metric-type
   [metric-type]
@@ -43,7 +19,7 @@
 
 (defn render-metric-set
   [metric-sample-set]
-  (let [set-name (cleanup-non-prometheus-label-characters (metric-accumulator/metric-sample-set-name metric-sample-set))]
+  (let [set-name (util/cleanup-non-prometheus-label-characters (metric-accumulator/metric-sample-set-name metric-sample-set))]
     (string/join "\n"
                  (concat
                   [(str "# HELP " set-name " "
