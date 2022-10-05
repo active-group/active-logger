@@ -1,8 +1,11 @@
 (ns active.clojure.logger.timed-metric-test
-  (:require [clojure.test :refer [deftest is testing]]
+  (:require [clojure.test :refer [deftest is testing use-fixtures]]
             [active.clojure.monad :as monad]
             [active.clojure.mock-monad :as mock-monad]
+            [active.clojure.lens :as lens]
             [active.clojure.logger.event :as event]
+            [active.clojure.logger.metric-emitter :as metric-emitter]
+            [active.clojure.logger.metric-accumulator :as metric-accumulator]
             [active.clojure.logger.time :as time]
             [active.clojure.logger.timed-metric :as timed-metric]))
 
@@ -81,3 +84,55 @@
               [name (timed-metric/start-metric-timer "test metric" :id-1)]
               (timed-metric/stop-and-log-metric-timer name)))]
         (is (= 10 result))))))
+
+
+;; Testing the simple logging
+
+(defn reset-global-state-for-tests!
+  [f]
+  (metric-accumulator/reset-global-metric-store!)
+  (metric-emitter/set-global-log-metrics-config! (metric-emitter/configure-metrics-logging :no-push))
+  (f))
+
+(use-fixtures :each reset-global-state-for-tests!)
+
+(defmacro mock-run-monad
+  [& ?args]
+  `(reset-global-state-for-tests! (fn [] (mock-monad/mock-run-monad ~@?args))))
+
+(defn strip-timestamps-in-samples
+  [samples]
+  (mapv #(metric-accumulator/metric-sample-timestamp % 0) samples))
+
+(defn strip-timestamps-in-sample-sets
+  [sets]
+  (mapv #(lens/overhaul % metric-accumulator/metric-sample-set-samples strip-timestamps-in-samples) sets))
+
+(def monad-command-config
+  (monad/combine-monad-command-configs
+   (monad/make-monad-command-config timed-metric/run-timed-metrics-as-gauges {} {})
+   (monad/make-monad-command-config metric-accumulator/run-metrics {} {})
+   metric-emitter/log-metrics-command-config))
+
+(deftest t-logging-timing
+  (testing "Simple timing works: checking mocked results"
+    (let [result (mock-monad/mock-run-monad
+                   [(mock-monad/mock-result time/get-elapsed-time 10)
+                    (mock-monad/mock-result time/get-elapsed-time 20)
+                    (mock-monad/mock-result
+                     (timed-metric/log-timed-metric
+                      (timed-metric/make-timer-name "active.clojure.logger.timed-metric-test" "example-metric" {}) 10) nil)]
+                   (timed-metric/logging-timing "example-metric" (monad/return nil)))]
+      (is (nil? result))))
+
+  (testing "Simple timing works: checking metric-store"
+    (let [result (mock-run-monad
+                  monad-command-config
+                  [(mock-monad/mock-result time/get-elapsed-time 10)
+                   (mock-monad/mock-result time/get-elapsed-time 20)]
+                  (monad/monadic
+                   (timed-metric/logging-timing "example-metric" (monad/return nil))
+                   (metric-accumulator/get-all-metric-sample-sets)))]
+      (is (= [(metric-accumulator/make-metric-sample-set "example-metric" :gauge "example-metric"
+                                                         [(metric-accumulator/make-metric-sample "example-metric" {} 10 0)])]
+             (strip-timestamps-in-sample-sets result))))))
