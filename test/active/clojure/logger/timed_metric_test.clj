@@ -2,10 +2,10 @@
   (:require [clojure.test :refer [deftest is testing use-fixtures]]
             [active.clojure.monad :as monad]
             [active.clojure.mock-monad :as mock-monad]
-            [active.clojure.lens :as lens]
             [active.clojure.logger.event :as event]
             [active.clojure.logger.metric-emitter :as metric-emitter]
             [active.clojure.logger.metric-accumulator :as metric-accumulator]
+            [active.clojure.logger.test-utils :as test-utils]
             [active.clojure.logger.time :as time]
             [active.clojure.logger.timed-metric :as timed-metric]))
 
@@ -134,7 +134,11 @@
                    (metric-accumulator/get-all-metric-sample-sets)))]
       (is (= [(metric-accumulator/make-metric-sample-set "example-metric" :gauge "example-metric"
                                                          [(metric-accumulator/make-metric-sample "example-metric" {} 10 12345)])]
-             result))))
+             result))
+
+      (test-utils/is-metric-set-stored? "example-metric" :gauge "example-metric")
+
+      (test-utils/is-metric-stored? "example-metric" {} 10)))
 
   (testing "Simple timing works with histograms: checking metric-store"
     (let [result (mock-run-monad
@@ -149,4 +153,10 @@
                                                          [(metric-accumulator/make-metric-sample "example-metric_sum" {} 10 12345)
                                                           (metric-accumulator/make-metric-sample "example-metric_count" {} 1 12345)
                                                           (metric-accumulator/make-metric-sample "example-metric_bucket" {:le "+Inf"} 1 12345)])]
-             result)))))
+             result))
+
+      (test-utils/is-metric-set-stored? "example-metric" :histogram "example-metric")
+
+      (test-utils/is-metric-stored? "example-metric_sum"    {}           10)
+      (test-utils/is-metric-stored? "example-metric_count"  {}            1)
+      (test-utils/is-metric-stored? "example-metric_bucket" {:le "+Inf"}  1))))
