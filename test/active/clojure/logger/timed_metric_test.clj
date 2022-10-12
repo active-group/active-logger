@@ -26,6 +26,30 @@
 (def ignore-log-event-command-config
   (monad/make-monad-command-config ignore-log-event {} {}))
 
+(defn reset-global-state-for-tests!
+  [f]
+  (metric-accumulator/reset-global-metric-store!)
+  (metric-emitter/set-global-log-metrics-config! (metric-emitter/configure-metrics-logging :no-push))
+  (f))
+
+(use-fixtures :each reset-global-state-for-tests!)
+
+(defmacro mock-run-monad
+  [& ?args]
+  `(reset-global-state-for-tests! (fn [] (mock-monad/mock-run-monad ~@?args))))
+
+(def monad-command-config-gauges
+  (monad/combine-monad-command-configs
+   (monad/make-monad-command-config timed-metric/run-timed-metrics-as-gauges {} {})
+   (monad/make-monad-command-config metric-accumulator/run-metrics {} {})
+   metric-emitter/log-metrics-command-config))
+
+(def monad-command-config-histograms
+  (monad/combine-monad-command-configs
+   (monad/make-monad-command-config timed-metric/run-timed-metrics-as-histograms {} {})
+   (monad/make-monad-command-config metric-accumulator/run-metrics {} {})
+   metric-emitter/log-metrics-command-config))
+
 (deftest t-start-stop
   (testing "Timing works"
     (let [result
@@ -37,6 +61,18 @@
             [name (timed-metric/start-metric-timer "test metric" :id-1)]
             (timed-metric/stop-metric-timer name)))]
       (is (float= result 10))))
+
+  (testing "Timing works and sets no values in metric-store"
+    (let [result
+          (mock-run-monad
+           monad-command-config-histograms
+           [(mock-monad/mock-result time/get-elapsed-time 10)
+            (mock-monad/mock-result time/get-elapsed-time 20)]
+           (monad/monadic
+            [name (timed-metric/start-metric-timer "example-metric" {})]
+            (timed-metric/stop-metric-timer name)
+            (metric-accumulator/get-all-metric-sample-sets)))]
+      (is (= [] result))))
 
   (testing "Stopping a timer that has not been started causes a log error."
     (let [result
@@ -83,34 +119,31 @@
              (monad/monadic
               [name (timed-metric/start-metric-timer "test metric" :id-1)]
               (timed-metric/stop-and-log-metric-timer name)))]
-        (is (= 10 result))))))
+        (is (= 10 result)))))
+
+  (testing "Stopping and logging a timer causes it to be set in the metric store"
+    (let [result
+          (mock-run-monad
+           monad-command-config-histograms
+           [(mock-monad/mock-result time/get-elapsed-time 10)
+            (mock-monad/mock-result time/get-elapsed-time 20)
+            (mock-monad/mock-result time/get-milli-time 12345)]
+           (monad/monadic
+            [name (timed-metric/start-metric-timer "example-metric" {})]
+            (timed-metric/stop-and-log-metric-timer name)
+            (metric-accumulator/get-all-metric-sample-sets)
+            ))]
+      (is (= [(metric-accumulator/make-metric-sample-set "example-metric" :histogram "example-metric"
+                                                         [(metric-accumulator/make-metric-sample "example-metric_sum" {} 10 12345)
+                                                          (metric-accumulator/make-metric-sample "example-metric_count" {} 1 12345)
+                                                          (metric-accumulator/make-metric-sample "example-metric_bucket" {:le "+Inf"} 1 12345)])]
+             result))
+
+      (test-utils/is-metric-set-stored? "example-metric" :histogram "example-metric"))))
 
 
 ;; Testing the simple logging
 
-(defn reset-global-state-for-tests!
-  [f]
-  (metric-accumulator/reset-global-metric-store!)
-  (metric-emitter/set-global-log-metrics-config! (metric-emitter/configure-metrics-logging :no-push))
-  (f))
-
-(use-fixtures :each reset-global-state-for-tests!)
-
-(defmacro mock-run-monad
-  [& ?args]
-  `(reset-global-state-for-tests! (fn [] (mock-monad/mock-run-monad ~@?args))))
-
-(def monad-command-config-gauges
-  (monad/combine-monad-command-configs
-   (monad/make-monad-command-config timed-metric/run-timed-metrics-as-gauges {} {})
-   (monad/make-monad-command-config metric-accumulator/run-metrics {} {})
-   metric-emitter/log-metrics-command-config))
-
-(def monad-command-config-histograms
-  (monad/combine-monad-command-configs
-   (monad/make-monad-command-config timed-metric/run-timed-metrics-as-histograms {} {})
-   (monad/make-monad-command-config metric-accumulator/run-metrics {} {})
-   metric-emitter/log-metrics-command-config))
 
 (deftest t-logging-timing
   (testing "Simple timing works: checking mocked results"
