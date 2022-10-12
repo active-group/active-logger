@@ -3314,3 +3314,23 @@
                                       [(m/make-metric-sample "http_request_total" {} 42 1)])]
              (m/get-all-metric-sample-sets!)))
     (m/reset-global-metric-store!)))
+
+;; FIXME: prometheus seems to be okay for counters to jump from a high number
+;;        back to 0
+;;        it looks like that we will stay at Double/MAX_VALUE or run/stay in #Inf
+(t/deftest t-counter-dealing-with-max-value
+  (let [metric-name "counter-limit"
+        counter-metric (m/make-counter-metric metric-name "HELP")]
+    (m/reset-global-metric-store!)
+
+    (m/record-and-get! counter-metric {} Double/MAX_VALUE 0)
+
+    (t/is (= [(m/make-metric-sample-set "counter-limit" :counter "HELP"
+                                        [(m/make-metric-sample "counter-limit" {} Double/MAX_VALUE  0)])]
+             (m/get-all-metric-sample-sets!)))
+
+    (m/record-and-get! counter-metric {} 2 1)
+
+    (t/is (= [(m/make-metric-sample-set "counter-limit" :counter "HELP"
+                                        [(m/make-metric-sample "counter-limit" {} Double/MAX_VALUE 1)])]
+             (m/get-all-metric-sample-sets!)))))
