@@ -5,7 +5,6 @@
             [clojure.spec.alpha :as s]
 
             [clojure.spec.test.alpha :as stest]
-            [clojure.test.check.generators :as tgen]
 
             [active.clojure.monad :as monad]
             [active.clojure.mock-monad :as mock-monad])
@@ -2454,7 +2453,9 @@
                               (m/make-metric-sample (str basename "_bucket")
                                                     (assoc (nth labelss 3) :le (str threshold))
                                                     (if (<= (m/metric-value-value (nth values 3)) threshold) 1 0)
-                                                    (m/metric-value-last-update-time-ms (nth values 3)))])])(defn t-prune-stale-metrics!-prune-nothing
+                                                    (m/metric-value-last-update-time-ms (nth values 3)))])])
+
+(defn t-prune-stale-metrics!-prune-nothing
   "Metric sample set where nothing is pruned."
   [names helps labelss values basename threshold]
   [(m/make-metric-sample-set (nth names 0)
