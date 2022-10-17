@@ -174,19 +174,13 @@
       (test-utils/is-metric-stored? "example-metric" {} 10)))
 
   (testing "Simple timing works with histograms: checking metric-store"
-    (let [result (mock-run-monad
+    (let [_result (mock-run-monad
                   monad-command-config-histograms
                   [(mock-monad/mock-result time/get-elapsed-time 10)
                    (mock-monad/mock-result time/get-elapsed-time 20)
                    (mock-monad/mock-result time/get-milli-time 12345)]
                   (monad/monadic
-                   (timed-metric/logging-timing "example-metric" (monad/return nil))
-                   (metric-accumulator/get-all-metric-sample-sets)))]
-      (is (= [(metric-accumulator/make-metric-sample-set "example-metric" :histogram "example-metric"
-                                                         [(metric-accumulator/make-metric-sample "example-metric_sum" {} 10 12345)
-                                                          (metric-accumulator/make-metric-sample "example-metric_count" {} 1 12345)
-                                                          (metric-accumulator/make-metric-sample "example-metric_bucket" {:le "+Inf"} 1 12345)])]
-             result))
+                   (timed-metric/logging-timing "example-metric" (monad/return nil))))]
 
       (test-utils/is-metric-set-stored? "example-metric" :histogram "example-metric")
 
