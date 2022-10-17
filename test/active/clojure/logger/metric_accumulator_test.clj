@@ -3315,9 +3315,8 @@
              (m/get-all-metric-sample-sets!)))
     (m/reset-global-metric-store!)))
 
-;; FIXME: prometheus seems to be okay for counters to jump from a high number
-;;        back to 0
-;;        it looks like that we will stay at Double/MAX_VALUE or run/stay in #Inf
+;; prometheus seems to be okay for counters to jump from a high number back to 0
+;; it looks like that we will stay at Double/MAX_VALUE or run/stay in #Inf
 (t/deftest t-counter-dealing-with-max-value
   (let [metric-name "counter-limit"
         counter-metric (m/make-counter-metric metric-name "HELP")]
