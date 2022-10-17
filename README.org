@@ -186,7 +186,7 @@ system.  You can use
 convenience start a thread that prunes stale metrics periodically with
 ~active.clojure.logger.metric-accumulator/start-prune-stale-metrics-thread!~.
 
-(We also implemnt ~set-counter-metric!~ and the monadic ~set-counter-metric~ for
+(We also implement ~set-counter-metric!~ and the monadic ~set-counter-metric~ for
 metrics that represent counters but can be used by gauges by setting the value
 instead of incrementing the value.  Use this only if you know what you are
 doing.)
