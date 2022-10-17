@@ -37,20 +37,25 @@
 (declare stop-and-log-metric-timer-1)
 
 (defn logging-timing*
-  [origin label m]
-  (monad/monadic
-   ;;                     TimerName: ns metric map
-   [timer-name (start-metric-timer-1 origin label {})
-    r m
-    _ (stop-and-log-metric-timer-1 timer-name)]
-   (monad/return r)))
+  ([origin metric m]
+   (logging-timing* origin metric {} m))
+  ([origin metric more m]
+   (monad/monadic
+    ;;                     TimerName: ns metric map
+    [timer-name (start-metric-timer-1 origin metric more)
+     r m
+     _ (stop-and-log-metric-timer-1 timer-name)]
+    (monad/return r))))
 
 (defmacro logging-timing
   "A monadic command that executes `m` and returns its result, and
-  also makes a debug log messages about the time it took to execute
-  it, where the message contains the given `label` as name and help string."
-  [?label ?m]
-  `(logging-timing* ~(str *ns*) ~?label ~?m))
+  also makes a debug log message about the time it took to execute
+  it, where the message contains the given `metric` as name and
+  help string and `more`."
+  ([?metric ?m]
+  `(logging-timing* ~(str *ns*) ~?metric ~?m))
+  ([?metric ?more ?m]
+  `(logging-timing* ~(str *ns*) ~?metric ~?more ~?m)))
 
 ;; More sophisticated API
 
