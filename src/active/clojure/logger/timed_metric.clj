@@ -159,7 +159,8 @@
    (monad/make-monad-command-config
     run-timed-metrics-as-gauges
     {} {})
-   time/monad-command-config))
+   time/monad-command-config
+   metric/monad-command-config))
 
 (defn run-timed-metrics-as-histograms
   [run-any env state m]
@@ -179,4 +180,5 @@
    (monad/make-monad-command-config
     run-timed-metrics-as-histograms
     {} {})
-   time/monad-command-config))
+   time/monad-command-config
+   metric/monad-command-config))
