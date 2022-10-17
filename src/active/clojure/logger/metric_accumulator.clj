@@ -241,7 +241,7 @@
 
 (s/fdef empty-gauge-values?
   :args (s/cat :gauge-values ::gauge-values)
-  :ret boolean)
+  :ret boolean?)
 (defn empty-gauge-values?
   [gauge-values]
   (empty? (gauge-values-map gauge-values)))
@@ -268,7 +268,7 @@
 (s/fdef make-counter-metric
   :args (s/cat :metric-name ::metric-name
                :metric-help ::metric-help
-               :optional (s/? (s/cat :set-value? boolean)))
+               :optional (s/? (s/cat :set-value? boolean?)))
   :ret ::counter-metric)
 (defn make-counter-metric
   [metric-name metric-help & [set-value?]]
@@ -329,7 +329,7 @@
 
 (s/fdef empty-counter-values?
   :args (s/cat :counter-values ::counter-values)
-  :ret boolean)
+  :ret boolean?)
 (defn empty-counter-values?
   [counter-values]
   (empty? (counter-values-map counter-values)))
@@ -465,7 +465,7 @@
 
 (s/fdef empty-histogram-values?
   :args (s/cat :histogram-values ::histogram-values)
-  :ret boolean)
+  :ret boolean?)
 (defn empty-histogram-values?
   [histogram-values]
   (empty? (histogram-values-sum-map histogram-values)))
@@ -521,7 +521,7 @@
 
 (s/fdef empty-stored-values?
   :args (s/cat :stored-values ::stored-values)
-  :ret boolean)
+  :ret boolean?)
 (defn empty-stored-values?
   [stored-values]
   (cond
