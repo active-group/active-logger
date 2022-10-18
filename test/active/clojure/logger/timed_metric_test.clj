@@ -147,6 +147,7 @@
 
 (deftest t-logging-timing
   (testing "Simple timing works: checking mocked results"
+    ;; logging-timing called with 2 arguments
     (let [result (mock-monad/mock-run-monad
                    [(mock-monad/mock-result time/get-elapsed-time 10)
                     (mock-monad/mock-result time/get-elapsed-time 20)
@@ -154,36 +155,62 @@
                      (timed-metric/log-timed-metric
                       (timed-metric/make-timer-name "active.clojure.logger.timed-metric-test" "example-metric" {}) 10) nil)]
                    (timed-metric/logging-timing "example-metric" (monad/return nil)))]
+      (is (nil? result)))
+    ;; logging-timing called with 3 arguments
+    (let [result (mock-monad/mock-run-monad
+                  [(mock-monad/mock-result time/get-elapsed-time 10)
+                   (mock-monad/mock-result time/get-elapsed-time 20)
+                   (mock-monad/mock-result
+                    (timed-metric/log-timed-metric
+                     (timed-metric/make-timer-name "active.clojure.logger.timed-metric-test"
+                                                   "example-metric"
+                                                   {:example-key "example-value"}) 10) nil)]
+                  (timed-metric/logging-timing "example-metric" {:example-key "example-value"} (monad/return nil)))]
       (is (nil? result))))
 
   (testing "Simple timing works with gauges: checking metric-store"
-    (let [result (mock-run-monad
-                  monad-command-config-gauges
-                  [(mock-monad/mock-result time/get-elapsed-time 10)
-                   (mock-monad/mock-result time/get-elapsed-time 20)
-                   (mock-monad/mock-result time/get-milli-time 12345)]
-                  (monad/monadic
-                   (timed-metric/logging-timing "example-metric" (monad/return nil))
-                   (metric-accumulator/get-all-metric-sample-sets)))]
-      (is (= [(metric-accumulator/make-metric-sample-set "example-metric" :gauge "example-metric"
-                                                         [(metric-accumulator/make-metric-sample "example-metric" {} 10 12345)])]
-             result))
+    (let [_result (mock-run-monad
+                   monad-command-config-gauges
+                   [(mock-monad/mock-result time/get-elapsed-time 10)
+                    (mock-monad/mock-result time/get-elapsed-time 20)
+                    (mock-monad/mock-result time/get-milli-time 12345)
+                    (mock-monad/mock-result time/get-elapsed-time 35)
+                    (mock-monad/mock-result time/get-elapsed-time 45)
+                    (mock-monad/mock-result time/get-milli-time 67890)]
+                   (monad/monadic
+                    ;; logging timing called with 2 arguments
+                    (timed-metric/logging-timing "example-metric-1" (monad/return nil))
+                    ;; logging timing called with 3 arguments
+                    (timed-metric/logging-timing "example-metric-2" {:example-key "example-value"}(monad/return nil))))]
 
-      (test-utils/is-metric-set-stored? "example-metric" :gauge "example-metric")
-
-      (test-utils/is-metric-stored? "example-metric" {} 10)))
+      (test-utils/is-metric-set-stored? "example-metric-1" :gauge "example-metric-1")
+      (test-utils/is-metric-set-stored? "example-metric-2" :gauge "example-metric-2")
+      (test-utils/is-metric-stored? "example-metric-1" {} 10)
+      (test-utils/is-metric-stored? "example-metric-2" {:example-key "example-value"} 10)))
 
   (testing "Simple timing works with histograms: checking metric-store"
     (let [_result (mock-run-monad
-                  monad-command-config-histograms
-                  [(mock-monad/mock-result time/get-elapsed-time 10)
-                   (mock-monad/mock-result time/get-elapsed-time 20)
-                   (mock-monad/mock-result time/get-milli-time 12345)]
-                  (monad/monadic
-                   (timed-metric/logging-timing "example-metric" (monad/return nil))))]
+                   monad-command-config-histograms
+                   [(mock-monad/mock-result time/get-elapsed-time 10)
+                    (mock-monad/mock-result time/get-elapsed-time 20)
+                    (mock-monad/mock-result time/get-milli-time 12345)
+                    (mock-monad/mock-result time/get-elapsed-time 35)
+                    (mock-monad/mock-result time/get-elapsed-time 45)
+                    (mock-monad/mock-result time/get-milli-time 67890)]
 
-      (test-utils/is-metric-set-stored? "example-metric" :histogram "example-metric")
+                   (monad/monadic
+                    ;; logging timing called with 2 arguments
+                    (timed-metric/logging-timing "example-metric-1" (monad/return nil))
+                    ;; logging timing called with 3 arguments
+                    (timed-metric/logging-timing "example-metric-2" {:example-key "example-value"} (monad/return nil))))]
 
-      (test-utils/is-metric-stored? "example-metric_sum"    {}           10)
-      (test-utils/is-metric-stored? "example-metric_count"  {}            1)
-      (test-utils/is-metric-stored? "example-metric_bucket" {:le "+Inf"}  1))))
+      (test-utils/is-metric-set-stored? "example-metric-1" :histogram "example-metric-1")
+      (test-utils/is-metric-set-stored? "example-metric-2" :histogram "example-metric-2")
+
+      (test-utils/is-metric-stored? "example-metric-1_sum"    {}           10)
+      (test-utils/is-metric-stored? "example-metric-1_count"  {}            1)
+      (test-utils/is-metric-stored? "example-metric-1_bucket" {:le "+Inf"}  1)
+
+      (test-utils/is-metric-stored? "example-metric-2_sum"    {:example-key "example-value"           } 10)
+      (test-utils/is-metric-stored? "example-metric-2_count"  {:example-key "example-value"           }  1)
+      (test-utils/is-metric-stored? "example-metric-2_bucket" {:example-key "example-value" :le "+Inf"}  1))))
