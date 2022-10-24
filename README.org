@@ -8,10 +8,14 @@ java.util.logging (JUL), and Apache Commons Logging (JCL).
 
 [[https://img.shields.io/clojars/v/de.active-group/active-logger.svg]]
 
-* Breaking changes in version 0.8.0:
-
+* Breaking changes
+** 0.8.0:
 - We revamped the Metrics implementation: You need to adjust all your calls to
   `log-metric` in your code.  Details see below.
+** 0.7.0
+- A call to `redirect-log4j!` isn't necessary anymore. You have to remove
+  the `active.clojure.logger.log4j` namespace from your `requires`. You also have
+  to remove the calls to `redirect-log4j!` without substitution.
 
 * TL;DR
 If you just want to get going, here is a minimal working example on how to
