@@ -9,7 +9,16 @@ java.util.logging (JUL), and Apache Commons Logging (JCL).
 [[https://img.shields.io/clojars/v/de.active-group/active-logger.svg]]
 
 * Breaking changes
-** 0.8.0:
+
+** Breaking changes in version 0.10.0:
+
+- We removed `active.clojure.logger.timbre/timbre-config-section`; the client
+  should choose its section key for the configuration itself and the library
+  should be called with a configuration object of schema
+  `active.clojure.logger.timbre/timbre-config-schema`.
+
+** Breaking changes in version 0.8.0:
+
 - We revamped the Metrics implementation: You need to adjust all your calls to
   `log-metric` in your code.  Details see below.
 ** 0.7.0
@@ -66,22 +75,19 @@ Or use [[https://github.com/active-group/active-clojure][active-clojure]]'s =act
               [active.clojure.logger.timbre :as timbre]))
 
   (def config-map
-    {:timbre-config
-     {:min-level :debug  ;; Log everything that is at least a :debug message.
-      :appenders
-      {;; Print messages to stdout/stderr.
-       :println '(println)
-       ;; Write messages to a file.
-       :spit '(spit "/tmp/my-app.log")
-       ;; Submit messages to a logstash instance.
-       :logstash '(logstash "localhost" 4660)}}})
+    {:min-level :debug  ;; Log everything that is at least a :debug message.
+     :appenders
+     {;; Print messages to stdout/stderr.
+      :println '(println)
+      ;; Write messages to a file.
+      :spit '(spit "/tmp/my-app.log")
+      ;; Submit messages to a logstash instance.
+      :logstash '(logstash "localhost" 4660)}})
 
-  (def schema (active-config/schema "Configuration schema." timbre/timbre-config-section))
-  (def configuration (active-config/make-configuration schema [] config-map))
+  (def configuration (active-config/make-configuration timbre/timbre-config-schema [] config-map))
 
   ;; Initialize the event-logger.
   (-> configuration
-      (active-config/section-subconfig timbre/timbre-config-section)
       timbre/configuration->timbre-config
       event-logger/set-global-log-events-config!)
 #+end_src

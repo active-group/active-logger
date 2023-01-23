@@ -138,20 +138,19 @@
                       (config/one-of-range #{:jvm-default :utc} :jvm-default)
                       (config/default-string-range (.getID ^java.util.TimeZone (java.util.TimeZone/getTimeZone "Europe/Amsterdam")))))))))
 
-(def timbre-config-section
-  (config/section :timbre-config
-                  (config/schema
-                   "Configuration for Timbre, merged into the default configuration."
+(def timbre-config-schema
+  (config/schema
+   "Configuration for Timbre, merged into the default configuration."
                    ;; These could use fleshing out.  Or not.
-                   timbre-min-level-setting
-                   timbre-level-setting
-                   timbre-appenders-setting
-                   timbre-ns-whitelist-setting
-                   timbre-ns-blacklist-setting
-                   timbre-middleware-setting
-                   timbre-timestamp-opts-setting
-                   timbre-hostname-setting
-                   timbre-application-setting)))
+   timbre-min-level-setting
+   timbre-level-setting
+   timbre-appenders-setting
+   timbre-ns-whitelist-setting
+   timbre-ns-blacklist-setting
+   timbre-middleware-setting
+   timbre-timestamp-opts-setting
+   timbre-hostname-setting
+   timbre-application-setting))
 
 (defn riemann-appender [& [opts]]
   (riemann/riemann-appender opts))
