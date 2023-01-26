@@ -12,19 +12,19 @@ java.util.logging (JUL), and Apache Commons Logging (JCL).
 
 ** Breaking changes in version 0.10.0:
 
-- We removed `active.clojure.logger.timbre/timbre-config-section`; the client
+- We removed ~active.clojure.logger.timbre/timbre-config-section~; the client
   should choose its section key for the configuration itself and the library
   should be called with a configuration object of schema
-  `active.clojure.logger.timbre/timbre-config-schema`.
+  ~active.clojure.logger.timbre/timbre-config-schema~.
 
 ** Breaking changes in version 0.8.0:
 
 - We revamped the Metrics implementation: You need to adjust all your calls to
-  `log-metric` in your code.  Details see below.
+  ~log-metric~ in your code.  Details see below.
 ** 0.7.0
-- A call to `redirect-log4j!` isn't necessary anymore. You have to remove
-  the `active.clojure.logger.log4j` namespace from your `requires`. You also have
-  to remove the calls to `redirect-log4j!` without substitution.
+- A call to ~redirect-log4j!~ isn't necessary anymore. You have to remove the
+  ~active.clojure.logger.log4j~ namespace from your ~:require~ statements. You
+  also have to remove the calls to ~redirect-log4j!~ without substitution.
 
 * TL;DR
 If you just want to get going, here is a minimal working example on how to
