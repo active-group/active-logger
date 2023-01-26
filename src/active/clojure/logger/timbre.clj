@@ -80,18 +80,11 @@
                     (config/any-value-range nil)) ;; resp [:spit-appender <any>]; see timbre-spec->appender
                    {:default '(println)})))
 
-(def timbre-ns-whitelist-setting
-  (config/setting :ns-whitelist
-                  "Whitelist for Timbre"
+(def timbre-ns-filter-setting
+  (config/setting :ns-filter
+                  "Filter for Timbre"
                   (config/predicate-range "Timbre whitelist"
-                                          vector?
-                                          [])))
-
-(def timbre-ns-blacklist-setting
-  (config/setting :ns-blacklist
-                  "Blacklist for Timbre"
-                  (config/predicate-range "Timbre blacklist"
-                                          vector?
+                                          any?
                                           [])))
 
 (def timbre-middleware-setting
@@ -145,8 +138,7 @@
    timbre-min-level-setting
    timbre-level-setting
    timbre-appenders-setting
-   timbre-ns-whitelist-setting
-   timbre-ns-blacklist-setting
+   timbre-ns-filter-setting
    timbre-middleware-setting
    timbre-timestamp-opts-setting
    timbre-hostname-setting
@@ -246,8 +238,7 @@
                      (map (fn [[k v]]
                             [k (timbre-spec->appender v)])
                           (config/access timbre-subconfig timbre-appenders-setting)))
-    :ns-whitelist   (config/access timbre-subconfig timbre-ns-whitelist-setting)
-    :ns-blacklist   (config/access timbre-subconfig timbre-ns-blacklist-setting)
+    :ns-filter      (config/access timbre-subconfig timbre-ns-filter-setting)
     :middleware     (conj (config/access timbre-subconfig timbre-middleware-setting)
                       (fixed-properties-timbre-middleware (config/access timbre-subconfig timbre-hostname-setting)
                                                           (config/access timbre-subconfig timbre-application-setting)))
