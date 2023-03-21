@@ -58,11 +58,14 @@
 ;; :min-level taking precedence over :level if both are configured.
 ;; See https://github.com/ptaoussanis/timbre/releases/tag/v5.0.0
 (def timbre-min-level-setting
-  (config/setting :min-level
-                  "Log level for Timbre"
-                  (config/optional-range
-                   (config/one-of-range #{:trace :debug :info :warn :error :fatal :report}
-                                        :debug))))
+  (let [default :debug]
+    (config/setting :min-level
+                    "Log level for Timbre"
+                    (config/optional-range
+                     (config/any-range
+                      (config/one-of-range #{:trace :debug :info :warn :error :fatal :report}
+                                           default)
+                      (config/predicate-range "advanced level setting" vector? default))))))
 
 (def timbre-level-setting
   (config/setting :level
@@ -83,9 +86,9 @@
 (def timbre-ns-filter-setting
   (config/setting :ns-filter
                   "Filter for Timbre"
-                  (config/predicate-range "Timbre whitelist"
+                  (config/predicate-range "Timbre namespace filter"
                                           any?
-                                          [])))
+                                          {})))
 
 (def timbre-middleware-setting
   (config/setting :middleware

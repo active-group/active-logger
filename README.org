@@ -340,11 +340,15 @@ behave.
 For a full list of options, refer to [[./src/active/clojure/logger/config/timbre.clj][the respective sources]].
 
 Here, we will cover the most important options:
-*** =:level=
+*** =:min-level=
 *default*: =:debug=
 
 The minimum level a message must have to be printed.
 Possible values are =#{:trace :debug :info :warn :error :fatal :report}=.
+
+There is syntax for advanced settings for levels for namespaces:
+=[[#{\"taoensso.*\"} :error] ... [#{\"*\"} :debug]]=
+
 *** =:appenders=
 *default*: ={:println (println)}=
 
@@ -399,15 +403,10 @@ Example
   {:riemann (riemann {:host "localhost"
                       :port 5555})}
 #+end_src
-*** =:ns-blacklist=
-It is possible to ignore specific namespaces in the log-output.
-=ns-blacklist='s value it a sequence of glob-patterns.
-Matches will be ignored.
-Example: ={:ns-blacklist ["my.project.internal.*"]}=
-*** =:ns-whitelist=
-Converse of =ns-blacklist=: All specified patterns are included in the log
-output, everything else is ignored.
-Example:  ={:ns-whitelist ["nothing.else.matters"]}=
+*** =:ns-filter:=
+It is possible to filter specific namespaces in the log-output.  You can give a
+map with keys `:allow` and `:deny` with set values that contain namespace pattern.
+Example: ={:ns-filter {:allow #{"*"} :deny #{"taoensso.*"}}}=
 *** =:timestamp-opts=
 Section containing three settings related to how timestamps are formatted in
 logs:
