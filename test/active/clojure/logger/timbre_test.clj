@@ -29,9 +29,9 @@
             {:pattern "yyyy-MM-dd HH:mm:ss.SSS",
              :locale :jvm-default,
              :timezone :jvm-default},
-            :hostname "calculon.home.active-group.de",
             :application nil}
-           (active-config/normalize&check-config-object timbre-config/timbre-config-schema [] {})))
+           (dissoc (active-config/normalize&check-config-object timbre-config/timbre-config-schema [] {})
+                   :hostname)))
   (t/is (= {:min-level [["*" :debug]],
             :level nil,
             :appenders {:default '(println)},
@@ -41,8 +41,8 @@
             {:pattern "yyyy-MM-dd HH:mm:ss.SSS",
              :locale :jvm-default,
              :timezone :jvm-default},
-            :hostname "calculon.home.active-group.de",
             :application nil}
-           (active-config/normalize&check-config-object timbre-config/timbre-config-schema []
-                                                        {:min-level [["*" :debug]]
-                                                         :ns-filter {:allow #{"*"} :deny #{"taoensso.*"}}}))))
+           (dissoc (active-config/normalize&check-config-object timbre-config/timbre-config-schema []
+                                                                {:min-level [["*" :debug]]
+                                                                 :ns-filter {:allow #{"*"} :deny #{"taoensso.*"}}})
+                   :hostname))))
