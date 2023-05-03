@@ -134,9 +134,9 @@
             (metric-accumulator/get-all-metric-sample-sets)
             ))]
       (is (= [(metric-accumulator/make-metric-sample-set "example-metric" :histogram "example-metric"
-                                                         [(metric-accumulator/make-metric-sample "example-metric_sum" {} 10 12345)
-                                                          (metric-accumulator/make-metric-sample "example-metric_count" {} 1 12345)
-                                                          (metric-accumulator/make-metric-sample "example-metric_bucket" {:le "+Inf"} 1 12345)])]
+                                                         [(metric-accumulator/make-metric-sample "example-metric_sum" {} 10.0 12345)
+                                                          (metric-accumulator/make-metric-sample "example-metric_count" {} 1.0 12345)
+                                                          (metric-accumulator/make-metric-sample "example-metric_bucket" {:le "+Inf"} 1.0 12345)])]
              result))
 
       (test-utils/is-metric-set-stored? "example-metric" :histogram "example-metric"))))
@@ -185,8 +185,8 @@
 
       (test-utils/is-metric-set-stored? "example-metric-1" :gauge "example-metric-1")
       (test-utils/is-metric-set-stored? "example-metric-2" :gauge "example-metric-2")
-      (test-utils/is-metric-stored? "example-metric-1" {} 10)
-      (test-utils/is-metric-stored? "example-metric-2" {:example-key "example-value"} 10)))
+      (test-utils/is-metric-stored? "example-metric-1" {} 10.0)
+      (test-utils/is-metric-stored? "example-metric-2" {:example-key "example-value"} 10.0)))
 
   (testing "Simple timing works with histograms: checking metric-store"
     (let [_result (mock-run-monad
@@ -207,10 +207,10 @@
       (test-utils/is-metric-set-stored? "example-metric-1" :histogram "example-metric-1")
       (test-utils/is-metric-set-stored? "example-metric-2" :histogram "example-metric-2")
 
-      (test-utils/is-metric-stored? "example-metric-1_sum"    {}           10)
-      (test-utils/is-metric-stored? "example-metric-1_count"  {}            1)
-      (test-utils/is-metric-stored? "example-metric-1_bucket" {:le "+Inf"}  1)
+      (test-utils/is-metric-stored? "example-metric-1_sum"    {}           10.0)
+      (test-utils/is-metric-stored? "example-metric-1_count"  {}            1.0)
+      (test-utils/is-metric-stored? "example-metric-1_bucket" {:le "+Inf"}  1.0)
 
-      (test-utils/is-metric-stored? "example-metric-2_sum"    {:example-key "example-value"           } 10)
-      (test-utils/is-metric-stored? "example-metric-2_count"  {:example-key "example-value"           }  1)
-      (test-utils/is-metric-stored? "example-metric-2_bucket" {:example-key "example-value" :le "+Inf"}  1))))
+      (test-utils/is-metric-stored? "example-metric-2_sum"    {:example-key "example-value"           } 10.0)
+      (test-utils/is-metric-stored? "example-metric-2_count"  {:example-key "example-value"           }  1.0)
+      (test-utils/is-metric-stored? "example-metric-2_bucket" {:example-key "example-value" :le "+Inf"}  1.0))))

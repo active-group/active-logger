@@ -69,6 +69,7 @@
 
 ;; TODO: maybe better counter-metric-value and gauge-metric-value?
 (s/def ::metric-value-value (s/and number? #(not (Double/isNaN %))))
+(s/def ::metric-value-value-double (s/and double? #(not (Double/isNaN %))))
 ;; https://prometheus.io/docs/instrumenting/writing_exporters/
 ;; "You should not set timestamps on the metrics you expose, let Prometheus
 ;; take care of that."
@@ -79,9 +80,9 @@
   (s/spec
    (partial instance? MetricValue)
    :gen (fn []
-          (sgen/fmap (fn [{:keys [metric-value-value metric-value-last-update-time-ms]}]
-                       (make-metric-value metric-value-value metric-value-last-update-time-ms))
-                     (s/gen (s/keys :req-un [::metric-value-value ::metric-value-last-update-time-ms]))))))
+          (sgen/fmap (fn [{:keys [metric-value-value-double metric-value-last-update-time-ms]}]
+                       (make-metric-value metric-value-value-double metric-value-last-update-time-ms))
+                     (s/gen (s/keys :req-un [::metric-value-value-double ::metric-value-last-update-time-ms]))))))
 
 (s/fdef make-metric-value
   :args (s/cat :value       ::metric-value-value
@@ -89,7 +90,7 @@
   :ret  ::metric-value)
 (defn make-metric-value
   [value update-time]
-  (really-make-metric-value value update-time))
+  (really-make-metric-value (double value) update-time))
 
 ;; Primitives on `labels-value-map`s
 

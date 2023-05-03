@@ -124,9 +124,9 @@
            (property [value       (spec ::m/metric-value-value)
                       update-time (spec ::m/metric-value-last-update-time-ms)]
                      (let [example-metric-value (m/make-metric-value value update-time)]
-                       (t/is                (m/metric-value?                    example-metric-value))
-                       (t/is (= value       (m/metric-value-value               example-metric-value)))
-                       (t/is (= update-time (m/metric-value-last-update-time-ms example-metric-value)))))))))
+                       (t/is                   (m/metric-value?                    example-metric-value))
+                       (t/is (= (double value) (m/metric-value-value               example-metric-value)))
+                       (t/is (= update-time    (m/metric-value-last-update-time-ms example-metric-value)))))))))
 
 (t/deftest t-set-metric-value
   (t/testing "Setting a metric value works."
@@ -558,10 +558,10 @@
                                    (nth labelss 2) (nth values  2))
                                   (nth labelss 1) value-x))))
                        ;; testing bucket-map
-                       (let [value-value-0 (if (<= (m/metric-value-value (nth values 0)) threshold) 1 0)
-                             value-value-1 (if (<= (m/metric-value-value (nth values 1)) threshold) 1 0)
-                             value-value-2 (if (<= (m/metric-value-value (nth values 2)) threshold) 1 0)
-                             value-value-x (if (<= (m/metric-value-value value-x)        threshold) 1 0)]
+                       (let [value-value-0 (if (<= (m/metric-value-value (nth values 0)) threshold) 1.0 0.0)
+                             value-value-1 (if (<= (m/metric-value-value (nth values 1)) threshold) 1.0 0.0)
+                             value-value-2 (if (<= (m/metric-value-value (nth values 2)) threshold) 1.0 0.0)
+                             value-value-x (if (<= (m/metric-value-value value-x)        threshold) 1.0 0.0)]
                          (t/is (= [{}] (m/histogram-values-bucket-maps example-histogram-values)))
                          (t/is (= [{(nth labelss 0) (m/make-metric-value value-value-0 (m/metric-value-last-update-time-ms (nth values 0)))}]
                                   (m/histogram-values-bucket-maps
@@ -614,15 +614,15 @@
                                                        (m/metric-value-last-update-time-ms (nth values 0)))
                                  (m/make-metric-sample (str basename "_count")
                                                        (nth labelss 0)
-                                                       1
+                                                       1.0
                                                        (m/metric-value-last-update-time-ms (nth values 0)))
                                  (m/make-metric-sample (str basename "_bucket")
                                                        (assoc (nth labelss 0) :le "+Inf")
-                                                       1
+                                                       1.0
                                                        (m/metric-value-last-update-time-ms (nth values 0)))
                                  (m/make-metric-sample (str basename "_bucket")
                                                        (assoc (nth labelss 0) :le (str threshold))
-                                                       (if (<= (m/metric-value-value (nth values 0)) threshold) 1 0)
+                                                       (if (<= (m/metric-value-value (nth values 0)) threshold) 1.0 0.0)
                                                        (m/metric-value-last-update-time-ms (nth values 0)))]
                                 (m/histogram-values->metric-samples basename filled-histogram-values (nth labelss 0))))))))))
 
@@ -692,12 +692,12 @@
                                 (m/histogram-values-count-map (m/prune-stale-histogram-values filled-histogram-values 13))))
 
                       ;; bucket-map
-                       (let [value-value-0 (if (<= (m/metric-value-value (nth values 0)) threshold) 1 0)
-                             value-value-1 (if (<= (m/metric-value-value (nth values 1)) threshold) 1 0)
-                             value-value-2 (if (<= (m/metric-value-value (nth values 2)) threshold) 1 0)
-                             value-value-3 (if (<= (m/metric-value-value (nth values 3)) threshold) 1 0)
-                             value-value-4 (if (<= (m/metric-value-value (nth values 4)) threshold) 1 0)
-                             value-value-5 (if (<= (m/metric-value-value (nth values 5)) threshold) 1 0)]
+                       (let [value-value-0 (if (<= (m/metric-value-value (nth values 0)) threshold) 1.0 0.0)
+                             value-value-1 (if (<= (m/metric-value-value (nth values 1)) threshold) 1.0 0.0)
+                             value-value-2 (if (<= (m/metric-value-value (nth values 2)) threshold) 1.0 0.0)
+                             value-value-3 (if (<= (m/metric-value-value (nth values 3)) threshold) 1.0 0.0)
+                             value-value-4 (if (<= (m/metric-value-value (nth values 4)) threshold) 1.0 0.0)
+                             value-value-5 (if (<= (m/metric-value-value (nth values 5)) threshold) 1.0 0.0)]
 
                        ;; empty labels-value-map
                          (t/is (= [{}]
@@ -826,27 +826,27 @@
                                  (nth labelss 5) (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 5)))}
                                 (m/histogram-values-count-map (m/update-stored-values filled-histogram-values (nth labelss 2) value-x))))
                        ;; bucket
-                       (t/is (= [{labels-x (m/make-metric-value (if (<= (m/metric-value-value value-x) threshold) 1 0)
+                       (t/is (= [{labels-x (m/make-metric-value (if (<= (m/metric-value-value value-x) threshold) 1.0 0.0)
                                                                 (m/metric-value-last-update-time-ms value-x))}]
                                 (m/histogram-values-bucket-maps (m/update-stored-values (m/make-histogram-values [threshold]) labels-x value-x))))
-                       (t/is (= [{(nth labelss 0) (m/make-metric-value (if (<= (m/metric-value-value (nth values 0)) threshold) 1 0)
+                       (t/is (= [{(nth labelss 0) (m/make-metric-value (if (<= (m/metric-value-value (nth values 0)) threshold) 1.0 0.0)
                                                                        (m/metric-value-last-update-time-ms (nth values 0)))
-                                  (nth labelss 1) (m/make-metric-value (if (<= (m/metric-value-value (nth values 1)) threshold) 1 0)
+                                  (nth labelss 1) (m/make-metric-value (if (<= (m/metric-value-value (nth values 1)) threshold) 1.0 0.0)
                                                                        (m/metric-value-last-update-time-ms (nth values 1)))
-                                  (nth labelss 2) (m/make-metric-value (if (<= (m/metric-value-value (nth values 2)) threshold) 1 0)
+                                  (nth labelss 2) (m/make-metric-value (if (<= (m/metric-value-value (nth values 2)) threshold) 1.0 0.0)
                                                                        (m/metric-value-last-update-time-ms (nth values 2)))
-                                  (nth labelss 3) (m/make-metric-value (if (<= (m/metric-value-value (nth values 3)) threshold) 1 0)
+                                  (nth labelss 3) (m/make-metric-value (if (<= (m/metric-value-value (nth values 3)) threshold) 1.0 0.0)
                                                                        (m/metric-value-last-update-time-ms (nth values 3)))
-                                  (nth labelss 4) (m/make-metric-value (if (<= (m/metric-value-value (nth values 4)) threshold) 1 0)
+                                  (nth labelss 4) (m/make-metric-value (if (<= (m/metric-value-value (nth values 4)) threshold) 1.0 0.0)
                                                                        (m/metric-value-last-update-time-ms (nth values 4)))
-                                  (nth labelss 5) (m/make-metric-value (if (<= (m/metric-value-value (nth values 5)) threshold) 1 0)
+                                  (nth labelss 5) (m/make-metric-value (if (<= (m/metric-value-value (nth values 5)) threshold) 1.0 0.0)
                                                                        (m/metric-value-last-update-time-ms (nth values 5)))
-                                  labels-x        (m/make-metric-value (if (<= (m/metric-value-value value-x) threshold) 1 0)
+                                  labels-x        (m/make-metric-value (if (<= (m/metric-value-value value-x) threshold) 1.0 0.0)
                                                                        (m/metric-value-last-update-time-ms value-x))}]
                                 (m/histogram-values-bucket-maps (m/update-stored-values filled-histogram-values labels-x value-x))))
-                       (t/is (= [{(nth labelss 0) (m/make-metric-value (if (<= (m/metric-value-value (nth values 0)) threshold) 1 0)
+                       (t/is (= [{(nth labelss 0) (m/make-metric-value (if (<= (m/metric-value-value (nth values 0)) threshold) 1.0 0.0)
                                                                        (m/metric-value-last-update-time-ms (nth values 0)))
-                                  (nth labelss 1) (m/make-metric-value (if (<= (m/metric-value-value (nth values 1)) threshold) 1 0)
+                                  (nth labelss 1) (m/make-metric-value (if (<= (m/metric-value-value (nth values 1)) threshold) 1.0 0.0)
                                                                        (m/metric-value-last-update-time-ms (nth values 1)))
                                   (nth labelss 2) (m/make-metric-value (cond
                                                                          (and (<= (m/metric-value-value (nth values 2)) threshold)
@@ -855,11 +855,11 @@
                                                                               (<= (m/metric-value-value value-x)        threshold)) 1
                                                                          :else                                                      0)
                                                                        (m/metric-value-last-update-time-ms value-x))
-                                  (nth labelss 3) (m/make-metric-value (if (<= (m/metric-value-value (nth values 3)) threshold) 1 0)
+                                  (nth labelss 3) (m/make-metric-value (if (<= (m/metric-value-value (nth values 3)) threshold) 1.0 0.0)
                                                                        (m/metric-value-last-update-time-ms (nth values 3)))
-                                  (nth labelss 4) (m/make-metric-value (if (<= (m/metric-value-value (nth values 4)) threshold) 1 0)
+                                  (nth labelss 4) (m/make-metric-value (if (<= (m/metric-value-value (nth values 4)) threshold) 1.0 0.0)
                                                                        (m/metric-value-last-update-time-ms (nth values 4)))
-                                  (nth labelss 5) (m/make-metric-value (if (<= (m/metric-value-value (nth values 5)) threshold) 1 0)
+                                  (nth labelss 5) (m/make-metric-value (if (<= (m/metric-value-value (nth values 5)) threshold) 1.0 0.0)
                                                                        (m/metric-value-last-update-time-ms (nth values 5)))}]
                                 (m/histogram-values-bucket-maps (m/update-stored-values filled-histogram-values (nth labelss 2) value-x))))))))))
 
@@ -1021,12 +1021,12 @@
                                 (m/histogram-values-count-map (m/prune-stale-histogram-values filled-histogram-values 13))))
 
                        ;; bucket-map
-                       (let [value-value-0 (if (<= (m/metric-value-value (nth values 0)) threshold) 1 0)
-                             value-value-1 (if (<= (m/metric-value-value (nth values 1)) threshold) 1 0)
-                             value-value-2 (if (<= (m/metric-value-value (nth values 2)) threshold) 1 0)
-                             value-value-3 (if (<= (m/metric-value-value (nth values 3)) threshold) 1 0)
-                             value-value-4 (if (<= (m/metric-value-value (nth values 4)) threshold) 1 0)
-                             value-value-5 (if (<= (m/metric-value-value (nth values 5)) threshold) 1 0)]
+                       (let [value-value-0 (if (<= (m/metric-value-value (nth values 0)) threshold) 1.0 0.0)
+                             value-value-1 (if (<= (m/metric-value-value (nth values 1)) threshold) 1.0 0.0)
+                             value-value-2 (if (<= (m/metric-value-value (nth values 2)) threshold) 1.0 0.0)
+                             value-value-3 (if (<= (m/metric-value-value (nth values 3)) threshold) 1.0 0.0)
+                             value-value-4 (if (<= (m/metric-value-value (nth values 4)) threshold) 1.0 0.0)
+                             value-value-5 (if (<= (m/metric-value-value (nth values 5)) threshold) 1.0 0.0)]
 
                          ;; empty labels-value-map
                          (t/is (= [{}]
@@ -1194,15 +1194,15 @@
                                                        (m/metric-value-last-update-time-ms (nth values 0)))
                                  (m/make-metric-sample (str (nth names 2) "_count")
                                                        (nth labelss 0)
-                                                       1
+                                                       1.0
                                                        (m/metric-value-last-update-time-ms (nth values 0)))
                                  (m/make-metric-sample (str (nth names 2) "_bucket")
                                                        (assoc (nth labelss 0) :le "+Inf")
-                                                       1
+                                                       1.0
                                                        (m/metric-value-last-update-time-ms (nth values 0)))
                                  (m/make-metric-sample (str (nth names 2) "_bucket")
                                                        (assoc (nth labelss 0) :le (str threshold))
-                                                       (if (<= (m/metric-value-value (nth values 0)) threshold) 1 0)
+                                                       (if (<= (m/metric-value-value (nth values 0)) threshold) 1.0 0.0)
                                                        (m/metric-value-last-update-time-ms (nth values 0)))]
                                 (m/get-metric-samples-1
                                  (m/record-metric-1 metric-store example-histogram-metric (nth labelss 0) (nth values 0))
@@ -1214,15 +1214,15 @@
                                                        (m/metric-value-last-update-time-ms (nth values 3)))
                                  (m/make-metric-sample (str (nth names 2) "_count")
                                                        (nth labelss 3)
-                                                       1
+                                                       1.0
                                                        (m/metric-value-last-update-time-ms (nth values 3)))
                                  (m/make-metric-sample (str (nth names 2) "_bucket")
                                                        (assoc (nth labelss 3) :le "+Inf")
-                                                       1
+                                                       1.0
                                                        (m/metric-value-last-update-time-ms (nth values 3)))
                                  (m/make-metric-sample (str (nth names 2) "_bucket")
                                                        (assoc (nth labelss 3) :le (str threshold))
-                                                       (if (<= (m/metric-value-value (nth values 3)) threshold) 1 0)
+                                                       (if (<= (m/metric-value-value (nth values 3)) threshold) 1.0 0.0)
                                                        (m/metric-value-last-update-time-ms (nth values 3)))]
                                 (m/get-metric-samples-1
                                  (m/record-metric-1
@@ -1386,15 +1386,15 @@
                                                        (m/metric-value-last-update-time-ms (nth values 0)))
                                  (m/make-metric-sample (str (nth names 2) "_count")
                                                        (nth labelss 0)
-                                                       1
+                                                       1.0
                                                        (m/metric-value-last-update-time-ms (nth values 0)))
                                  (m/make-metric-sample (str (nth names 2) "_bucket")
                                                        (assoc (nth labelss 0) :le "+Inf")
-                                                       1
+                                                       1.0
                                                        (m/metric-value-last-update-time-ms (nth values 0)))
                                  (m/make-metric-sample (str (nth names 2) "_bucket")
                                                        (assoc (nth labelss 0) :le (str threshold))
-                                                       (if (<= (m/metric-value-value (nth values 0)) threshold) 1 0)
+                                                       (if (<= (m/metric-value-value (nth values 0)) threshold) 1.0 0.0)
                                                        (m/metric-value-last-update-time-ms (nth values 0)))]
                                 (m/get-metric-samples! a-metric-store example-histogram-metric (nth labelss 0))))
                        ;; labels are within this metric - map is larger
@@ -1431,15 +1431,15 @@
                                                        (m/metric-value-last-update-time-ms (nth values 3)))
                                  (m/make-metric-sample (str (nth names 2) "_count")
                                                        (nth labelss 3)
-                                                       1
+                                                       1.0
                                                        (m/metric-value-last-update-time-ms (nth values 3)))
                                  (m/make-metric-sample (str (nth names 2) "_bucket")
                                                        (assoc (nth labelss 3) :le "+Inf")
-                                                       1
+                                                       1.0
                                                        (m/metric-value-last-update-time-ms (nth values 3)))
                                  (m/make-metric-sample (str (nth names 2) "_bucket")
                                                        (assoc (nth labelss 3) :le (str threshold))
-                                                       (if (<= (m/metric-value-value (nth values 3)) threshold) 1 0)
+                                                       (if (<= (m/metric-value-value (nth values 3)) threshold) 1.0 0.0)
                                                        (m/metric-value-last-update-time-ms (nth values 3)))]
                                 (m/get-metric-samples! a-metric-store example-histogram-metric (nth labelss 3))))
 
@@ -1465,21 +1465,21 @@
                                   (m/metric-sample-name   example-metric-sample-count)))
                          (t/is (= (nth labelss 4)
                                   (m/metric-sample-labels example-metric-sample-count)))
-                         (t/is (= 1
+                         (t/is (= 1.0
                                   (m/metric-sample-value example-metric-sample-count)))
                          (t/is (nat-int? (m/metric-sample-timestamp example-metric-sample-count)))
                          ;; (t/is (= (str (nth names 2) "_bucket")
                          ;;          (m/metric-sample-name   example-metric-sample-inf)))
                          (t/is (= (assoc (nth labelss 4) :le "+Inf")
                                   (m/metric-sample-labels example-metric-sample-inf)))
-                         (t/is (= 1
+                         (t/is (= 1.0
                                   (m/metric-sample-value example-metric-sample-inf)))
                          (t/is (nat-int? (m/metric-sample-timestamp example-metric-sample-inf)))
                          ;; (t/is (= (str (nth names 2) "_bucket")
                          ;;          (m/metric-sample-name   example-metric-sample-bucket)))
                          (t/is (= (assoc (nth labelss 4) :le (str threshold))
                                   (m/metric-sample-labels example-metric-sample-bucket)))
-                         (t/is (= (if (<= (m/metric-value-value (nth values 4)) threshold) 1 0)
+                         (t/is (= (if (<= (m/metric-value-value (nth values 4)) threshold) 1.0 0.0)
                                   (m/metric-sample-value example-metric-sample-bucket)))
                          (t/is (nat-int? (m/metric-sample-timestamp example-metric-sample-bucket))))))))))
 
@@ -1537,15 +1537,15 @@
                                                        (m/metric-value-last-update-time-ms (nth values 0)))
                                  (m/make-metric-sample (str basename "_count")
                                                        (nth labelss 0)
-                                                       1
+                                                       1.0
                                                        (m/metric-value-last-update-time-ms (nth values 0)))
                                  (m/make-metric-sample (str basename "_bucket")
                                                        (assoc (nth labelss 0) :le "+Inf")
-                                                       1
+                                                       1.0
                                                        (m/metric-value-last-update-time-ms (nth values 0)))
                                  (m/make-metric-sample (str basename "_bucket")
                                                        (assoc (nth labelss 0) :le (str threshold))
-                                                       (if (<= (m/metric-value-value (nth values 0)) threshold) 1 0)
+                                                       (if (<= (m/metric-value-value (nth values 0)) threshold) 1.0 0.0)
                                                        (m/metric-value-last-update-time-ms (nth values 0)))]
                                 (m/stored-value->metric-samples example-histogram-metric filled-histogram-values (nth labelss 0))))))))))
 
@@ -1608,15 +1608,15 @@
                                                        (m/metric-value-last-update-time-ms (nth values 0)))
                                  (m/make-metric-sample (str basename "_count")
                                                        (nth labelss 0)
-                                                       1
+                                                       1.0
                                                        (m/metric-value-last-update-time-ms (nth values 0)))
                                  (m/make-metric-sample (str basename "_bucket")
                                                        (assoc (nth labelss 0) :le "+Inf")
-                                                       1
+                                                       1.0
                                                        (m/metric-value-last-update-time-ms (nth values 0)))
                                  (m/make-metric-sample (str basename "_bucket")
                                                        (assoc (nth labelss 0) :le (str threshold))
-                                                       (if (<= (m/metric-value-value (nth values 0)) threshold) 1 0)
+                                                       (if (<= (m/metric-value-value (nth values 0)) threshold) 1.0 0.0)
                                                        (m/metric-value-last-update-time-ms (nth values 0)))
                                  (m/make-metric-sample (str basename "_sum")
                                                        (nth labelss 1)
@@ -1624,15 +1624,15 @@
                                                        (m/metric-value-last-update-time-ms (nth values 1)))
                                  (m/make-metric-sample (str basename "_count")
                                                        (nth labelss 1)
-                                                       1
+                                                       1.0
                                                        (m/metric-value-last-update-time-ms (nth values 1)))
                                  (m/make-metric-sample (str basename "_bucket")
                                                        (assoc (nth labelss 1) :le "+Inf")
-                                                       1
+                                                       1.0
                                                        (m/metric-value-last-update-time-ms (nth values 1)))
                                  (m/make-metric-sample (str basename "_bucket")
                                                        (assoc (nth labelss 1) :le (str threshold))
-                                                       (if (<= (m/metric-value-value (nth values 1)) threshold) 1 0)
+                                                       (if (<= (m/metric-value-value (nth values 1)) threshold) 1.0 0.0)
                                                        (m/metric-value-last-update-time-ms (nth values 1)))
                                  (m/make-metric-sample (str basename "_sum")
                                                        (nth labelss 2)
@@ -1640,15 +1640,15 @@
                                                        (m/metric-value-last-update-time-ms (nth values 2)))
                                  (m/make-metric-sample (str basename "_count")
                                                        (nth labelss 2)
-                                                       1
+                                                       1.0
                                                        (m/metric-value-last-update-time-ms (nth values 2)))
                                  (m/make-metric-sample (str basename "_bucket")
                                                        (assoc (nth labelss 2) :le "+Inf")
-                                                       1
+                                                       1.0
                                                        (m/metric-value-last-update-time-ms (nth values 2)))
                                  (m/make-metric-sample (str basename "_bucket")
                                                        (assoc (nth labelss 2) :le (str threshold))
-                                                       (if (<= (m/metric-value-value (nth values 2)) threshold) 1 0)
+                                                       (if (<= (m/metric-value-value (nth values 2)) threshold) 1.0 0.0)
                                                        (m/metric-value-last-update-time-ms (nth values 2)))]
                                 (m/stored-value->all-metric-samples example-histogram-metric filled-histogram-values)))))))))
 
@@ -1791,15 +1791,15 @@
                                                                                  (m/metric-value-last-update-time-ms (nth values 0)))
                                                            (m/make-metric-sample (str basename "_count")
                                                                                  (nth labelss 0)
-                                                                                 1
+                                                                                 1.0
                                                                                  (m/metric-value-last-update-time-ms (nth values 0)))
                                                            (m/make-metric-sample (str basename "_bucket")
                                                                                  (assoc (nth labelss 0) :le "+Inf")
-                                                                                 1
+                                                                                 1.0
                                                                                  (m/metric-value-last-update-time-ms (nth values 0)))
                                                            (m/make-metric-sample (str basename "_bucket")
                                                                                  (assoc (nth labelss 0) :le (str threshold))
-                                                                                 (if (<= (m/metric-value-value (nth values 0)) threshold) 1 0)
+                                                                                 (if (<= (m/metric-value-value (nth values 0)) threshold) 1.0 0.0)
                                                                                  (m/metric-value-last-update-time-ms (nth values 0)))
                                                            (m/make-metric-sample (str basename "_sum")
                                                                                  (nth labelss 1)
@@ -1807,15 +1807,15 @@
                                                                                  (m/metric-value-last-update-time-ms (nth values 1)))
                                                            (m/make-metric-sample (str basename "_count")
                                                                                  (nth labelss 1)
-                                                                                 1
+                                                                                 1.0
                                                                                  (m/metric-value-last-update-time-ms (nth values 1)))
                                                            (m/make-metric-sample (str basename "_bucket")
                                                                                  (assoc (nth labelss 1) :le "+Inf")
-                                                                                 1
+                                                                                 1.0
                                                                                  (m/metric-value-last-update-time-ms (nth values 1)))
                                                            (m/make-metric-sample (str basename "_bucket")
                                                                                  (assoc (nth labelss 1) :le (str threshold))
-                                                                                 (if (<= (m/metric-value-value (nth values 1)) threshold) 1 0)
+                                                                                 (if (<= (m/metric-value-value (nth values 1)) threshold) 1.0 0.0)
                                                                                  (m/metric-value-last-update-time-ms (nth values 1)))
                                                            (m/make-metric-sample (str basename "_sum")
                                                                                  (nth labelss 2)
@@ -1823,15 +1823,15 @@
                                                                                  (m/metric-value-last-update-time-ms (nth values 2)))
                                                            (m/make-metric-sample (str basename "_count")
                                                                                  (nth labelss 2)
-                                                                                 1
+                                                                                 1.0
                                                                                  (m/metric-value-last-update-time-ms (nth values 2)))
                                                            (m/make-metric-sample (str basename "_bucket")
                                                                                  (assoc (nth labelss 2) :le "+Inf")
-                                                                                 1
+                                                                                 1.0
                                                                                  (m/metric-value-last-update-time-ms (nth values 2)))
                                                            (m/make-metric-sample (str basename "_bucket")
                                                                                  (assoc (nth labelss 2) :le (str threshold))
-                                                                                 (if (<= (m/metric-value-value (nth values 2)) threshold) 1 0)
+                                                                                 (if (<= (m/metric-value-value (nth values 2)) threshold) 1.0 0.0)
                                                                                  (m/metric-value-last-update-time-ms (nth values 2)))
                                                            (m/make-metric-sample (str basename "_sum")
                                                                                  (nth labelss 3)
@@ -1839,15 +1839,15 @@
                                                                                  (m/metric-value-last-update-time-ms (nth values 3)))
                                                            (m/make-metric-sample (str basename "_count")
                                                                                  (nth labelss 3)
-                                                                                 1
+                                                                                 1.0
                                                                                  (m/metric-value-last-update-time-ms (nth values 3)))
                                                            (m/make-metric-sample (str basename "_bucket")
                                                                                  (assoc (nth labelss 3) :le "+Inf")
-                                                                                 1
+                                                                                 1.0
                                                                                  (m/metric-value-last-update-time-ms (nth values 3)))
                                                            (m/make-metric-sample (str basename "_bucket")
                                                                                  (assoc (nth labelss 3) :le (str threshold))
-                                                                                 (if (<= (m/metric-value-value (nth values 3)) threshold) 1 0)
+                                                                                 (if (<= (m/metric-value-value (nth values 3)) threshold) 1.0 0.0)
                                                                                  (m/metric-value-last-update-time-ms (nth values 3)))])
                                 (m/get-metric-sample-set-1 filled-histogram-metric-store example-histogram-metric)))))))))
 
@@ -1924,15 +1924,15 @@
                                                                                   (m/metric-value-last-update-time-ms (nth values 0)))
                                                             (m/make-metric-sample (str basename "_count")
                                                                                   (nth labelss 0)
-                                                                                  1
+                                                                                  1.0
                                                                                   (m/metric-value-last-update-time-ms (nth values 0)))
                                                             (m/make-metric-sample (str basename "_bucket")
                                                                                   (assoc (nth labelss 0) :le "+Inf")
-                                                                                  1
+                                                                                  1.0
                                                                                   (m/metric-value-last-update-time-ms (nth values 0)))
                                                             (m/make-metric-sample (str basename "_bucket")
                                                                                   (assoc (nth labelss 0) :le (str threshold))
-                                                                                  (if (<= (m/metric-value-value (nth values 0)) threshold) 1 0)
+                                                                                  (if (<= (m/metric-value-value (nth values 0)) threshold) 1.0 0.0)
                                                                                   (m/metric-value-last-update-time-ms (nth values 0)))
                                                             (m/make-metric-sample (str basename "_sum")
                                                                                   (nth labelss 1)
@@ -1940,15 +1940,15 @@
                                                                                   (m/metric-value-last-update-time-ms (nth values 1)))
                                                             (m/make-metric-sample (str basename "_count")
                                                                                   (nth labelss 1)
-                                                                                  1
+                                                                                  1.0
                                                                                   (m/metric-value-last-update-time-ms (nth values 1)))
                                                             (m/make-metric-sample (str basename "_bucket")
                                                                                   (assoc (nth labelss 1) :le "+Inf")
-                                                                                  1
+                                                                                  1.0
                                                                                   (m/metric-value-last-update-time-ms (nth values 1)))
                                                             (m/make-metric-sample (str basename "_bucket")
                                                                                   (assoc (nth labelss 1) :le (str threshold))
-                                                                                  (if (<= (m/metric-value-value (nth values 1)) threshold) 1 0)
+                                                                                  (if (<= (m/metric-value-value (nth values 1)) threshold) 1.0 0.0)
                                                                                   (m/metric-value-last-update-time-ms (nth values 1)))
                                                             (m/make-metric-sample (str basename "_sum")
                                                                                   (nth labelss 2)
@@ -1956,15 +1956,15 @@
                                                                                   (m/metric-value-last-update-time-ms (nth values 2)))
                                                             (m/make-metric-sample (str basename "_count")
                                                                                   (nth labelss 2)
-                                                                                  1
+                                                                                  1.0
                                                                                   (m/metric-value-last-update-time-ms (nth values 2)))
                                                             (m/make-metric-sample (str basename "_bucket")
                                                                                   (assoc (nth labelss 2) :le "+Inf")
-                                                                                  1
+                                                                                  1.0
                                                                                   (m/metric-value-last-update-time-ms (nth values 2)))
                                                             (m/make-metric-sample (str basename "_bucket")
                                                                                   (assoc (nth labelss 2) :le (str threshold))
-                                                                                  (if (<= (m/metric-value-value (nth values 2)) threshold) 1 0)
+                                                                                  (if (<= (m/metric-value-value (nth values 2)) threshold) 1.0 0.0)
                                                                                   (m/metric-value-last-update-time-ms (nth values 2)))
                                                             (m/make-metric-sample (str basename "_sum")
                                                                                   (nth labelss 3)
@@ -1972,15 +1972,15 @@
                                                                                   (m/metric-value-last-update-time-ms (nth values 3)))
                                                             (m/make-metric-sample (str basename "_count")
                                                                                   (nth labelss 3)
-                                                                                  1
+                                                                                  1.0
                                                                                   (m/metric-value-last-update-time-ms (nth values 3)))
                                                             (m/make-metric-sample (str basename "_bucket")
                                                                                   (assoc (nth labelss 3) :le "+Inf")
-                                                                                  1
+                                                                                  1.0
                                                                                   (m/metric-value-last-update-time-ms (nth values 3)))
                                                             (m/make-metric-sample (str basename "_bucket")
                                                                                   (assoc (nth labelss 3) :le (str threshold))
-                                                                                  (if (<= (m/metric-value-value (nth values 3)) threshold) 1 0)
+                                                                                  (if (<= (m/metric-value-value (nth values 3)) threshold) 1.0 0.0)
                                                                                   (m/metric-value-last-update-time-ms (nth values 3)))])]
                                 (m/get-all-metric-sample-sets-1 filled-metric-store)))))))))
 
@@ -2098,15 +2098,15 @@
                                                                                   (m/metric-value-last-update-time-ms (nth values 0)))
                                                             (m/make-metric-sample (str basename "_count")
                                                                                   (nth labelss 0)
-                                                                                  1
+                                                                                  1.0
                                                                                   (m/metric-value-last-update-time-ms (nth values 0)))
                                                             (m/make-metric-sample (str basename "_bucket")
                                                                                   (assoc (nth labelss 0) :le "+Inf")
-                                                                                  1
+                                                                                  1.0
                                                                                   (m/metric-value-last-update-time-ms (nth values 0)))
                                                             (m/make-metric-sample (str basename "_bucket")
                                                                                   (assoc (nth labelss 0) :le (str threshold))
-                                                                                  (if (<= (m/metric-value-value (nth values 0)) threshold) 1 0)
+                                                                                  (if (<= (m/metric-value-value (nth values 0)) threshold) 1.0 0.0)
                                                                                   (m/metric-value-last-update-time-ms (nth values 0)))
                                                             (m/make-metric-sample (str basename "_sum")
                                                                                   (nth labelss 1)
@@ -2114,15 +2114,15 @@
                                                                                   (m/metric-value-last-update-time-ms (nth values 1)))
                                                             (m/make-metric-sample (str basename "_count")
                                                                                   (nth labelss 1)
-                                                                                  1
+                                                                                  1.0
                                                                                   (m/metric-value-last-update-time-ms (nth values 1)))
                                                             (m/make-metric-sample (str basename "_bucket")
                                                                                   (assoc (nth labelss 1) :le "+Inf")
-                                                                                  1
+                                                                                  1.0
                                                                                   (m/metric-value-last-update-time-ms (nth values 1)))
                                                             (m/make-metric-sample (str basename "_bucket")
                                                                                   (assoc (nth labelss 1) :le (str threshold))
-                                                                                  (if (<= (m/metric-value-value (nth values 1)) threshold) 1 0)
+                                                                                  (if (<= (m/metric-value-value (nth values 1)) threshold) 1.0 0.0)
                                                                                   (m/metric-value-last-update-time-ms (nth values 1)))
                                                             (m/make-metric-sample (str basename "_sum")
                                                                                   (nth labelss 2)
@@ -2130,15 +2130,15 @@
                                                                                   (m/metric-value-last-update-time-ms (nth values 2)))
                                                             (m/make-metric-sample (str basename "_count")
                                                                                   (nth labelss 2)
-                                                                                  1
+                                                                                  1.0
                                                                                   (m/metric-value-last-update-time-ms (nth values 2)))
                                                             (m/make-metric-sample (str basename "_bucket")
                                                                                   (assoc (nth labelss 2) :le "+Inf")
-                                                                                  1
+                                                                                  1.0
                                                                                   (m/metric-value-last-update-time-ms (nth values 2)))
                                                             (m/make-metric-sample (str basename "_bucket")
                                                                                   (assoc (nth labelss 2) :le (str threshold))
-                                                                                  (if (<= (m/metric-value-value (nth values 2)) threshold) 1 0)
+                                                                                  (if (<= (m/metric-value-value (nth values 2)) threshold) 1.0 0.0)
                                                                                   (m/metric-value-last-update-time-ms (nth values 2)))
                                                             (m/make-metric-sample (str basename "_sum")
                                                                                   (nth labelss 3)
@@ -2146,15 +2146,15 @@
                                                                                   (m/metric-value-last-update-time-ms (nth values 3)))
                                                             (m/make-metric-sample (str basename "_count")
                                                                                   (nth labelss 3)
-                                                                                  1
+                                                                                  1.0
                                                                                   (m/metric-value-last-update-time-ms (nth values 3)))
                                                             (m/make-metric-sample (str basename "_bucket")
                                                                                   (assoc (nth labelss 3) :le "+Inf")
-                                                                                  1
+                                                                                  1.0
                                                                                   (m/metric-value-last-update-time-ms (nth values 3)))
                                                             (m/make-metric-sample (str basename "_bucket")
                                                                                   (assoc (nth labelss 3) :le (str threshold))
-                                                                                  (if (<= (m/metric-value-value (nth values 3)) threshold) 1 0)
+                                                                                  (if (<= (m/metric-value-value (nth values 3)) threshold) 1.0 0.0)
                                                                                   (m/metric-value-last-update-time-ms (nth values 3)))])]
                                 (m/get-all-metric-sample-sets!)))))))))
 
@@ -2284,15 +2284,15 @@
                                                                                   (m/metric-value-last-update-time-ms (nth values 0)))
                                                             (m/make-metric-sample (str basename "_count")
                                                                                   (nth labelss 0)
-                                                                                  1
+                                                                                  1.0
                                                                                   (m/metric-value-last-update-time-ms (nth values 0)))
                                                             (m/make-metric-sample (str basename "_bucket")
                                                                                   (assoc (nth labelss 0) :le "+Inf")
-                                                                                  1
+                                                                                  1.0
                                                                                   (m/metric-value-last-update-time-ms (nth values 0)))
                                                             (m/make-metric-sample (str basename "_bucket")
                                                                                   (assoc (nth labelss 0) :le (str threshold))
-                                                                                  (if (<= (m/metric-value-value (nth values 0)) threshold) 1 0)
+                                                                                  (if (<= (m/metric-value-value (nth values 0)) threshold) 1.0 0.0)
                                                                                   (m/metric-value-last-update-time-ms (nth values 0)))
                                                             (m/make-metric-sample (str basename "_sum")
                                                                                   (nth labelss 1)
@@ -2300,15 +2300,15 @@
                                                                                   (m/metric-value-last-update-time-ms (nth values 1)))
                                                             (m/make-metric-sample (str basename "_count")
                                                                                   (nth labelss 1)
-                                                                                  1
+                                                                                  1.0
                                                                                   (m/metric-value-last-update-time-ms (nth values 1)))
                                                             (m/make-metric-sample (str basename "_bucket")
                                                                                   (assoc (nth labelss 1) :le "+Inf")
-                                                                                  1
+                                                                                  1.0
                                                                                   (m/metric-value-last-update-time-ms (nth values 1)))
                                                             (m/make-metric-sample (str basename "_bucket")
                                                                                   (assoc (nth labelss 1) :le (str threshold))
-                                                                                  (if (<= (m/metric-value-value (nth values 1)) threshold) 1 0)
+                                                                                  (if (<= (m/metric-value-value (nth values 1)) threshold) 1.0 0.0)
                                                                                   (m/metric-value-last-update-time-ms (nth values 1)))
                                                             (m/make-metric-sample (str basename "_sum")
                                                                                   (nth labelss 2)
@@ -2316,15 +2316,15 @@
                                                                                   (m/metric-value-last-update-time-ms (nth values 2)))
                                                             (m/make-metric-sample (str basename "_count")
                                                                                   (nth labelss 2)
-                                                                                  1
+                                                                                  1.0
                                                                                   (m/metric-value-last-update-time-ms (nth values 2)))
                                                             (m/make-metric-sample (str basename "_bucket")
                                                                                   (assoc (nth labelss 2) :le "+Inf")
-                                                                                  1
+                                                                                  1.0
                                                                                   (m/metric-value-last-update-time-ms (nth values 2)))
                                                             (m/make-metric-sample (str basename "_bucket")
                                                                                   (assoc (nth labelss 2) :le (str threshold))
-                                                                                  (if (<= (m/metric-value-value (nth values 2)) threshold) 1 0)
+                                                                                  (if (<= (m/metric-value-value (nth values 2)) threshold) 1.0 0.0)
                                                                                   (m/metric-value-last-update-time-ms (nth values 2)))
                                                             (m/make-metric-sample (str basename "_sum")
                                                                                   (nth labelss 3)
@@ -2332,15 +2332,15 @@
                                                                                   (m/metric-value-last-update-time-ms (nth values 3)))
                                                             (m/make-metric-sample (str basename "_count")
                                                                                   (nth labelss 3)
-                                                                                  1
+                                                                                  1.0
                                                                                   (m/metric-value-last-update-time-ms (nth values 3)))
                                                             (m/make-metric-sample (str basename "_bucket")
                                                                                   (assoc (nth labelss 3) :le "+Inf")
-                                                                                  1
+                                                                                  1.0
                                                                                   (m/metric-value-last-update-time-ms (nth values 3)))
                                                             (m/make-metric-sample (str basename "_bucket")
                                                                                   (assoc (nth labelss 3) :le (str threshold))
-                                                                                  (if (<= (m/metric-value-value (nth values 3)) threshold) 1 0)
+                                                                                  (if (<= (m/metric-value-value (nth values 3)) threshold) 1.0 0.0)
                                                                                   (m/metric-value-last-update-time-ms (nth values 3)))])]
                                 (m/get-all-metric-sample-sets! metric-store)))))))))
 
@@ -2396,15 +2396,15 @@
                                                     (m/metric-value-last-update-time-ms (nth values 0)))
                               (m/make-metric-sample (str basename "_count")
                                                     (nth labelss 0)
-                                                    1
+                                                    1.0
                                                     (m/metric-value-last-update-time-ms (nth values 0)))
                               (m/make-metric-sample (str basename "_bucket")
                                                     (assoc (nth labelss 0) :le "+Inf")
-                                                    1
+                                                    1.0
                                                     (m/metric-value-last-update-time-ms (nth values 0)))
                               (m/make-metric-sample (str basename "_bucket")
                                                     (assoc (nth labelss 0) :le (str threshold))
-                                                    (if (<= (m/metric-value-value (nth values 0)) threshold) 1 0)
+                                                    (if (<= (m/metric-value-value (nth values 0)) threshold) 1.0 0.0)
                                                     (m/metric-value-last-update-time-ms (nth values 0)))
                               (m/make-metric-sample (str basename "_sum")
                                                     (nth labelss 1)
@@ -2412,15 +2412,15 @@
                                                     (m/metric-value-last-update-time-ms (nth values 1)))
                               (m/make-metric-sample (str basename "_count")
                                                     (nth labelss 1)
-                                                    1
+                                                    1.0
                                                     (m/metric-value-last-update-time-ms (nth values 1)))
                               (m/make-metric-sample (str basename "_bucket")
                                                     (assoc (nth labelss 1) :le "+Inf")
-                                                    1
+                                                    1.0
                                                     (m/metric-value-last-update-time-ms (nth values 1)))
                               (m/make-metric-sample (str basename "_bucket")
                                                     (assoc (nth labelss 1) :le (str threshold))
-                                                    (if (<= (m/metric-value-value (nth values 1)) threshold) 1 0)
+                                                    (if (<= (m/metric-value-value (nth values 1)) threshold) 1.0 0.0)
                                                     (m/metric-value-last-update-time-ms (nth values 1)))
                               (m/make-metric-sample (str basename "_sum")
                                                     (nth labelss 2)
@@ -2428,15 +2428,15 @@
                                                     (m/metric-value-last-update-time-ms (nth values 2)))
                               (m/make-metric-sample (str basename "_count")
                                                     (nth labelss 2)
-                                                    1
+                                                    1.0
                                                     (m/metric-value-last-update-time-ms (nth values 2)))
                               (m/make-metric-sample (str basename "_bucket")
                                                     (assoc (nth labelss 2) :le "+Inf")
-                                                    1
+                                                    1.0
                                                     (m/metric-value-last-update-time-ms (nth values 2)))
                               (m/make-metric-sample (str basename "_bucket")
                                                     (assoc (nth labelss 2) :le (str threshold))
-                                                    (if (<= (m/metric-value-value (nth values 2)) threshold) 1 0)
+                                                    (if (<= (m/metric-value-value (nth values 2)) threshold) 1.0 0.0)
                                                     (m/metric-value-last-update-time-ms (nth values 2)))
                               (m/make-metric-sample (str basename "_sum")
                                                     (nth labelss 3)
@@ -2444,15 +2444,15 @@
                                                     (m/metric-value-last-update-time-ms (nth values 3)))
                               (m/make-metric-sample (str basename "_count")
                                                     (nth labelss 3)
-                                                    1
+                                                    1.0
                                                     (m/metric-value-last-update-time-ms (nth values 3)))
                               (m/make-metric-sample (str basename "_bucket")
                                                     (assoc (nth labelss 3) :le "+Inf")
-                                                    1
+                                                    1.0
                                                     (m/metric-value-last-update-time-ms (nth values 3)))
                               (m/make-metric-sample (str basename "_bucket")
                                                     (assoc (nth labelss 3) :le (str threshold))
-                                                    (if (<= (m/metric-value-value (nth values 3)) threshold) 1 0)
+                                                    (if (<= (m/metric-value-value (nth values 3)) threshold) 1.0 0.0)
                                                     (m/metric-value-last-update-time-ms (nth values 3)))])])
 
 (defn t-prune-stale-metrics!-prune-nothing
@@ -2505,15 +2505,15 @@
                                                     (m/metric-value-last-update-time-ms (nth values 0)))
                               (m/make-metric-sample (str basename "_count")
                                                     (nth labelss 0)
-                                                    1
+                                                    1.0
                                                     (m/metric-value-last-update-time-ms (nth values 0)))
                               (m/make-metric-sample (str basename "_bucket")
                                                     (assoc (nth labelss 0) :le "+Inf")
-                                                    1
+                                                    1.0
                                                     (m/metric-value-last-update-time-ms (nth values 0)))
                               (m/make-metric-sample (str basename "_bucket")
                                                     (assoc (nth labelss 0) :le (str threshold))
-                                                    (if (<= (m/metric-value-value (nth values 0)) threshold) 1 0)
+                                                    (if (<= (m/metric-value-value (nth values 0)) threshold) 1.0 0.0)
                                                     (m/metric-value-last-update-time-ms (nth values 0)))
                               (m/make-metric-sample (str basename "_sum")
                                                     (nth labelss 1)
@@ -2521,15 +2521,15 @@
                                                     (m/metric-value-last-update-time-ms (nth values 1)))
                               (m/make-metric-sample (str basename "_count")
                                                     (nth labelss 1)
-                                                    1
+                                                    1.0
                                                     (m/metric-value-last-update-time-ms (nth values 1)))
                               (m/make-metric-sample (str basename "_bucket")
                                                     (assoc (nth labelss 1) :le "+Inf")
-                                                    1
+                                                    1.0
                                                     (m/metric-value-last-update-time-ms (nth values 1)))
                               (m/make-metric-sample (str basename "_bucket")
                                                     (assoc (nth labelss 1) :le (str threshold))
-                                                    (if (<= (m/metric-value-value (nth values 1)) threshold) 1 0)
+                                                    (if (<= (m/metric-value-value (nth values 1)) threshold) 1.0 0.0)
                                                     (m/metric-value-last-update-time-ms (nth values 1)))
                               (m/make-metric-sample (str basename "_sum")
                                                     (nth labelss 2)
@@ -2537,15 +2537,15 @@
                                                     (m/metric-value-last-update-time-ms (nth values 2)))
                               (m/make-metric-sample (str basename "_count")
                                                     (nth labelss 2)
-                                                    1
+                                                    1.0
                                                     (m/metric-value-last-update-time-ms (nth values 2)))
                               (m/make-metric-sample (str basename "_bucket")
                                                     (assoc (nth labelss 2) :le "+Inf")
-                                                    1
+                                                    1.0
                                                     (m/metric-value-last-update-time-ms (nth values 2)))
                               (m/make-metric-sample (str basename "_bucket")
                                                     (assoc (nth labelss 2) :le (str threshold))
-                                                    (if (<= (m/metric-value-value (nth values 2)) threshold) 1 0)
+                                                    (if (<= (m/metric-value-value (nth values 2)) threshold) 1.0 0.0)
                                                     (m/metric-value-last-update-time-ms (nth values 2)))
                               (m/make-metric-sample (str basename "_sum")
                                                     (nth labelss 3)
@@ -2553,15 +2553,15 @@
                                                     (m/metric-value-last-update-time-ms (nth values 3)))
                               (m/make-metric-sample (str basename "_count")
                                                     (nth labelss 3)
-                                                    1
+                                                    1.0
                                                     (m/metric-value-last-update-time-ms (nth values 3)))
                               (m/make-metric-sample (str basename "_bucket")
                                                     (assoc (nth labelss 3) :le "+Inf")
-                                                    1
+                                                    1.0
                                                     (m/metric-value-last-update-time-ms (nth values 3)))
                               (m/make-metric-sample (str basename "_bucket")
                                                     (assoc (nth labelss 3) :le (str threshold))
-                                                    (if (<= (m/metric-value-value (nth values 3)) threshold) 1 0)
+                                                    (if (<= (m/metric-value-value (nth values 3)) threshold) 1.0 0.0)
                                                     (m/metric-value-last-update-time-ms (nth values 3)))])])
 
 (defn t-prune-stale-metrics!-prune-some
@@ -2598,15 +2598,15 @@
                                                     (m/metric-value-last-update-time-ms (nth values 2)))
                               (m/make-metric-sample (str basename "_count")
                                                     (nth labelss 2)
-                                                    1
+                                                    1.0
                                                     (m/metric-value-last-update-time-ms (nth values 2)))
                               (m/make-metric-sample (str basename "_bucket")
                                                     (assoc (nth labelss 2) :le "+Inf")
-                                                    1
+                                                    1.0
                                                     (m/metric-value-last-update-time-ms (nth values 2)))
                               (m/make-metric-sample (str basename "_bucket")
                                                     (assoc (nth labelss 2) :le (str threshold))
-                                                    (if (<= (m/metric-value-value (nth values 2)) threshold) 1 0)
+                                                    (if (<= (m/metric-value-value (nth values 2)) threshold) 1.0 0.0)
                                                     (m/metric-value-last-update-time-ms (nth values 2)))
                               (m/make-metric-sample (str basename "_sum")
                                                     (nth labelss 3)
@@ -2614,15 +2614,15 @@
                                                     (m/metric-value-last-update-time-ms (nth values 3)))
                               (m/make-metric-sample (str basename "_count")
                                                     (nth labelss 3)
-                                                    1
+                                                    1.0
                                                     (m/metric-value-last-update-time-ms (nth values 3)))
                               (m/make-metric-sample (str basename "_bucket")
                                                     (assoc (nth labelss 3) :le "+Inf")
-                                                    1
+                                                    1.0
                                                     (m/metric-value-last-update-time-ms (nth values 3)))
                               (m/make-metric-sample (str basename "_bucket")
                                                     (assoc (nth labelss 3) :le (str threshold))
-                                                    (if (<= (m/metric-value-value (nth values 3)) threshold) 1 0)
+                                                    (if (<= (m/metric-value-value (nth values 3)) threshold) 1.0 0.0)
                                                     (m/metric-value-last-update-time-ms (nth values 3)))])])
 
 ;; <<< HELPER
@@ -2699,7 +2699,6 @@
                                          (m/metric-value-last-update-time-ms (nth values 3)))
                        ;; ;; not older
                        (m/prune-stale-metrics! 9)
-
                        (t/is (= (t-prune-stale-metrics!-prune-nothing names helps labelss values basename threshold)
                                 (m/get-all-metric-sample-sets!)))
                        ;; ;; the same
@@ -2987,15 +2986,15 @@
                                                          (m/metric-value-last-update-time-ms (nth values 0)))
                                    (m/make-metric-sample (str (nth names 2) "_count")
                                                          labels
-                                                         1
+                                                         1.0
                                                          (m/metric-value-last-update-time-ms (nth values 0)))
                                    (m/make-metric-sample (str (nth names 2) "_bucket")
                                                          (assoc labels :le "+Inf")
-                                                         1
+                                                         1.0
                                                          (m/metric-value-last-update-time-ms (nth values 0)))
                                    (m/make-metric-sample (str (nth names 2) "_bucket")
                                                          (assoc labels :le (str threshold))
-                                                         (if (<= (m/metric-value-value (nth values 0)) threshold) 1 0)
+                                                         (if (<= (m/metric-value-value (nth values 0)) threshold) 1.0 0.0)
                                                          (m/metric-value-last-update-time-ms (nth values 0)))]
                                   example-record-and-get!)))
 
@@ -3010,22 +3009,22 @@
                                                          (m/metric-value-last-update-time-ms (nth values 1)))
                                    (m/make-metric-sample (str (nth names 2) "_count")
                                                          labels
-                                                         2
+                                                         2.0
                                                          (m/metric-value-last-update-time-ms (nth values 1)))
                                    (m/make-metric-sample (str (nth names 2) "_bucket")
                                                          (assoc labels :le "+Inf")
-                                                         2
+                                                         2.0
                                                          (m/metric-value-last-update-time-ms (nth values 1)))
                                    (m/make-metric-sample (str (nth names 2) "_bucket")
                                                          (assoc labels :le (str threshold))
                                                          (cond (and (<= (m/metric-value-value (nth values 0)) threshold)
                                                                     (<= (m/metric-value-value (nth values 1)) threshold))
-                                                               2
+                                                               2.0
                                                                (or  (<= (m/metric-value-value (nth values 0)) threshold)
                                                                     (<= (m/metric-value-value (nth values 1)) threshold))
-                                                               1
+                                                               1.0
                                                                :else
-                                                               0)
+                                                               0.0)
                                                          (m/metric-value-last-update-time-ms (nth values 1)))]
                                   example-record-and-get!)))))))))
 
@@ -3100,15 +3099,15 @@
                                                          (m/metric-value-last-update-time-ms (nth values 0)))
                                    (m/make-metric-sample (str (nth names 2) "_count")
                                                          labels
-                                                         1
+                                                         1.0
                                                          (m/metric-value-last-update-time-ms (nth values 0)))
                                    (m/make-metric-sample (str (nth names 2) "_bucket")
                                                          (assoc labels :le "+Inf")
-                                                         1
+                                                         1.0
                                                          (m/metric-value-last-update-time-ms (nth values 0)))
                                    (m/make-metric-sample (str (nth names 2) "_bucket")
                                                          (assoc labels :le (str threshold))
-                                                         (if (<= (m/metric-value-value (nth values 0)) threshold) 1 0)
+                                                         (if (<= (m/metric-value-value (nth values 0)) threshold) 1.0 0.0)
                                                          (m/metric-value-last-update-time-ms (nth values 0)))]
                                   example-record-and-get!)))
 
@@ -3124,22 +3123,22 @@
                                                          (m/metric-value-last-update-time-ms (nth values 1)))
                                    (m/make-metric-sample (str (nth names 2) "_count")
                                                          labels
-                                                         2
+                                                         2.0
                                                          (m/metric-value-last-update-time-ms (nth values 1)))
                                    (m/make-metric-sample (str (nth names 2) "_bucket")
                                                          (assoc labels :le "+Inf")
-                                                         2
+                                                         2.0
                                                          (m/metric-value-last-update-time-ms (nth values 1)))
                                    (m/make-metric-sample (str (nth names 2) "_bucket")
                                                          (assoc labels :le (str threshold))
                                                          (cond (and (<= (m/metric-value-value (nth values 0)) threshold)
                                                                     (<= (m/metric-value-value (nth values 1)) threshold))
-                                                               2
+                                                               2.0
                                                                (or  (<= (m/metric-value-value (nth values 0)) threshold)
                                                                     (<= (m/metric-value-value (nth values 1)) threshold))
-                                                               1
+                                                               1.0
                                                                :else
-                                                               0)
+                                                               0.0)
                                                          (m/metric-value-last-update-time-ms (nth values 1)))]
                                   example-record-and-get!)))))))))
 
@@ -3244,15 +3243,15 @@
                                                          (m/metric-value-last-update-time-ms (nth values 0)))
                                    (m/make-metric-sample (str (nth names 2) "_count")
                                                          labels
-                                                         1
+                                                         1.0
                                                          (m/metric-value-last-update-time-ms (nth values 0)))
                                    (m/make-metric-sample (str (nth names 2) "_bucket")
                                                          (assoc labels :le "+Inf")
-                                                         1
+                                                         1.0
                                                          (m/metric-value-last-update-time-ms (nth values 0)))
                                    (m/make-metric-sample (str (nth names 2) "_bucket")
                                                          (assoc labels :le (str threshold))
-                                                         (if (<= (m/metric-value-value (nth values 0)) threshold) 1 0)
+                                                         (if (<= (m/metric-value-value (nth values 0)) threshold) 1.0 0.0)
                                                          (m/metric-value-last-update-time-ms (nth values 0)))]
                                   example-record-and-get-1))
 
@@ -3263,22 +3262,22 @@
                                                          (m/metric-value-last-update-time-ms (nth values 1)))
                                    (m/make-metric-sample (str (nth names 2) "_count")
                                                          labels
-                                                         2
+                                                         2.0
                                                          (m/metric-value-last-update-time-ms (nth values 1)))
                                    (m/make-metric-sample (str (nth names 2) "_bucket")
                                                          (assoc labels :le "+Inf")
-                                                         2
+                                                         2.0
                                                          (m/metric-value-last-update-time-ms (nth values 1)))
                                    (m/make-metric-sample (str (nth names 2) "_bucket")
                                                          (assoc labels :le (str threshold))
                                                          (cond (and (<= (m/metric-value-value (nth values 0)) threshold)
                                                                     (<= (m/metric-value-value (nth values 1)) threshold))
-                                                               2
+                                                               2.0
                                                                (or  (<= (m/metric-value-value (nth values 0)) threshold)
                                                                     (<= (m/metric-value-value (nth values 1)) threshold))
-                                                               1
+                                                               1.0
                                                                :else
-                                                               0)
+                                                               0.0)
                                                          (m/metric-value-last-update-time-ms (nth values 1)))]
                                   example-record-and-get-2)))))))))
 
@@ -3286,13 +3285,13 @@
   (let [metric-name "http_request_duration_seconds"
         histogram-metric (m/make-histogram-metric metric-name "HELP" [0.1 0.2 0.3 0.45])
         recorded-metrics [0.25 0.35 0.25 0.2 0.15 0.5 0.5]
-        expected-result [["_sum" nil (apply + recorded-metrics)]
-                         ["_count" nil (count recorded-metrics)]
-                         ["_bucket" "+Inf" (count recorded-metrics)]
-                         ["_bucket" "0.1" (count (filter #(<= % 0.1) recorded-metrics))]
-                         ["_bucket" "0.2" (count (filter #(<= % 0.2) recorded-metrics))]
-                         ["_bucket" "0.3" (count (filter #(<= % 0.3) recorded-metrics))]
-                         ["_bucket" "0.45" (count (filter #(<= % 0.45) recorded-metrics))]]
+        expected-result [["_sum"     nil   (double (apply + recorded-metrics))]
+                         ["_count"   nil   (double (count recorded-metrics))]
+                         ["_bucket" "+Inf" (double (count recorded-metrics))]
+                         ["_bucket" "0.1"  (double (count (filter #(<= % 0.1) recorded-metrics)))]
+                         ["_bucket" "0.2"  (double (count (filter #(<= % 0.2) recorded-metrics)))]
+                         ["_bucket" "0.3"  (double (count (filter #(<= % 0.3) recorded-metrics)))]
+                         ["_bucket" "0.45" (double (count (filter #(<= % 0.45) recorded-metrics)))]]
         expected-sample-set
         (m/make-metric-sample-set metric-name :histogram "HELP"
                                   (mapv (fn [[postfix maybe-le value]]
@@ -3311,7 +3310,7 @@
     (m/record-and-get! counter-metric {} 23 0)
     (m/record-and-get! counter-metric {} 42 1)
     (t/is (= [(m/make-metric-sample-set "http_request_total" :counter "HELP"
-                                      [(m/make-metric-sample "http_request_total" {} 42 1)])]
+                                      [(m/make-metric-sample "http_request_total" {} 42.0 1)])]
              (m/get-all-metric-sample-sets!)))
     (m/reset-global-metric-store!)))
 
@@ -3333,3 +3332,25 @@
     (t/is (= [(m/make-metric-sample-set "counter-limit" :counter "HELP"
                                         [(m/make-metric-sample "counter-limit" {} Double/MAX_VALUE 1)])]
              (m/get-all-metric-sample-sets!)))))
+
+;; we are storing doubles in MetricValue
+(t/deftest t-histogram-dealing-with-big-ints
+  (let [histogram-metric (m/make-histogram-metric "name" "help" [5])
+        metric-store     (m/fresh-metric-store)]
+
+    (m/record-and-get! metric-store histogram-metric {} 999999999999999999999999 0)
+    (m/record-and-get! metric-store histogram-metric {} 999999999999999999999999 0)
+
+    ;; no exception raised
+    (t/is true)))
+
+;; we are storing doubles in MetricValue
+(t/deftest t-histogram-dealing-with-longs
+  (let [histogram-metric (m/make-histogram-metric "name" "help" [5])
+        metric-store     (m/fresh-metric-store)]
+
+    (m/record-and-get! metric-store histogram-metric {} 8999999999999999991 0)
+    (m/record-and-get! metric-store histogram-metric {}  999999999999999999 0)
+
+    ;; no exception raised
+    (t/is true)))

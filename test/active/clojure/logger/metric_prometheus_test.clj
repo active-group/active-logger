@@ -22,3 +22,29 @@
            (:body ((m/wrap-prometheus-metrics-ring-handler (constantly {:body "ELSE"})) {:uri "/something-else"}))))
   (t/is (not= "ELSE"
               (:body ((m/wrap-prometheus-metrics-ring-handler (constantly "ELSE")) {:uri "/metrics"})))))
+
+(t/deftest t-render-big-ints
+  (t/is (= "# HELP name_with_blanks help\n# TYPE name_with_blanks counter\nname_with_blanks{label_with_dashes=\"a\"} 1.0E24 0"
+           (m/render-metric-sets [(metric-accumulator/make-metric-sample-set
+                                   "name with blanks"
+                                   :counter
+                                   "help"
+                                   [(metric-accumulator/make-metric-sample
+                                     "name with blanks"
+                                     {:label-with*dashes "a"}
+                                     ;; MetricValue converts all values to double
+                                     (double 999999999999999999999999)
+                                     0)])]))))
+
+(t/deftest t-render-longs
+  (t/is (= "# HELP name_with_blanks help\n# TYPE name_with_blanks counter\nname_with_blanks{label_with_dashes=\"a\"} 9.0E18 0"
+           (m/render-metric-sets [(metric-accumulator/make-metric-sample-set
+                                   "name with blanks"
+                                   :counter
+                                   "help"
+                                   [(metric-accumulator/make-metric-sample
+                                     "name with blanks"
+                                     {:label-with*dashes "a"}
+                                     ;; MetricValue converts all values to double
+                                     (double 8999999999999999991)
+                                     0)])]))))
