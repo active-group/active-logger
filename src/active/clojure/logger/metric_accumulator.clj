@@ -772,17 +772,19 @@
    nil))
 
 (defn start-prune-stale-metrics-thread!
-  "Start a thread that prunes stale metrics every `seconds` seconds.  If called
-  without an argument, it prunes every 60 seconds."
-  [& [seconds]]
-  (let [milliseconds (* (or seconds 60) 1000)]
+  "Start a thread that prunes stale metrics older than `stale-seconds` seconds
+  every `every-seconds` seconds.  If called without an argument, it prunes
+  metrics older than 24h every 5m."
+  [& [stale-seconds every-seconds]]
+  (let [stale-milliseconds (* (or stale-seconds (* 5 60)) 1000)
+        every-milliseconds (* (or every-seconds (* 24 60 60)) 1000)]
     (doto (Thread.
            (fn []
              (loop []
                (let [now (time/get-milli-time!)
-                     earlier (- now milliseconds)]
+                     earlier (- now stale-milliseconds)]
                  (prune-stale-metrics! earlier)
-                 (Thread/sleep milliseconds)
+                 (Thread/sleep every-milliseconds)
                  (recur)))))
       (.setDaemon true)
       (.start))))
