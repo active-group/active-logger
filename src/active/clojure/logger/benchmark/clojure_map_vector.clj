@@ -261,8 +261,7 @@
 
 ;; 2. Counters
 
-;; ADJUST: counter-metric
-#_(define-record-type ^{:doc "Counter metric"}
+(define-record-type ^{:doc "Counter metric"}
   CounterMetric
   ^:private really-make-counter-metric
   counter-metric?
@@ -284,26 +283,9 @@
                :metric-help ::metric-help
                :optional (s/? (s/cat :set-value? boolean?)))
   :ret ::counter-metric)
-;; ADJUST: counter-metric
 (defn make-counter-metric
   [metric-name metric-help & [set-value?]]
-  ["counter-metric" metric-name metric-help set-value?])
-
-(defn counter-metric?
-  [metric]
-  (= "counter-metric" (nth metric 0)))
-
-(defn counter-metric-name
-  [metric]
-  (nth metric 1))
-
-(defn counter-metric-help
-  [metric]
-  (nth metric 2))
-
-(defn counter-metric-set-value?
-  [metric]
-  (nth metric 3))
+  (really-make-counter-metric metric-name metric-help set-value?))
 
 (define-record-type ^{:doc "Stored Counter values, i.e. a map from labels to
   metric-values."}
@@ -607,11 +589,22 @@
 
 ;; -----------------------------------------------------------------
 
+;; ADJUST: metric-store-map
+(defn adjust-metric-representation
+  [metric]
+  (cond
+    (gauge-metric?     metric) [ :gauge :not-tested ]
+    (counter-metric?   metric) [ :counter
+                                (counter-metric-name metric)
+                                (counter-metric-help metric)
+                                (counter-metric-set-value? metric)]
+    (histogram-metric? metric) [ :histogram :not-tested ]))
+
 ;; ADJUST: update-metric-store-map
 (defn update-metric-store-map
   [metric-store-map metric-store-key metric-labels metric-value]
   (update metric-store-map
-          metric-store-key
+          (adjust-metric-representation metric-store-key)
           (fn [maybe-stored-values]
             (if (some? maybe-stored-values)
               (update-stored-values maybe-stored-values metric-labels metric-value)
@@ -686,7 +679,7 @@
 ;; ADJUST: metric-store-map?
 (defn get-metric-store-map
   [metric-store-map metric]
-  (get metric-store-map metric))
+  (get metric-store-map (adjust-metric-representation metric)))
 
 #_(s/fdef get-metric-samples-1
   :args (s/cat :metric-store  ::metric-store-map

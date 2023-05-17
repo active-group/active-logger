@@ -1,6 +1,6 @@
 (ns active.clojure.logger.benchmark.bench
   (:require [active.clojure.logger.metric-accumulator :as m]
-            [active.clojure.logger.benchmark.java-map-vector :as b]
+            [active.clojure.logger.benchmark.clojure-map :as b]
             [active.clojure.logger.metric-accumulator-test :as mt]
             [clojure.test :as t]
             [clojure.spec.alpha :as s]
@@ -8,9 +8,8 @@
             [criterium.core :as crit])
   (:use [active.quickcheck]))
 
-(def metric-number 100)
-(def update-number 10000)
-;; 10000 "Elapsed time: 1 2828.12161 msecs"
+(def metric-number 2000)
+(def update-number 5000)
 
 (defn get-n-distinct-metric-names
   [num-elems]
@@ -64,7 +63,7 @@
           metric-labels)
 
     ;; record-and-get
-    (time (doseq [update-pos (range (- update-number 1))]
+    #_(time (doseq [update-pos (range (- update-number 1))]
             (let [update-metric (rand-int metric-number)]
               (b/record-and-get! metric-store
                                  (nth metrics            update-metric)
@@ -72,7 +71,7 @@
                                  (nth value-values       update-pos)
                                  (nth value-last-updates update-pos)))))
 
-    #_(crit/bench (doseq [update-pos (range (- update-number 1))]
+    (crit/bench (doseq [update-pos (range (- update-number 1))]
             (let [update-metric (rand-int metric-number)]
               (b/record-and-get! metric-store
                                  (nth metrics            update-metric)
