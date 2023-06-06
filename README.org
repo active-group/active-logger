@@ -32,7 +32,7 @@ start logging events.
    1. Add =active-logger= and =active-clojure= to your =deps.edn=:
       #+begin_src clojure
         {:deps {de.active-group/active-clojure {:mvn/version "0.42.0"}
-                de.active-group/active-logger  {:mvn/version "0.11.0"}}}
+                de.active-group/active-logger  {:mvn/version "0.12.3"}}}
       #+end_src
    2. Start logging some events:
       #+begin_src clojure
