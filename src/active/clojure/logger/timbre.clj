@@ -88,7 +88,7 @@
                   "Filter for Timbre"
                   (config/predicate-range "Timbre namespace filter"
                                           any?
-                                          {})))
+                                          #{})))
 
 (def timbre-middleware-setting
   (config/setting :middleware

@@ -23,7 +23,7 @@
   (t/is (= {:min-level nil,
             :level nil,
             :appenders {:default '(println)},
-            :ns-filter {},
+            :ns-filter #{},
             :middleware [],
             :timestamp-opts
             {:pattern "yyyy-MM-dd HH:mm:ss.SSS",
