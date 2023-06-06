@@ -13,11 +13,11 @@
     (timbre/-log! timbre/*config* level origin nil nil :p e vargs-delay nil)))
 
 (defmacro -log-event! [?level ?msg]
-  `(internal/log-event!-internal "event"
-                                 ~(str *ns*)
-                                 ~?level
-                                 nil
-                                 (delay [~?msg])))
+  `(log-event!-internal "event"
+                        ~(str *ns*)
+                        ~?level
+                        nil
+                        (delay [~?msg])))
 
 ;; dummy: but it needs to exist for event logging to be a service
 (defn pr-exception-stacktrace [err]
