@@ -203,14 +203,14 @@
                   (str " [" domain "]")
                   "")))]
      (str
-       @timestamp_ " "
-       @hostname_  " "
-       (string/upper-case (name level))  " "
-       "[" origin-info "] - "
-       (force msg_)
-       (when-not no-stacktrace?
-         (when-let [err (force ?err_)]
-           (str "\n" (with-out-str (internal/pr-exception-stacktrace err)))))))))
+      @timestamp_ " "
+      @hostname_  " "
+      (string/upper-case (name level))  " "
+      "[" origin-info "] - "
+      (force msg_)
+      (when-not no-stacktrace?
+        (when-let [err (force ?err_)]
+          (str "\n" (with-out-str (internal/pr-exception-stacktrace err)))))))))
 
 (defn fixed-properties-timbre-middleware [hostname application]
   ;; A timbre middleware, that sets log event properties that should
@@ -238,20 +238,20 @@
                         ;; default).
                         timbre-default-min-level)
     :appenders      (into {}
-                     (map (fn [[k v]]
-                            [k (timbre-spec->appender v)])
-                          (config/access timbre-subconfig timbre-appenders-setting)))
+                          (map (fn [[k v]]
+                                 [k (timbre-spec->appender v)])
+                               (config/access timbre-subconfig timbre-appenders-setting)))
     :ns-filter      (config/access timbre-subconfig timbre-ns-filter-setting)
     :middleware     (conj (config/access timbre-subconfig timbre-middleware-setting)
-                      (fixed-properties-timbre-middleware (config/access timbre-subconfig timbre-hostname-setting)
-                                                          (config/access timbre-subconfig timbre-application-setting)))
+                          (fixed-properties-timbre-middleware (config/access timbre-subconfig timbre-hostname-setting)
+                                                              (config/access timbre-subconfig timbre-application-setting)))
     :output-fn      output-fn
     :timestamp-opts (let [tso (config/access timbre-subconfig timbre-timestamp-opts-setting)]
                       {:pattern  (get tso :pattern)
                        :locale   (let [l (get tso :locale)]
-                                 (if (string? l)
-                                   (java.util.Locale/forLanguageTag l)
-                                   l))
+                                   (if (string? l)
+                                     (java.util.Locale/forLanguageTag l)
+                                     l))
                        :timezone (let [t (get tso :timezone)]
                                    (if (string? t)
                                      (java.util.TimeZone/getTimeZone ^String t)

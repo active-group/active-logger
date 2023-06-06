@@ -8,7 +8,7 @@
   ;; "[Deprecated] :level config option is being renamed :min-level"
   (let [log-level        :error
         timbre-config #(timbre-config/configuration->timbre-config
-                         (active-config/make-configuration timbre-config/timbre-config-schema [] %))]
+                        (active-config/make-configuration timbre-config/timbre-config-schema [] %))]
     (t/testing ":min-level is used if configured"
       (t/is (= log-level (:min-level (timbre-config {:min-level log-level})))))
     (t/testing ":min-level takes precedence over :level if both are configured"
