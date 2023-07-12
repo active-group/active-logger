@@ -68,8 +68,8 @@
    last-update-time-ms metric-value-last-update-time-ms])
 
 ;; TODO: maybe better counter-metric-value and gauge-metric-value?
-(s/def ::metric-value-value (s/and number? #(not (Double/isNaN %))))
-(s/def ::metric-value-value-double (s/and double? #(not (Double/isNaN %))))
+(s/def ::metric-value-value number?)
+(s/def ::metric-value-value-double double?)
 ;; https://prometheus.io/docs/instrumenting/writing_exporters/
 ;; "You should not set timestamps on the metrics you expose, let Prometheus
 ;; take care of that."
@@ -84,6 +84,7 @@
                        (make-metric-value metric-value-value-double metric-value-last-update-time-ms))
                      (s/gen (s/keys :req-un [::metric-value-value-double ::metric-value-last-update-time-ms]))))))
 
+;; stores value as double
 (s/fdef make-metric-value
   :args (s/cat :value       ::metric-value-value
                :update-time ::metric-value-last-update-time-ms)
