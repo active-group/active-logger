@@ -1,6 +1,6 @@
 (ns active.clojure.logger.benchmark.bench
   (:require [active.clojure.logger.metric-accumulator :as m]
-            [active.clojure.logger.benchmark.clojure-map :as b]
+            [active.clojure.logger.benchmark.java-map-vector :as b]
             [active.clojure.logger.metric-accumulator-test :as mt]
             [clojure.test :as t]
             [clojure.spec.alpha :as s]
@@ -9,7 +9,7 @@
   (:use [active.quickcheck]))
 
 (def metric-number 2000)
-(def update-number 5000)
+(def update-number 1000)
 
 (defn get-n-distinct-metric-names
   [num-elems]
@@ -86,5 +86,7 @@
     ))
 (println "Start benchmark")
 (println b/who-am-i)
+(println "Metric number:" metric-number)
+(println "Update number:" update-number)
 (benchmark-record-and-get!)
 (println "End benchmark")
