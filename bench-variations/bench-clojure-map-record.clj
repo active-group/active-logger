@@ -8,8 +8,8 @@
             [criterium.core :as crit])
   (:use [active.quickcheck]))
 
-(def metric-number 2000)
-(def update-number 1000)
+(def metric-number 3000)
+(def update-number 50000)
 
 (defn get-n-distinct-metric-names
   [num-elems]
