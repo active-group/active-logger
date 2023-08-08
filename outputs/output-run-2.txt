@@ -1,0 +1,116 @@
+Bench Start------------------------------------------
+Wed Jul 12 06:18:41 PM CEST 2023
+Start benchmark
+clojure-map-record-implementation
+Metric number: 2000
+Update number: 10000
+Evaluation count : 60 in 60 samples of 1 calls.
+             Execution time mean : 1.711095 sec
+    Execution time std-deviation : 3.920716 ms
+   Execution time lower quantile : 1.704110 sec ( 2.5%)
+   Execution time upper quantile : 1.717524 sec (97.5%)
+                   Overhead used : 6.587933 ns
+
+Found 1 outliers in 60 samples (1.6667 %)
+	low-severe	 1 (1.6667 %)
+ Variance from outliers : 1.6389 % Variance is slightly inflated by outliers
+End benchmark
+
+lein test user
+
+Ran 0 tests containing 0 assertions.
+0 failures, 0 errors.
+Start benchmark
+java-map-record-implementation
+Metric number: 2000
+Update number: 10000
+Evaluation count : 60 in 60 samples of 1 calls.
+             Execution time mean : 1.822919 sec
+    Execution time std-deviation : 1.992867 ms
+   Execution time lower quantile : 1.819751 sec ( 2.5%)
+   Execution time upper quantile : 1.826646 sec (97.5%)
+                   Overhead used : 7.101479 ns
+
+Found 1 outliers in 60 samples (1.6667 %)
+	low-severe	 1 (1.6667 %)
+ Variance from outliers : 1.6389 % Variance is slightly inflated by outliers
+End benchmark
+
+lein test user
+
+Ran 0 tests containing 0 assertions.
+0 failures, 0 errors.
+Start benchmark
+clojure-map-string-implementation
+Metric number: 2000
+Update number: 10000
+Evaluation count : 60 in 60 samples of 1 calls.
+             Execution time mean : 1.807421 sec
+    Execution time std-deviation : 2.759673 ms
+   Execution time lower quantile : 1.803400 sec ( 2.5%)
+   Execution time upper quantile : 1.814987 sec (97.5%)
+                   Overhead used : 7.017597 ns
+
+Found 2 outliers in 60 samples (3.3333 %)
+	low-severe	 2 (3.3333 %)
+ Variance from outliers : 1.6389 % Variance is slightly inflated by outliers
+End benchmark
+
+lein test user
+
+Ran 0 tests containing 0 assertions.
+0 failures, 0 errors.
+Start benchmark
+java-map-string-implementation
+Metric number: 2000
+Update number: 10000
+Evaluation count : 60 in 60 samples of 1 calls.
+             Execution time mean : 1.799468 sec
+    Execution time std-deviation : 1.644191 ms
+   Execution time lower quantile : 1.796582 sec ( 2.5%)
+   Execution time upper quantile : 1.802867 sec (97.5%)
+                   Overhead used : 6.906368 ns
+End benchmark
+
+lein test user
+
+Ran 0 tests containing 0 assertions.
+0 failures, 0 errors.
+Start benchmark
+clojure-map-vector-implementation
+Metric number: 2000
+Update number: 10000
+Evaluation count : 60 in 60 samples of 1 calls.
+             Execution time mean : 1.760663 sec
+    Execution time std-deviation : 3.004597 ms
+   Execution time lower quantile : 1.756312 sec ( 2.5%)
+   Execution time upper quantile : 1.767250 sec (97.5%)
+                   Overhead used : 6.891974 ns
+
+Found 2 outliers in 60 samples (3.3333 %)
+	low-severe	 2 (3.3333 %)
+ Variance from outliers : 1.6389 % Variance is slightly inflated by outliers
+End benchmark
+
+lein test user
+
+Ran 0 tests containing 0 assertions.
+0 failures, 0 errors.
+Start benchmark
+java-map-vector-implementation
+Metric number: 2000
+Update number: 10000
+Evaluation count : 60 in 60 samples of 1 calls.
+             Execution time mean : 1.813981 sec
+    Execution time std-deviation : 2.140027 ms
+   Execution time lower quantile : 1.810270 sec ( 2.5%)
+   Execution time upper quantile : 1.818030 sec (97.5%)
+                   Overhead used : 7.049947 ns
+End benchmark
+
+lein test user
+
+Ran 0 tests containing 0 assertions.
+0 failures, 0 errors.
+Bench Finished---------------------------------------
+Wed Jul 12 06:34:04 PM CEST 2023

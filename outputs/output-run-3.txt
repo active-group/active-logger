@@ -1,0 +1,132 @@
+Bench Start------------------------------------------
+Thu Jul 13 19:14:54 CEST 2023
+Start benchmark
+clojure-map-record-implementation
+Metric number: 3000
+Update number: 50000
+Evaluation count : 60 in 60 samples of 1 calls.
+             Execution time mean : 1.769031 min
+    Execution time std-deviation : 496.230323 ms
+   Execution time lower quantile : 1.765154 min ( 2.5%)
+   Execution time upper quantile : 1.795364 min (97.5%)
+                   Overhead used : 6.221311 ns
+
+Found 9 outliers in 60 samples (15.0000 %)
+	low-severe	 4 (6.6667 %)
+	low-mild	 5 (8.3333 %)
+ Variance from outliers : 1.6389 % Variance is slightly inflated by outliers
+End benchmark
+
+lein test user
+
+Ran 0 tests containing 0 assertions.
+0 failures, 0 errors.
+Thu Jul 13 21:14:00 CEST 2023
+Start benchmark
+java-map-record-implementation
+Metric number: 3000
+Update number: 50000
+Evaluation count : 60 in 60 samples of 1 calls.
+             Execution time mean : 1.816843 min
+    Execution time std-deviation : 6.227209 sec
+   Execution time lower quantile : 1.769620 min ( 2.5%)
+   Execution time upper quantile : 2.030184 min (97.5%)
+                   Overhead used : 5.893906 ns
+
+Found 13 outliers in 60 samples (21.6667 %)
+	low-severe	 13 (21.6667 %)
+ Variance from outliers : 41.8348 % Variance is moderately inflated by outliers
+End benchmark
+
+lein test user
+
+Ran 0 tests containing 0 assertions.
+0 failures, 0 errors.
+Thu Jul 13 23:26:28 CEST 2023
+Start benchmark
+clojure-map-string-implementation
+Metric number: 3000
+Update number: 50000
+Evaluation count : 60 in 60 samples of 1 calls.
+             Execution time mean : 2.059964 min
+    Execution time std-deviation : 8.283576 sec
+   Execution time lower quantile : 1.996511 min ( 2.5%)
+   Execution time upper quantile : 2.526654 min (97.5%)
+                   Overhead used : 7.057436 ns
+
+Found 6 outliers in 60 samples (10.0000 %)
+	low-severe	 6 (10.0000 %)
+ Variance from outliers : 50.1190 % Variance is severely inflated by outliers
+End benchmark
+
+lein test user
+
+Ran 0 tests containing 0 assertions.
+0 failures, 0 errors.
+Fri Jul 14 01:48:29 CEST 2023
+Start benchmark
+java-map-string-implementation
+Metric number: 3000
+Update number: 50000
+Evaluation count : 60 in 60 samples of 1 calls.
+             Execution time mean : 2.143754 min
+    Execution time std-deviation : 16.125509 sec
+   Execution time lower quantile : 2.029184 min ( 2.5%)
+   Execution time upper quantile : 2.966143 min (97.5%)
+                   Overhead used : 6.998299 ns
+
+Found 9 outliers in 60 samples (15.0000 %)
+	low-severe	 9 (15.0000 %)
+ Variance from outliers : 78.9396 % Variance is severely inflated by outliers
+End benchmark
+
+lein test user
+
+Ran 0 tests containing 0 assertions.
+0 failures, 0 errors.
+Fri Jul 14 04:12:17 CEST 2023
+Start benchmark
+clojure-map-vector-implementation
+Metric number: 3000
+Update number: 50000
+Evaluation count : 60 in 60 samples of 1 calls.
+             Execution time mean : 2.052464 min
+    Execution time std-deviation : 8.558887 sec
+   Execution time lower quantile : 1.981604 min ( 2.5%)
+   Execution time upper quantile : 2.578948 min (97.5%)
+                   Overhead used : 7.031335 ns
+
+Found 7 outliers in 60 samples (11.6667 %)
+	low-severe	 1 (1.6667 %)
+	low-mild	 6 (10.0000 %)
+ Variance from outliers : 51.7998 % Variance is severely inflated by outliers
+End benchmark
+
+lein test user
+
+Ran 0 tests containing 0 assertions.
+0 failures, 0 errors.
+Fri Jul 14 06:30:16 CEST 2023
+Start benchmark
+java-map-vector-implementation
+Metric number: 3000
+Update number: 50000
+Evaluation count : 60 in 60 samples of 1 calls.
+             Execution time mean : 2.063134 min
+    Execution time std-deviation : 9.719291 sec
+   Execution time lower quantile : 1.992208 min ( 2.5%)
+   Execution time upper quantile : 2.549475 min (97.5%)
+                   Overhead used : 7.014366 ns
+
+Found 6 outliers in 60 samples (10.0000 %)
+	low-severe	 6 (10.0000 %)
+ Variance from outliers : 58.4792 % Variance is severely inflated by outliers
+End benchmark
+
+lein test user
+
+Ran 0 tests containing 0 assertions.
+0 failures, 0 errors.
+Fri Jul 14 08:49:58 CEST 2023
+Bench Finished---------------------------------------
+Fri Jul 14 08:49:58 CEST 2023
