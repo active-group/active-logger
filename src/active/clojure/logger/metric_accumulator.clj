@@ -9,8 +9,6 @@
             [clojure.spec.alpha :as s]
             [clojure.spec.gen.alpha :as sgen]))
 
-(s/check-asserts true)
-
 ;; ::metric-store-maps stores contains all known metrics and their stored values
 
 (s/def ::metric-store-map (s/map-of ::metric ::stored-values))

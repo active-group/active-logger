@@ -10,6 +10,8 @@
             [active.clojure.mock-monad :as mock-monad])
   (:use [active.quickcheck]))
 
+(s/check-asserts true)
+
 (stest/instrument)
 
 ;; GENERATORS
