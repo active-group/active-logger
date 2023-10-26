@@ -1,37 +1,22 @@
 #!/bin/sh
 
-echo "Bench Start------------------------------------------"
+bench () {
+  NS=$1
+  echo "$NS START " `date`
+  sed --in-place=.orig "s/(:use \[active.clojure.logger.metric-accumulator\])/(:use [$NS])/" bench/bench.clj
+  lein bench
+  mv bench/bench.clj.orig bench/bench.clj
+  echo "$NS DONE " `date`
+}
 
-# mkdir test/active/clojure/logger/benchmark
+bench active.clojure.logger.benchmark.clojure-map-record
 
-date
-cp bench-variations/bench-clojure-map-record.clj test/active/clojure/logger/benchmark/bench.clj
-lein test :only active.clojure.logger.benchmark.bench
+bench active.clojure.logger.benchmark.java-map-record
 
-date
-cp bench-variations/bench-java-map-record.clj test/active/clojure/logger/benchmark/bench.clj
-lein test :only active.clojure.logger.benchmark.bench
+bench active.clojure.logger.benchmark.clojure-map-string
 
-date
-cp bench-variations/bench-clojure-map-string.clj test/active/clojure/logger/benchmark/bench.clj
-lein test :only active.clojure.logger.benchmark.bench
+bench active.clojure.logger.benchmark.java-map-string
 
-date
-cp bench-variations/bench-java-map-string.clj test/active/clojure/logger/benchmark/bench.clj
-lein test :only active.clojure.logger.benchmark.bench
+bench active.clojure.logger.benchmark.clojure-map-vector
 
-date
-cp bench-variations/bench-clojure-map-vector.clj test/active/clojure/logger/benchmark/bench.clj
-lein test :only active.clojure.logger.benchmark.bench
-
-date
-cp bench-variations/bench-java-map-vector.clj test/active/clojure/logger/benchmark/bench.clj
-lein test :only active.clojure.logger.benchmark.bench
-
-date
-# rm -r test/active/clojure/logger/benchmark
-
-echo "Bench Finished---------------------------------------"
-date
-
-# systemctl poweroff
+bench active.clojure.logger.benchmark.java-map-vector

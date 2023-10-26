@@ -1,12 +1,11 @@
-(ns active.clojure.logger.benchmark.bench
+(ns bench
   (:require [active.clojure.logger.metric-accumulator :as m]
-            [active.clojure.logger.benchmark.java-map-record :as b]
             [active.clojure.logger.metric-accumulator-test :as mt]
-            [clojure.test :as t]
             [clojure.spec.alpha :as s]
             [clojure.spec.gen.alpha :as gen]
             [criterium.core :as crit])
-  (:use [active.quickcheck]))
+  (:use [active.clojure.logger.metric-accumulator])
+  (:gen-class))
 
 (def metric-number 3000)
 (def update-number 50000)
@@ -37,9 +36,12 @@
   [num-elems]
   (gen/sample (s/gen ::m/metric-value-last-update-time-ms) num-elems))
 
-
 (defn benchmark-record-and-get!
   []
+  (println "Prepare benchmark")
+  (println "Metric number:" metric-number)
+  (println "Update number:" update-number)
+
   (let [metric-names  (get-n-distinct-metric-names  metric-number)
         metric-helps  (get-n-metric-helps           metric-number)
         metric-labels (get-n-distinct-metric-labels metric-number)
@@ -47,46 +49,37 @@
         value-values       (get-n-metric-value-values       update-number)
         value-last-updates (get-n-metric-value-last-updates update-number)
 
-
-
-        metric-store (b/fresh-metric-store)
+        metric-store (fresh-metric-store)
         metrics      (mapv (fn [mname, mhelp]
-                             (b/make-counter-metric mname mhelp))
+                             (make-counter-metric mname mhelp))
                            metric-names
-                           metric-helps)
-        ]
+                           metric-helps)]
 
     ;; initialize store
     (mapv (fn [m, l]
-            (b/record-and-get! metric-store m l 0 0))
+            (record-and-get! metric-store m l 0 0))
           metrics
           metric-labels)
 
-    ;; record-and-get
-    #_(time (doseq [update-pos (range (- update-number 1))]
-            (let [update-metric (rand-int metric-number)]
-              (b/record-and-get! metric-store
+    (println "Start benchmark")
+
+    (let [record-and-get
+          (fn []
+            (doseq [update-pos (range (- update-number 1))]
+              (let [update-metric (rand-int metric-number)]
+                (record-and-get! metric-store
                                  (nth metrics            update-metric)
                                  (nth metric-labels      update-metric)
                                  (nth value-values       update-pos)
-                                 (nth value-last-updates update-pos)))))
+                                 (nth value-last-updates update-pos)))))]
+      #_(time (record-and-get))
+      (crit/bench (record-and-get)))
 
-    (crit/bench (doseq [update-pos (range (- update-number 1))]
-            (let [update-metric (rand-int metric-number)]
-              (b/record-and-get! metric-store
-                                 (nth metrics            update-metric)
-                                 (nth metric-labels      update-metric)
-                                 (nth value-values       update-pos)
-                                 (nth value-last-updates update-pos)))))
+    (println "End benchmark")
+    true))
 
+(println (namespace (symbol (resolve 'fresh-metric-store))))
 
-
-
-    true
-    ))
-(println "Start benchmark")
-(println b/who-am-i)
-(println "Metric number:" metric-number)
-(println "Update number:" update-number)
-(benchmark-record-and-get!)
-(println "End benchmark")
+(defn -main
+  [& _args]
+  (benchmark-record-and-get!))
