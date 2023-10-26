@@ -106,6 +106,10 @@
                                            (delay [~?msg (str ~?throwable)])
                                            ~?throwable))
 
+(defn current-log-context
+  []
+  timbre/*context*)
+
 (defmacro log-event-with-context!
   "Log an event, described by a level and the arguments
   (imperative version; global config).
