@@ -145,7 +145,7 @@
                (if (< (metric-value-last-update-time-ms metric-value) time-ms)
                  new-labels-value-map
                  (assoc new-labels-value-map metric-labels metric-value)))
-             {}
+             (empty labels-value-map)
              labels-value-map))
 
 (s/def ::metric (s/or :gauge-metric     ::gauge-metric
@@ -766,7 +766,7 @@
                            (if (empty-stored-values? new-stored-values)
                              new-metric-store
                              (assoc new-metric-store metric new-stored-values))))
-                       {}
+                       (empty old-metric-store)
                        old-metric-store)))
    nil))
 
