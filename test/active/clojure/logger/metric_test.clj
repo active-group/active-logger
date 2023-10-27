@@ -24,9 +24,11 @@
   [& ?args]
   `(reset-global-state-for-tests! (fn [] (mock-monad/mock-run-monad ~@?args))))
 
-
-
-(stest/instrument)
+(t/use-fixtures :once
+  (fn [f]
+    (stest/instrument)
+    (f)
+    (stest/unstrument)))
 
 (t/deftest t-log-metric!-internal
   (m/log-metric!-internal (str *ns*) (metric-accumulator/make-gauge-metric "name" "help") {:label "a"} 23 {:context "b"})
