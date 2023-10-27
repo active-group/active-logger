@@ -66,8 +66,8 @@
    last-update-time-ms metric-value-last-update-time-ms])
 
 ;; TODO: maybe better counter-metric-value and gauge-metric-value?
-(s/def ::metric-value-value number?)
-(s/def ::metric-value-value-double double?)
+(s/def ::metric-value-value (s/and number? #(not (Double/isNaN %))))
+(s/def ::metric-value-value-double (s/and double? #(not (Double/isNaN %))))
 ;; https://prometheus.io/docs/instrumenting/writing_exporters/
 ;; "You should not set timestamps on the metrics you expose, let Prometheus
 ;; take care of that."
@@ -135,6 +135,15 @@
           (fn [metric-value-1]
             (update-metric-value + metric-value-1 metric-value-2))))
 
+
+(s/fdef prune-stale-metric-value
+  :args (s/cat :metric-value ::metric-value
+               :time-ms      ::metric-value-last-update-time-ms)
+  :ret boolean?)
+(defn stale-metric-value?
+  [metric-value time-ms]
+  (< (metric-value-last-update-time-ms metric-value) time-ms))
+
 (s/fdef prune-stale-metric-value
   :args (s/cat :labels-value-map ::labels-value-map
                :time-ms          ::metric-value-last-update-time-ms)
@@ -142,7 +151,7 @@
 (defn prune-stale-metric-value
   [labels-value-map time-ms]
   (reduce-kv (fn [new-labels-value-map metric-labels metric-value]
-               (if (< (metric-value-last-update-time-ms metric-value) time-ms)
+               (if (stale-metric-value? metric-value time-ms)
                  new-labels-value-map
                  (assoc new-labels-value-map metric-labels metric-value)))
              (empty labels-value-map)
@@ -365,15 +374,29 @@
   [metric-name metric-help thresholds]
   (really-make-histogram-metric metric-name metric-help thresholds))
 
-(define-record-type ^{:doc "Stored Histogram values, i.e. a threshold and three
-  maps (sum, count, bucket) from labels to metric-values."}
+(define-record-type ^{:doc "Stored Histogram metric values."}
+  HistogramMetricValues
+  make-histogram-metric-values
+  histogram-metric-values?
+  [sum-value histogram-metric-values-sum-value
+   count-value histogram-metric-values-count-value
+   bucket-values histogram-metric-values-bucket-values])
+
+(s/def ::histogram-metric-values (s/spec (partial instance? HistogramMetricValues)))
+
+(s/fdef make-empty-histogram-metric-values
+  :args (s/cat :thresholds ::thresholds)
+  :ret ::histogram-metric-values)
+(defn make-empty-histogram-metric-values
+  [thresholds]
+  (make-histogram-metric-values nil nil (vec (repeat (count thresholds) nil))))
+
+(define-record-type ^{:doc "Stored Histogram values, i.e. a threshold and a map from labels to HistogramValues."}
   HistogramValues
   ^:private really-make-histogram-values
   histogram-values?
   [thresholds histogram-values-thresholds
-   sum-map histogram-values-sum-map
-   count-map histogram-values-count-map
-   bucket-maps histogram-values-bucket-maps])
+   map histogram-values-map])
 
 (s/def ::histogram-values (s/spec (partial instance? HistogramValues)))
 
@@ -382,9 +405,41 @@
   :ret ::histogram-values)
 (defn make-histogram-values
   [thresholds]
-  (really-make-histogram-values thresholds empty-values-map empty-values-map (vec (repeat (count thresholds) empty-values-map))))
+  (really-make-histogram-values thresholds empty-values-map))
 
-(make-histogram-values [1])
+(s/fdef update-histogram-values
+  :args (s/cat :histogram-metric-values ::histogram-metric-values
+               :thresholds ::thresholds
+               :metric-value     ::metric-value
+               :metric-value-0   ::metric-value
+               :metric-value-1   ::metric-value)
+  :ret ::histogram-metric-values)
+(defn update-histogram-metric-values
+  [histogram-metric-values thresholds metric-value metric-value-0 metric-value-1]
+  (let [value-value (metric-value-value metric-value)]
+    (-> (or histogram-metric-values (make-empty-histogram-metric-values thresholds))
+        (lens/overhaul histogram-metric-values-sum-value #(update-metric-value + % metric-value))
+        (lens/overhaul histogram-metric-values-count-value #(update-metric-value + % metric-value-1))
+        (lens/overhaul histogram-metric-values-bucket-values
+                       #(mapv (fn [threshold bucket-value]
+                                (update-metric-value + bucket-value
+                                                     (if (<= value-value threshold)
+                                                       metric-value-1
+                                                       metric-value-0)))
+                              thresholds %)))))
+
+(s/fdef update-histogram-values
+  :args (s/cat :histogram-values-map ::labels-value-map
+               :thresholds ::thresholds
+               :metric-labels    ::metric-labels
+               :metric-value     ::metric-value
+               :metric-value-0   ::metric-value
+               :metric-value-1   ::metric-value)
+  :ret ::labels-value-map)
+(defn update-histogram-values-map
+  [histogram-values-map thresholds metric-labels metric-value metric-value-0 metric-value-1]
+  (update histogram-values-map metric-labels update-histogram-metric-values
+          thresholds metric-value metric-value-0 metric-value-1))
 
 (s/fdef update-histogram-values
   :args (s/cat :histogram-values ::histogram-values
@@ -395,22 +450,12 @@
   "Updates a `HistogramMetric`."
   [histogram-values metric-labels metric-value]
   (let [last-update         (metric-value-last-update-time-ms metric-value)
-        value-value         (metric-value-value               metric-value)
         thresholds          (histogram-values-thresholds histogram-values)
         metric-value-0      (make-metric-value 0 last-update)
         metric-value-1      (make-metric-value 1 last-update)]
     (-> histogram-values
-        (lens/overhaul histogram-values-sum-map
-                       inc-metric-value metric-labels metric-value)
-        (lens/overhaul histogram-values-count-map
-                       inc-metric-value metric-labels metric-value-1)
-        (lens/overhaul histogram-values-bucket-maps
-                       #(mapv (fn [threshold bucket-map]
-                                (inc-metric-value bucket-map metric-labels
-                                                  (if (<= value-value threshold)
-                                                    metric-value-1
-                                                    metric-value-0)))
-                              thresholds %)))))
+        (lens/overhaul histogram-values-map
+                       update-histogram-values-map thresholds metric-labels metric-value metric-value-0 metric-value-1))))
 
 (s/fdef histogram-values->metric-samples
   :args (s/cat :basename ::metric-name
@@ -421,35 +466,47 @@
   "Return all metric-samples with the given labels within this histogram-metric."
   [basename histogram-values metric-labels]
   (let [thresholds  (histogram-values-thresholds histogram-values)
-        sum-map     (histogram-values-sum-map histogram-values)
-        count-map   (histogram-values-count-map histogram-values)
-        bucket-maps (histogram-values-bucket-maps histogram-values)
-        ;; TODO: do we trust that it is always in all three maps?
-        metric-value-sum    (get sum-map metric-labels)
-        metric-value-count  (get count-map metric-labels)]
-    (concat
-      (when (metric-value? metric-value-sum)
-        [(make-metric-sample (str basename "_sum")
-                             metric-labels
-                             (metric-value-value               metric-value-sum)
-                             (metric-value-last-update-time-ms metric-value-sum))])
-      (when (metric-value? metric-value-count)
-        [(make-metric-sample (str basename "_count")
-                           metric-labels
-                           (metric-value-value               metric-value-count)
-                           (metric-value-last-update-time-ms metric-value-count))
-         (make-metric-sample (str basename "_bucket")
-                             (assoc metric-labels :le "+Inf")
-                             (metric-value-value               metric-value-count)
-                             (metric-value-last-update-time-ms metric-value-count))])
-      (mapcat (fn [threshold bucket-map]
-                (let [metric-value-bucket (get bucket-map metric-labels)]
-                  (when (metric-value? metric-value-bucket)
-                    [(make-metric-sample (str basename "_bucket")
-                                         (assoc metric-labels :le (str threshold))
-                                         (metric-value-value               metric-value-bucket)
-                                         (metric-value-last-update-time-ms metric-value-bucket))])))
-              thresholds bucket-maps))))
+        histogram-metric-values (get (histogram-values-map histogram-values) metric-labels)]
+    (if (histogram-metric-values? histogram-metric-values)
+      (let [metric-value-sum (histogram-metric-values-sum-value histogram-metric-values)
+            metric-value-count (histogram-metric-values-count-value histogram-metric-values)
+            metric-value-buckets (histogram-metric-values-bucket-values histogram-metric-values)]
+        (concat
+         (when (metric-value? metric-value-sum)
+           [(make-metric-sample (str basename "_sum")
+                                metric-labels
+                                (metric-value-value               metric-value-sum)
+                                (metric-value-last-update-time-ms metric-value-sum))])
+         (when (metric-value? metric-value-count)
+           [(make-metric-sample (str basename "_count")
+                                metric-labels
+                                (metric-value-value               metric-value-count)
+                                (metric-value-last-update-time-ms metric-value-count))
+            (make-metric-sample (str basename "_bucket")
+                                (assoc metric-labels :le "+Inf")
+                                (metric-value-value               metric-value-count)
+                                (metric-value-last-update-time-ms metric-value-count))])
+         (mapcat (fn [threshold metric-value-bucket]
+                   (when (metric-value? metric-value-bucket)
+                     [(make-metric-sample (str basename "_bucket")
+                                          (assoc metric-labels :le (str threshold))
+                                          (metric-value-value               metric-value-bucket)
+                                          (metric-value-last-update-time-ms metric-value-bucket))]))
+                 thresholds metric-value-buckets)))
+      [])))
+
+(s/fdef prune-stale-histogram-metric-value
+  :args (s/cat :histogram-values-map ::labels-value-map
+               :time-ms ::metric-value-last-update-time-ms)
+  :ret ::labels-value-map)
+(defn prune-stale-histogram-metric-value
+  [histogram-values-map time-ms]
+  (reduce-kv (fn [new-labels-value-map metric-labels histogram-metric-values]
+               (if (stale-metric-value? (histogram-metric-values-sum-value histogram-metric-values) time-ms)
+                 new-labels-value-map
+                 (assoc new-labels-value-map metric-labels histogram-metric-values)))
+             (empty histogram-values-map)
+             histogram-values-map))
 
 (s/fdef prune-stale-histogram-values
   :args (s/cat :histogram-values ::histogram-values
@@ -458,17 +515,14 @@
 (defn prune-stale-histogram-values
   [histogram-values time-ms]
   (-> histogram-values
-      (lens/overhaul histogram-values-sum-map prune-stale-metric-value time-ms)
-      (lens/overhaul histogram-values-count-map prune-stale-metric-value time-ms)
-      (lens/overhaul histogram-values-bucket-maps
-                     #(mapv (fn [bucket-map] (prune-stale-metric-value bucket-map time-ms)) %))))
+      (lens/overhaul histogram-values-map prune-stale-histogram-metric-value time-ms)))
 
-(s/fdef empty-histogram-values?
+(s/fdef empty-histogram-value?
   :args (s/cat :histogram-values ::histogram-values)
   :ret boolean?)
 (defn empty-histogram-values?
   [histogram-values]
-  (empty? (histogram-values-sum-map histogram-values)))
+  (empty? (histogram-values-map histogram-values)))
 
 ;; Primitives on stored values
 
@@ -639,7 +693,7 @@
             (keys (counter-values-map stored-value)))
     (histogram-values? stored-value)
     (mapcat (fn [metric-labels] (histogram-values->metric-samples (metric-name metric) stored-value metric-labels))
-            (keys (histogram-values-sum-map stored-value)))))
+            (keys (histogram-values-map stored-value)))))
 
 (s/fdef get-metric-samples-1
   :args (s/cat :metric-store  ::metric-store-map

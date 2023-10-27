@@ -1,5 +1,6 @@
 (ns active.clojure.logger.metric-accumulator-test
-  (:require [active.clojure.logger.metric-accumulator :as m]
+  (:require [#_active.clojure.logger.benchmark.clojure-map-record active.clojure.logger.metric-accumulator :as m]
+            [active.clojure.logger.metric-accumulator :as gen]
             [clojure.test :as t]
 
             [clojure.spec.alpha :as s]
@@ -22,19 +23,19 @@
 
 (defn gen-distinct-metric-names
   [num-elems]
-  (s/spec (s/coll-of ::m/metric-name :distinct true :into [] :count num-elems)))
+  (s/spec (s/coll-of ::gen/metric-name :distinct true :into [] :count num-elems)))
 
 (defn gen-metric-helps
   [num-elems]
-  (s/spec (s/coll-of ::m/metric-help :distinct false :into [] :count num-elems)))
+  (s/spec (s/coll-of ::gen/metric-help :distinct false :into [] :count num-elems)))
 
 (defn gen-distinct-metric-labels
   [num-elems]
-  (s/spec (s/coll-of ::m/metric-labels :distinct true :into [] :count num-elems)))
+  (s/spec (s/coll-of ::gen/metric-labels :distinct true :into [] :count num-elems)))
 
 (defn gen-metric-values
   [num-elems]
-  (s/spec (s/coll-of ::m/metric-value :distinct false :into [] :count num-elems)))
+  (s/spec (s/coll-of ::gen/metric-value :distinct false :into [] :count num-elems)))
 
 (defn gen-filled-gauge-values
   [gauge-values labelss values]
@@ -43,7 +44,7 @@
     (let [[labels & rest-labelss] labelss
           [value & rest-values] values]
       (gen-filled-gauge-values
-       (m/update-gauge-values gauge-values labels value)
+       (gen/update-gauge-values gauge-values labels value)
        rest-labelss
        rest-values))))
 
@@ -54,7 +55,7 @@
     (let [[labels & rest-labelss] labelss
           [value & rest-values] values]
       (gen-filled-counter-values
-       (m/update-counter-values counter-values labels value)
+       (gen/update-counter-values counter-values labels value)
        rest-labelss
        rest-values))))
 
@@ -65,7 +66,7 @@
     (let [[labels & rest-labelss] labelss
           [value & rest-values] values]
       (gen-filled-histogram-values
-       (m/update-histogram-values histogram-values labels value)
+       (gen/update-histogram-values histogram-values labels value)
        rest-labelss
        rest-values))))
 
@@ -76,14 +77,14 @@
     (let [[labels & rest-labelss] labelss
           [value  & rest-values] values]
       (gen-filled-metric-store-map
-       (m/record-metric-1 metric-store metric labels value)
+       (gen/record-metric-1 metric-store metric labels value)
        metric
        rest-labelss
        rest-values))))
 
 (defn gen-metric-samples
   [num-elems]
-  (s/spec (s/coll-of ::m/metric-sample :distinct false :into [] :count num-elems)))
+  (s/spec (s/coll-of ::gen/metric-sample :distinct false :into [] :count num-elems)))
 
 ;; -----------------------------------------------
 
@@ -105,7 +106,7 @@
     (t/is (quickcheck
            (property [names     (spec (gen-distinct-metric-names  3))
                       helps     (spec (gen-metric-helps           3))
-                      threshold (spec ::m/threshold)
+                      threshold (spec ::gen/threshold)
                       labelss   (spec (gen-distinct-metric-labels 3))
                       values    (spec (gen-metric-values          3))]
                      (let [example-gauge-metric     (m/make-gauge-metric     (nth names 0) (nth helps 0))
@@ -127,8 +128,8 @@
 (t/deftest t-make-metric-value
   (t/testing "All fields of a metric-value are set correct."
     (t/is (quickcheck
-           (property [value       (spec ::m/metric-value-value)
-                      update-time (spec ::m/metric-value-last-update-time-ms)]
+           (property [value       (spec ::gen/metric-value-value)
+                      update-time (spec ::gen/metric-value-last-update-time-ms)]
                      (let [example-metric-value (m/make-metric-value value update-time)]
                        (t/is                   (m/metric-value?                    example-metric-value))
                        (t/is (= (double value) (m/metric-value-value               example-metric-value)))
@@ -155,8 +156,8 @@
   ;; TODO: More functions? Not only '+'?
   (t/testing "Basic update of metric-values works."
     (t/is (quickcheck
-           (property [example-metric-value-1 (spec ::m/metric-value)
-                      example-metric-value-2 (spec ::m/metric-value)]
+           (property [example-metric-value-1 (spec ::gen/metric-value)
+                      example-metric-value-2 (spec ::gen/metric-value)]
                      ;; If there is no base value, just take the second.
                      (t/is (= example-metric-value-2
                               (m/update-metric-value + nil example-metric-value-2)))
@@ -224,8 +225,8 @@
 (t/deftest t-make-gauge-metric
   (t/testing "All fields of a gauge-metric are set correct."
     (t/is (quickcheck
-           (property [metric-name       (spec ::m/metric-name)
-                      help              (spec ::m/metric-help)]
+           (property [metric-name       (spec ::gen/metric-name)
+                      help              (spec ::gen/metric-help)]
                      (let [example-gauge-metric (m/make-gauge-metric metric-name help)]
                        (t/is                      (m/gauge-metric?                  example-gauge-metric))
                        (t/is (= metric-name       (m/gauge-metric-name              example-gauge-metric)))
@@ -278,7 +279,7 @@
 (t/deftest t-gauge-values->metric-samples
   (t/testing "Creating metric-samples from gauge-values works."
     (t/is (quickcheck
-           (property [name (spec ::m/metric-name)
+           (property [name (spec ::gen/metric-name)
                       [label-x & labelss] (spec (gen-distinct-metric-labels 4))
                       values              (spec (gen-metric-values          3))]
                      (let [empty-gauge-values (m/make-gauge-values)
@@ -345,8 +346,8 @@
 (t/deftest t-make-counter-metric
   (t/testing "All fields of a counter-metric are set correct."
     (t/is (quickcheck
-           (property [metric-name       (spec ::m/metric-name)
-                      help              (spec ::m/metric-help)]
+           (property [metric-name       (spec ::gen/metric-name)
+                      help              (spec ::gen/metric-help)]
                      (let [example-counter-metric (m/make-counter-metric metric-name help)]
                        (t/is                      (m/counter-metric?                  example-counter-metric))
                        (t/is (= metric-name       (m/counter-metric-name              example-counter-metric)))
@@ -401,7 +402,7 @@
 (t/deftest t-counter-values->metric-samples
   (t/testing "Creating metric-samples from counter-values works."
     (t/is (quickcheck
-           (property [name (spec ::m/metric-name)
+           (property [name (spec ::gen/metric-name)
                       [label-x & labelss] (spec (gen-distinct-metric-labels 4))
                       values              (spec (gen-metric-values          3))]
                      (let [empty-counter-values (m/make-counter-values)
@@ -470,9 +471,9 @@
 (t/deftest t-make-histogram-metric
   (t/testing "All fields of a histogram-metric are set correct."
     (t/is (quickcheck
-           (property [metric-name       (spec ::m/metric-name)
-                      help              (spec ::m/metric-help)
-                      threshold         (spec ::m/threshold)]
+           (property [metric-name       (spec ::gen/metric-name)
+                      help              (spec ::gen/metric-help)
+                      threshold         (spec ::gen/threshold)]
                      (let [example-histogram-metric (m/make-histogram-metric metric-name help [threshold])]
                        (t/is                      (m/histogram-metric? example-histogram-metric))
                        (t/is (= metric-name       (m/histogram-metric-name                     example-histogram-metric)))
@@ -482,130 +483,17 @@
 (t/deftest t-make-histogram-values
   (t/testing "All fields of a metric-value are set correct."
     (t/is (quickcheck
-           (property [threshold (spec ::m/threshold)]
+           (property [threshold (spec ::gen/threshold)]
                      (let [example-histogram-values (m/make-histogram-values [threshold])]
                        (t/is                       (m/histogram-values?           example-histogram-values))
                        (t/is (= [threshold]        (m/histogram-values-thresholds example-histogram-values)))
-                       (t/is (= m/empty-values-map (m/histogram-values-sum-map    example-histogram-values)))
-                       (t/is (= m/empty-values-map (m/histogram-values-count-map  example-histogram-values)))
-                       (t/is (= [m/empty-values-map] (m/histogram-values-bucket-maps example-histogram-values)))))))))
-
-;; TODO: with lets --- this can be shorter
-;; TODO: we only test the maps, but we should also check, that the threshold stays the same.
-(t/deftest t-update-histogram-values
-  (t/testing "Updating histogram-values works."
-    (t/is (quickcheck
-           (property [labelss             (spec (gen-distinct-metric-labels 3))
-                      [value-x & values]  (spec (gen-metric-values          4))
-                      threshold           (spec ::m/threshold)]
-                     (let [example-histogram-values (m/make-histogram-values [threshold])]
-                       ;; testing sum-map
-                       (t/is (= {} (m/histogram-values-sum-map example-histogram-values)))
-                       (t/is (= {(nth labelss 0) (nth values 0)}
-                                (m/histogram-values-sum-map
-                                 (m/update-histogram-values example-histogram-values (nth labelss 0) (nth values 0)))))
-                       (t/is (= {(nth labelss 0) (nth values 0)
-                                 (nth labelss 1) (nth values 1)}
-                                (m/histogram-values-sum-map
-                                 (m/update-histogram-values
-                                  (m/update-histogram-values example-histogram-values (nth labelss 0) (nth values 0))
-                                  (nth labelss 1) (nth values 1)))))
-                       (t/is (= {(nth labelss 0) (nth values 0)
-                                 (nth labelss 1) (nth values 1)
-                                 (nth labelss 2) (nth values 2)}
-                                (m/histogram-values-sum-map
-                                 (m/update-histogram-values
-                                  (m/update-histogram-values
-                                   (m/update-histogram-values example-histogram-values (nth labelss 0) (nth values 0))
-                                   (nth labelss 1) (nth values 1))
-                                  (nth labelss 2) (nth values  2)))))
-                       (t/is (= {(nth labelss 0) (nth values 0)
-                                 (nth labelss 1) (m/make-metric-value (+ (m/metric-value-value (nth values 1))
-                                                                         (m/metric-value-value value-x))
-                                                                      (m/metric-value-last-update-time-ms value-x))
-                                 (nth labelss 2) (nth values 2)}
-                                (m/histogram-values-sum-map
-                                 (m/update-histogram-values
-                                  (m/update-histogram-values
-                                   (m/update-histogram-values
-                                    (m/update-histogram-values example-histogram-values (nth labelss 0) (nth values 0))
-                                    (nth labelss 1) (nth values 1))
-                                   (nth labelss 2) (nth values  2))
-                                  (nth labelss 1) value-x))))
-                       ;; testing count-map
-                       (t/is (= {} (m/histogram-values-count-map example-histogram-values)))
-                       (t/is (= {(nth labelss 0) (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 0)))}
-                                (m/histogram-values-count-map
-                                 (m/update-histogram-values example-histogram-values (nth labelss 0) (nth values 0)))))
-                       (t/is (= {(nth labelss 0) (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 0)))
-                                 (nth labelss 1) (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 1)))}
-                                (m/histogram-values-count-map
-                                 (m/update-histogram-values
-                                  (m/update-histogram-values example-histogram-values (nth labelss 0) (nth values 0))
-                                  (nth labelss 1) (nth values 1)))))
-                       (t/is (= {(nth labelss 0) (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 0)))
-                                 (nth labelss 1) (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 1)))
-                                 (nth labelss 2) (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 2)))}
-                                (m/histogram-values-count-map
-                                 (m/update-histogram-values
-                                  (m/update-histogram-values
-                                   (m/update-histogram-values example-histogram-values (nth labelss 0) (nth values 0))
-                                   (nth labelss 1) (nth values 1))
-                                  (nth labelss 2) (nth values  2)))))
-                       (t/is (= {(nth labelss 0) (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 0)))
-                                 (nth labelss 1) (m/make-metric-value 2 (m/metric-value-last-update-time-ms value-x))
-                                 (nth labelss 2) (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 2)))}
-                                (m/histogram-values-count-map
-                                 (m/update-histogram-values
-                                  (m/update-histogram-values
-                                   (m/update-histogram-values
-                                    (m/update-histogram-values example-histogram-values (nth labelss 0) (nth values 0))
-                                    (nth labelss 1) (nth values 1))
-                                   (nth labelss 2) (nth values  2))
-                                  (nth labelss 1) value-x))))
-                       ;; testing bucket-map
-                       (let [value-value-0 (if (<= (m/metric-value-value (nth values 0)) threshold) 1.0 0.0)
-                             value-value-1 (if (<= (m/metric-value-value (nth values 1)) threshold) 1.0 0.0)
-                             value-value-2 (if (<= (m/metric-value-value (nth values 2)) threshold) 1.0 0.0)
-                             value-value-x (if (<= (m/metric-value-value value-x)        threshold) 1.0 0.0)]
-                         (t/is (= [{}] (m/histogram-values-bucket-maps example-histogram-values)))
-                         (t/is (= [{(nth labelss 0) (m/make-metric-value value-value-0 (m/metric-value-last-update-time-ms (nth values 0)))}]
-                                  (m/histogram-values-bucket-maps
-                                   (m/update-histogram-values example-histogram-values (nth labelss 0) (nth values 0)))))
-                         (t/is (= [{(nth labelss 0) (m/make-metric-value value-value-0 (m/metric-value-last-update-time-ms (nth values 0)))
-                                    (nth labelss 1) (m/make-metric-value value-value-1 (m/metric-value-last-update-time-ms (nth values 1)))}]
-                                  (m/histogram-values-bucket-maps
-                                   (m/update-histogram-values
-                                    (m/update-histogram-values example-histogram-values (nth labelss 0) (nth values 0))
-                                    (nth labelss 1) (nth values 1)))))
-                         (t/is (= [{(nth labelss 0) (m/make-metric-value value-value-0 (m/metric-value-last-update-time-ms (nth values 0)))
-                                    (nth labelss 1) (m/make-metric-value value-value-1 (m/metric-value-last-update-time-ms (nth values 1)))
-                                    (nth labelss 2) (m/make-metric-value value-value-2 (m/metric-value-last-update-time-ms (nth values 2)))}]
-                                  (m/histogram-values-bucket-maps
-                                   (m/update-histogram-values
-                                    (m/update-histogram-values
-                                     (m/update-histogram-values example-histogram-values (nth labelss 0) (nth values 0))
-                                     (nth labelss 1) (nth values 1))
-                                    (nth labelss 2) (nth values  2)))))
-                         (t/is (= [{(nth labelss 0) (m/make-metric-value value-value-0 (m/metric-value-last-update-time-ms (nth values 0)))
-                                    (nth labelss 1) (m/make-metric-value (+ value-value-1
-                                                                            value-value-x)
-                                                                         (m/metric-value-last-update-time-ms value-x))
-                                    (nth labelss 2) (m/make-metric-value value-value-2 (m/metric-value-last-update-time-ms (nth values 2)))}]
-                                  (m/histogram-values-bucket-maps
-                                   (m/update-histogram-values
-                                    (m/update-histogram-values
-                                     (m/update-histogram-values
-                                      (m/update-histogram-values example-histogram-values (nth labelss 0) (nth values 0))
-                                      (nth labelss 1) (nth values 1))
-                                     (nth labelss 2) (nth values  2))
-                                    (nth labelss 1) value-x)))))))))))
+                       (t/is (= m/empty-values-map (m/histogram-values-map        example-histogram-values)))))))))
 
 (t/deftest t-histogram-values->metric-samples
   (t/testing "Creating metric-samples from histogram-values works."
     (t/is (quickcheck
-           (property [basename            (spec ::m/metric-name)
-                      threshold           (spec ::m/threshold)
+           (property [basename            (spec ::gen/metric-name)
+                      threshold           (spec ::gen/threshold)
                       [label-x & labelss] (spec (gen-distinct-metric-labels 4))
                       values              (spec (gen-metric-values          3))]
                      (let [empty-histogram-values (m/make-histogram-values [threshold])
@@ -635,7 +523,7 @@
 (t/deftest t-prune-stale-histogram-values
   (t/testing "Pruning stale histogram-values works."
     (t/is (quickcheck
-           (property [threshold (spec ::m/threshold)
+           (property [threshold (spec ::gen/threshold)
                       labelss   (spec (gen-distinct-metric-labels 6))]
                      (let [empty-histogram-values (m/make-histogram-values [threshold])
                            values [(m/make-metric-value 300 10)
@@ -648,7 +536,11 @@
                        ;; sum-map
                        ;; empty labels-value-map
                        (t/is (= {}
-                                (m/histogram-values-sum-map (m/prune-stale-histogram-values empty-histogram-values 1))))
+                                (let [pruned (m/histogram-values-map (m/prune-stale-histogram-values empty-histogram-values 1))]
+                                  (reduce-kv (fn [r k v]
+                                               (assoc r k (m/histogram-metric-values-sum-value v)))
+                                             (empty pruned)
+                                             pruned))))
                        ;; not older
                        (t/is (= {(nth labelss 0) (nth values 0)
                                  (nth labelss 1) (nth values 1)
@@ -656,7 +548,11 @@
                                  (nth labelss 3) (nth values 3)
                                  (nth labelss 4) (nth values 4)
                                  (nth labelss 5) (nth values 5)}
-                                (m/histogram-values-sum-map (m/prune-stale-histogram-values filled-histogram-values 9))))
+                                (let [pruned (m/histogram-values-map (m/prune-stale-histogram-values filled-histogram-values 9))]
+                                  (reduce-kv (fn [r k v]
+                                               (assoc r k (m/histogram-metric-values-sum-value v)))
+                                             (empty pruned)
+                                             pruned))))
                        ;; the same
                        (t/is (= {(nth labelss 0) (nth values 0)
                                  (nth labelss 1) (nth values 1)
@@ -664,17 +560,29 @@
                                  (nth labelss 3) (nth values 3)
                                  (nth labelss 4) (nth values 4)
                                  (nth labelss 5) (nth values 5)}
-                                (m/histogram-values-sum-map (m/prune-stale-histogram-values filled-histogram-values 10))))
+                                (let [pruned (m/histogram-values-map (m/prune-stale-histogram-values filled-histogram-values 10))]
+                                  (reduce-kv (fn [r k v]
+                                               (assoc r k (m/histogram-metric-values-sum-value v)))
+                                             (empty pruned)
+                                             pruned))))
                        ;; mixture
                        (t/is (= {(nth labelss 3) (nth values 3)
                                  (nth labelss 4) (nth values 4)
                                  (nth labelss 5) (nth values 5)}
-                                (m/histogram-values-sum-map (m/prune-stale-histogram-values filled-histogram-values 13))))
+                                (let [pruned (m/histogram-values-map (m/prune-stale-histogram-values filled-histogram-values 13))]
+                                  (reduce-kv (fn [r k v]
+                                               (assoc r k (m/histogram-metric-values-sum-value v)))
+                                             (empty pruned)
+                                             pruned))))
 
                        ;; count-map
                        ;; empty labels-value-map
                        (t/is (= {}
-                                (m/histogram-values-count-map (m/prune-stale-histogram-values empty-histogram-values 1))))
+                                (let [pruned (m/histogram-values-map (m/prune-stale-histogram-values empty-histogram-values 1))]
+                                  (reduce-kv (fn [r k v]
+                                               (assoc r k (m/histogram-metric-values-count-value v)))
+                                             (empty pruned)
+                                             pruned))))
                        ;; not older
                        (t/is (= {(nth labelss 0) (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 0)))
                                  (nth labelss 1) (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 1)))
@@ -682,7 +590,11 @@
                                  (nth labelss 3) (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 3)))
                                  (nth labelss 4) (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 4)))
                                  (nth labelss 5) (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 5)))}
-                                (m/histogram-values-count-map (m/prune-stale-histogram-values filled-histogram-values 9))))
+                                (let [pruned (m/histogram-values-map (m/prune-stale-histogram-values filled-histogram-values 9))]
+                                  (reduce-kv (fn [r k v]
+                                               (assoc r k (m/histogram-metric-values-count-value v)))
+                                             (empty pruned)
+                                             pruned))))
                        ;; the same
                        (t/is (= {(nth labelss 0) (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 0)))
                                  (nth labelss 1) (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 1)))
@@ -690,12 +602,20 @@
                                  (nth labelss 3) (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 3)))
                                  (nth labelss 4) (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 4)))
                                  (nth labelss 5) (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 5)))}
-                                (m/histogram-values-count-map (m/prune-stale-histogram-values filled-histogram-values 10))))
+                                (let [pruned (m/histogram-values-map (m/prune-stale-histogram-values filled-histogram-values 10))]
+                                  (reduce-kv (fn [r k v]
+                                               (assoc r k (m/histogram-metric-values-count-value v)))
+                                             (empty pruned)
+                                             pruned))))
                        ;; mixture
                        (t/is (= {(nth labelss 3) (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 3)))
                                  (nth labelss 4) (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 4)))
                                  (nth labelss 5) (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 5)))}
-                                (m/histogram-values-count-map (m/prune-stale-histogram-values filled-histogram-values 13))))
+                                (let [pruned (m/histogram-values-map (m/prune-stale-histogram-values filled-histogram-values 13))]
+                                  (reduce-kv (fn [r k v]
+                                               (assoc r k (m/histogram-metric-values-count-value v)))
+                                             (empty pruned)
+                                             pruned))))
 
                       ;; bucket-map
                        (let [value-value-0 (if (<= (m/metric-value-value (nth values 0)) threshold) 1.0 0.0)
@@ -706,34 +626,50 @@
                              value-value-5 (if (<= (m/metric-value-value (nth values 5)) threshold) 1.0 0.0)]
 
                        ;; empty labels-value-map
-                         (t/is (= [{}]
-                                  (m/histogram-values-bucket-maps (m/prune-stale-histogram-values empty-histogram-values 1))))
+                         (t/is (= {}
+                                  (let [pruned (m/histogram-values-map (m/prune-stale-histogram-values empty-histogram-values 1))]
+                                    (reduce-kv (fn [r k v]
+                                                 (assoc r k (m/histogram-metric-values-bucket-values v)))
+                                               (empty pruned)
+                                               pruned))))
                        ;; not older
-                         (t/is (= [{(nth labelss 0) (m/make-metric-value value-value-0 (m/metric-value-last-update-time-ms (nth values 0)))
-                                    (nth labelss 1) (m/make-metric-value value-value-1 (m/metric-value-last-update-time-ms (nth values 1)))
-                                    (nth labelss 2) (m/make-metric-value value-value-2 (m/metric-value-last-update-time-ms (nth values 2)))
-                                    (nth labelss 3) (m/make-metric-value value-value-3 (m/metric-value-last-update-time-ms (nth values 3)))
-                                    (nth labelss 4) (m/make-metric-value value-value-4 (m/metric-value-last-update-time-ms (nth values 4)))
-                                    (nth labelss 5) (m/make-metric-value value-value-5 (m/metric-value-last-update-time-ms (nth values 5)))}]
-                                  (m/histogram-values-bucket-maps (m/prune-stale-histogram-values filled-histogram-values 9))))
+                         (t/is (= {(nth labelss 0) [(m/make-metric-value value-value-0 (m/metric-value-last-update-time-ms (nth values 0)))]
+                                   (nth labelss 1) [(m/make-metric-value value-value-1 (m/metric-value-last-update-time-ms (nth values 1)))]
+                                   (nth labelss 2) [(m/make-metric-value value-value-2 (m/metric-value-last-update-time-ms (nth values 2)))]
+                                   (nth labelss 3) [(m/make-metric-value value-value-3 (m/metric-value-last-update-time-ms (nth values 3)))]
+                                   (nth labelss 4) [(m/make-metric-value value-value-4 (m/metric-value-last-update-time-ms (nth values 4)))]
+                                   (nth labelss 5) [(m/make-metric-value value-value-5 (m/metric-value-last-update-time-ms (nth values 5)))]}
+                                  (let [pruned (m/histogram-values-map (m/prune-stale-histogram-values filled-histogram-values 9))]
+                                    (reduce-kv (fn [r k v]
+                                                 (assoc r k (m/histogram-metric-values-bucket-values v)))
+                                               (empty pruned)
+                                               pruned))))
                        ;; the same
-                         (t/is (= [{(nth labelss 0) (m/make-metric-value value-value-0 (m/metric-value-last-update-time-ms (nth values 0)))
-                                    (nth labelss 1) (m/make-metric-value value-value-1 (m/metric-value-last-update-time-ms (nth values 1)))
-                                    (nth labelss 2) (m/make-metric-value value-value-2 (m/metric-value-last-update-time-ms (nth values 2)))
-                                    (nth labelss 3) (m/make-metric-value value-value-3 (m/metric-value-last-update-time-ms (nth values 3)))
-                                    (nth labelss 4) (m/make-metric-value value-value-4 (m/metric-value-last-update-time-ms (nth values 4)))
-                                    (nth labelss 5) (m/make-metric-value value-value-5 (m/metric-value-last-update-time-ms (nth values 5)))}]
-                                  (m/histogram-values-bucket-maps (m/prune-stale-histogram-values filled-histogram-values 10))))
+                         (t/is (= {(nth labelss 0) [(m/make-metric-value value-value-0 (m/metric-value-last-update-time-ms (nth values 0)))]
+                                   (nth labelss 1) [(m/make-metric-value value-value-1 (m/metric-value-last-update-time-ms (nth values 1)))]
+                                   (nth labelss 2) [(m/make-metric-value value-value-2 (m/metric-value-last-update-time-ms (nth values 2)))]
+                                   (nth labelss 3) [(m/make-metric-value value-value-3 (m/metric-value-last-update-time-ms (nth values 3)))]
+                                   (nth labelss 4) [(m/make-metric-value value-value-4 (m/metric-value-last-update-time-ms (nth values 4)))]
+                                   (nth labelss 5) [(m/make-metric-value value-value-5 (m/metric-value-last-update-time-ms (nth values 5)))]}
+                                  (let [pruned (m/histogram-values-map (m/prune-stale-histogram-values filled-histogram-values 10))]
+                                    (reduce-kv (fn [r k v]
+                                                 (assoc r k (m/histogram-metric-values-bucket-values v)))
+                                               (empty pruned)
+                                               pruned))))
                        ;; mixture
-                         (t/is (= [{(nth labelss 3) (m/make-metric-value value-value-3 (m/metric-value-last-update-time-ms (nth values 3)))
-                                    (nth labelss 4) (m/make-metric-value value-value-4 (m/metric-value-last-update-time-ms (nth values 4)))
-                                    (nth labelss 5) (m/make-metric-value value-value-5 (m/metric-value-last-update-time-ms (nth values 5)))}]
-                                  (m/histogram-values-bucket-maps (m/prune-stale-histogram-values filled-histogram-values 13)))))))))))
+                         (t/is (= {(nth labelss 3) [(m/make-metric-value value-value-3 (m/metric-value-last-update-time-ms (nth values 3)))]
+                                   (nth labelss 4) [(m/make-metric-value value-value-4 (m/metric-value-last-update-time-ms (nth values 4)))]
+                                   (nth labelss 5) [(m/make-metric-value value-value-5 (m/metric-value-last-update-time-ms (nth values 5)))]}
+                                  (let [pruned (m/histogram-values-map (m/prune-stale-histogram-values filled-histogram-values 13))]
+                                    (reduce-kv (fn [r k v]
+                                                 (assoc r k (m/histogram-metric-values-bucket-values v)))
+                                               (empty pruned)
+                                               pruned)))))))))))
 
 (t/deftest t-empty-histogram-values?
   (t/testing "Checking whether histogram-values-map (sum-map) is empty works."
     (t/is (quickcheck
-           (property [threshold (spec ::m/threshold)
+           (property [threshold (spec ::gen/threshold)
                       labelss   (spec (gen-distinct-metric-labels 6))
                       values    (spec (gen-metric-values          6))]
                      (let [empty-histogram-values (m/make-histogram-values [threshold])
@@ -750,7 +686,7 @@
     (t/is (quickcheck
            (property [[labels-x & labelss] (spec (gen-distinct-metric-labels 7))
                       [value-x  & values] (spec (gen-metric-values          7))
-                      threshold            (spec ::m/threshold)]
+                      threshold            (spec ::gen/threshold)]
                      (let [filled-gauge-values     (gen-filled-gauge-values     (m/make-gauge-values)               labelss values)
                            filled-counter-values   (gen-filled-counter-values   (m/make-counter-values)             labelss values)
                            filled-histogram-values (gen-filled-histogram-values (m/make-histogram-values [threshold]) labelss values)]
@@ -794,89 +730,81 @@
                                 (m/counter-values-map (m/update-stored-values filled-counter-values (nth labelss 2) value-x))))
                        ;; Histogram values
                        ;; sum
-                       (t/is (= {labels-x value-x}
-                                (m/histogram-values-sum-map (m/update-stored-values (m/make-histogram-values [threshold]) labels-x value-x))))
-                       (t/is (= {(nth labelss 0) (nth values 0)
-                                 (nth labelss 1) (nth values 1)
-                                 (nth labelss 2) (nth values 2)
-                                 (nth labelss 3) (nth values 3)
-                                 (nth labelss 4) (nth values 4)
-                                 (nth labelss 5) (nth values 5)
-                                 labels-x        value-x}
-                                (m/histogram-values-sum-map (m/update-stored-values filled-histogram-values labels-x value-x))))
-                       (t/is (= {(nth labelss 0) (nth values 0)
-                                 (nth labelss 1) (nth values 1)
-                                 (nth labelss 2) (m/make-metric-value (+ (m/metric-value-value (nth values 2))
-                                                                         (m/metric-value-value value-x))
-                                                                      (m/metric-value-last-update-time-ms value-x))
-                                 (nth labelss 3) (nth values 3)
-                                 (nth labelss 4) (nth values 4)
-                                 (nth labelss 5) (nth values 5)}
-                                (m/histogram-values-sum-map (m/update-stored-values filled-histogram-values (nth labelss 2) value-x))))
-                       ;; count
-                       (t/is (= {labels-x (m/make-metric-value 1 (m/metric-value-last-update-time-ms value-x))}
-                                (m/histogram-values-count-map (m/update-stored-values (m/make-histogram-values [threshold]) labels-x value-x))))
-                       (t/is (= {(nth labelss 0) (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 0)))
-                                 (nth labelss 1) (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 1)))
-                                 (nth labelss 2) (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 2)))
-                                 (nth labelss 3) (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 3)))
-                                 (nth labelss 4) (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 4)))
-                                 (nth labelss 5) (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 5)))
-                                 labels-x        (m/make-metric-value 1 (m/metric-value-last-update-time-ms value-x))}
-                                (m/histogram-values-count-map (m/update-stored-values filled-histogram-values labels-x value-x))))
-                       (t/is (= {(nth labelss 0) (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 0)))
-                                 (nth labelss 1) (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 1)))
-                                 (nth labelss 2) (m/make-metric-value 2 (m/metric-value-last-update-time-ms value-x))
-                                 (nth labelss 3) (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 3)))
-                                 (nth labelss 4) (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 4)))
-                                 (nth labelss 5) (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 5)))}
-                                (m/histogram-values-count-map (m/update-stored-values filled-histogram-values (nth labelss 2) value-x))))
-                       ;; bucket
-                       (t/is (= [{labels-x (m/make-metric-value (if (<= (m/metric-value-value value-x) threshold) 1.0 0.0)
-                                                                (m/metric-value-last-update-time-ms value-x))}]
-                                (m/histogram-values-bucket-maps (m/update-stored-values (m/make-histogram-values [threshold]) labels-x value-x))))
-                       (t/is (= [{(nth labelss 0) (m/make-metric-value (if (<= (m/metric-value-value (nth values 0)) threshold) 1.0 0.0)
-                                                                       (m/metric-value-last-update-time-ms (nth values 0)))
-                                  (nth labelss 1) (m/make-metric-value (if (<= (m/metric-value-value (nth values 1)) threshold) 1.0 0.0)
-                                                                       (m/metric-value-last-update-time-ms (nth values 1)))
-                                  (nth labelss 2) (m/make-metric-value (if (<= (m/metric-value-value (nth values 2)) threshold) 1.0 0.0)
-                                                                       (m/metric-value-last-update-time-ms (nth values 2)))
-                                  (nth labelss 3) (m/make-metric-value (if (<= (m/metric-value-value (nth values 3)) threshold) 1.0 0.0)
-                                                                       (m/metric-value-last-update-time-ms (nth values 3)))
-                                  (nth labelss 4) (m/make-metric-value (if (<= (m/metric-value-value (nth values 4)) threshold) 1.0 0.0)
-                                                                       (m/metric-value-last-update-time-ms (nth values 4)))
-                                  (nth labelss 5) (m/make-metric-value (if (<= (m/metric-value-value (nth values 5)) threshold) 1.0 0.0)
-                                                                       (m/metric-value-last-update-time-ms (nth values 5)))
-                                  labels-x        (m/make-metric-value (if (<= (m/metric-value-value value-x) threshold) 1.0 0.0)
-                                                                       (m/metric-value-last-update-time-ms value-x))}]
-                                (m/histogram-values-bucket-maps (m/update-stored-values filled-histogram-values labels-x value-x))))
-                       (t/is (= [{(nth labelss 0) (m/make-metric-value (if (<= (m/metric-value-value (nth values 0)) threshold) 1.0 0.0)
-                                                                       (m/metric-value-last-update-time-ms (nth values 0)))
-                                  (nth labelss 1) (m/make-metric-value (if (<= (m/metric-value-value (nth values 1)) threshold) 1.0 0.0)
-                                                                       (m/metric-value-last-update-time-ms (nth values 1)))
-                                  (nth labelss 2) (m/make-metric-value (cond
-                                                                         (and (<= (m/metric-value-value (nth values 2)) threshold)
-                                                                              (<= (m/metric-value-value value-x)        threshold)) 2
-                                                                         (or  (<= (m/metric-value-value (nth values 2)) threshold)
-                                                                              (<= (m/metric-value-value value-x)        threshold)) 1
-                                                                         :else                                                      0)
-                                                                       (m/metric-value-last-update-time-ms value-x))
-                                  (nth labelss 3) (m/make-metric-value (if (<= (m/metric-value-value (nth values 3)) threshold) 1.0 0.0)
-                                                                       (m/metric-value-last-update-time-ms (nth values 3)))
-                                  (nth labelss 4) (m/make-metric-value (if (<= (m/metric-value-value (nth values 4)) threshold) 1.0 0.0)
-                                                                       (m/metric-value-last-update-time-ms (nth values 4)))
-                                  (nth labelss 5) (m/make-metric-value (if (<= (m/metric-value-value (nth values 5)) threshold) 1.0 0.0)
-                                                                       (m/metric-value-last-update-time-ms (nth values 5)))}]
-                                (m/histogram-values-bucket-maps (m/update-stored-values filled-histogram-values (nth labelss 2) value-x))))))))))
+                       (t/is (= {labels-x (m/make-histogram-metric-values value-x
+                                                                          (m/make-metric-value 1 (m/metric-value-last-update-time-ms value-x))
+                                                                          [(m/make-metric-value (if (<= (m/metric-value-value value-x) threshold) 1.0 0.0)
+                                                                                                (m/metric-value-last-update-time-ms value-x))])}
+                                (m/histogram-values-map (m/update-stored-values (m/make-histogram-values [threshold]) labels-x value-x))))
+                       (t/is (= {(nth labelss 0) (m/make-histogram-metric-values (nth values 0)
+                                                                                 (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 0)))
+                                                                                 [(m/make-metric-value (if (<= (m/metric-value-value (nth values 0)) threshold) 1.0 0.0)
+                                                                                                       (m/metric-value-last-update-time-ms (nth values 0)))])
+                                 (nth labelss 1) (m/make-histogram-metric-values (nth values 1)
+                                                                                 (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 1)))
+                                                                                 [(m/make-metric-value (if (<= (m/metric-value-value (nth values 1)) threshold) 1.0 0.0)
+                                                                                                       (m/metric-value-last-update-time-ms (nth values 1)))])
+                                 (nth labelss 2) (m/make-histogram-metric-values (nth values 2)
+                                                                                 (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 2)))
+                                                                                 [(m/make-metric-value (if (<= (m/metric-value-value (nth values 2)) threshold) 1.0 0.0)
+                                                                                                       (m/metric-value-last-update-time-ms (nth values 2)))])
+                                 (nth labelss 3) (m/make-histogram-metric-values (nth values 3)
+                                                                                 (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 3)))
+                                                                                 [(m/make-metric-value (if (<= (m/metric-value-value (nth values 3)) threshold) 1.0 0.0)
+                                                                                                       (m/metric-value-last-update-time-ms (nth values 3)))])
+                                 (nth labelss 4) (m/make-histogram-metric-values (nth values 4)
+                                                                                 (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 4)))
+                                                                                 [(m/make-metric-value (if (<= (m/metric-value-value (nth values 4)) threshold) 1.0 0.0)
+                                                                                                       (m/metric-value-last-update-time-ms (nth values 4)))])
+                                 (nth labelss 5) (m/make-histogram-metric-values (nth values 5)
+                                                                                 (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 5)))
+                                                                                 [(m/make-metric-value (if (<= (m/metric-value-value (nth values 5)) threshold) 1.0 0.0)
+                                                                                                       (m/metric-value-last-update-time-ms (nth values 5)))])
+                                 labels-x        (m/make-histogram-metric-values value-x
+                                                                                 (m/make-metric-value 1 (m/metric-value-last-update-time-ms value-x))
+                                                                                 [(m/make-metric-value (if (<= (m/metric-value-value value-x) threshold) 1.0 0.0)
+                                                                                                       (m/metric-value-last-update-time-ms value-x))])}
+                                (m/histogram-values-map (m/update-stored-values filled-histogram-values labels-x value-x))))
+                       (t/is (= {(nth labelss 0) (m/make-histogram-metric-values (nth values 0)
+                                                                                 (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 0)))
+                                                                                 [(m/make-metric-value (if (<= (m/metric-value-value (nth values 0)) threshold) 1.0 0.0)
+                                                                                                       (m/metric-value-last-update-time-ms (nth values 0)))])
+                                 (nth labelss 1) (m/make-histogram-metric-values (nth values 1)
+                                                                                 (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 1)))
+                                                                                 [(m/make-metric-value (if (<= (m/metric-value-value (nth values 1)) threshold) 1.0 0.0)
+                                                                                                       (m/metric-value-last-update-time-ms (nth values 1)))])
+                                 (nth labelss 2) (m/make-histogram-metric-values (m/make-metric-value (+ (m/metric-value-value (nth values 2))
+                                                                                                         (m/metric-value-value value-x))
+                                                                                                      (m/metric-value-last-update-time-ms value-x))
+                                                                                 (m/make-metric-value 2 (m/metric-value-last-update-time-ms value-x))
+                                                                                 [(m/make-metric-value (cond
+                                                                                                         (and (<= (m/metric-value-value (nth values 2)) threshold)
+                                                                                                              (<= (m/metric-value-value value-x)        threshold)) 2
+                                                                                                         (or  (<= (m/metric-value-value (nth values 2)) threshold)
+                                                                                                              (<= (m/metric-value-value value-x)        threshold)) 1
+                                                                                                         :else                                                      0)
+                                                                                                       (m/metric-value-last-update-time-ms value-x))])
+                                 (nth labelss 3) (m/make-histogram-metric-values (nth values 3)
+                                                                                 (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 3)))
+                                                                                 [(m/make-metric-value (if (<= (m/metric-value-value (nth values 3)) threshold) 1.0 0.0)
+                                                                                                       (m/metric-value-last-update-time-ms (nth values 3)))])
+                                 (nth labelss 4) (m/make-histogram-metric-values (nth values 4)
+                                                                                 (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 4)))
+                                                                                 [(m/make-metric-value (if (<= (m/metric-value-value (nth values 4)) threshold) 1.0 0.0)
+                                                                                                       (m/metric-value-last-update-time-ms (nth values 4)))])
+                                 (nth labelss 5) (m/make-histogram-metric-values (nth values 5)
+                                                                                 (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 5)))
+                                                                                 [(m/make-metric-value (if (<= (m/metric-value-value (nth values 5)) threshold) 1.0 0.0)
+                                                                                                       (m/metric-value-last-update-time-ms (nth values 5)))])}
+                                (m/histogram-values-map (m/update-stored-values filled-histogram-values (nth labelss 2) value-x))))))))))
 
 (t/deftest t-make-stored-values
   (t/testing "Making stored values works."
     (t/is (quickcheck
-           (property [example-gauge-metric     (spec ::m/gauge-metric)
-                      example-counter-metric   (spec ::m/counter-metric)
-                      example-histogram-metric (spec ::m/histogram-metric)
-                      labels                   (spec ::m/metric-labels)
-                      value                    (spec ::m/metric-value)]
+           (property [example-gauge-metric     (spec ::gen/gauge-metric)
+                      example-counter-metric   (spec ::gen/counter-metric)
+                      example-histogram-metric (spec ::gen/histogram-metric)
+                      labels                   (spec ::gen/metric-labels)
+                      value                    (spec ::gen/metric-value)]
                      (let [gauge-stored-values     (m/make-stored-values example-gauge-metric     labels value)
                            counter-stored-values   (m/make-stored-values example-counter-metric   labels value)
                            histogram-stored-values (m/make-stored-values example-histogram-metric labels value)]
@@ -894,23 +822,21 @@
                        (t/is (m/histogram-values? histogram-stored-values))
                        (t/is (= (m/histogram-metric-thresholds example-histogram-metric)
                                 (m/histogram-values-thresholds histogram-stored-values)))
-                       (t/is (= {labels value}
-                                (m/histogram-values-sum-map histogram-stored-values)))
-                       (t/is (= {labels (m/make-metric-value 1 (m/metric-value-last-update-time-ms value))}
-                                (m/histogram-values-count-map histogram-stored-values)))
-                       (t/is (= (mapv (fn [threshold]
-                                        {labels (m/make-metric-value (if (<= (m/metric-value-value value)
-                                                                             threshold)
-                                                                       1 0)
-                                                                     (m/metric-value-last-update-time-ms value))})
-                                      (m/histogram-metric-thresholds example-histogram-metric))
-                                (m/histogram-values-bucket-maps histogram-stored-values)))))))))
+                       (t/is (= {labels (m/make-histogram-metric-values value
+                                                                      (m/make-metric-value 1 (m/metric-value-last-update-time-ms value))
+                                                                      (mapv (fn [threshold]
+                                                                              (m/make-metric-value (if (<= (m/metric-value-value value)
+                                                                                                           threshold)
+                                                                                                     1 0)
+                                                                                                   (m/metric-value-last-update-time-ms value)))
+                                                                            (m/histogram-metric-thresholds example-histogram-metric)))}
+                                (m/histogram-values-map histogram-stored-values)))))))))
 
 (t/deftest t-prune-stale-stored-values
   (t/testing "Pruning stale stored-values works."
     (t/is (quickcheck
            (property [labelss   (spec (gen-distinct-metric-labels 6))
-                      threshold (spec ::m/threshold)]
+                      threshold (spec ::gen/threshold)]
                      (let [empty-gauge-values (m/make-gauge-values)
                            empty-counter-values (m/make-counter-values)
                            empty-histogram-values (m/make-histogram-values [threshold])
@@ -974,95 +900,71 @@
                                 (m/counter-values-map (m/prune-stale-stored-values filled-counter-values 13))))
 
                        ;; Histogram
-                       ;; sum-map
-                       ;; empty labels-value-map
-                       (t/is (= {}
-                                (m/histogram-values-sum-map (m/prune-stale-histogram-values empty-histogram-values 1))))
-                       ;; not older
-                       (t/is (= {(nth labelss 0) (nth values 0)
-                                 (nth labelss 1) (nth values 1)
-                                 (nth labelss 2) (nth values 2)
-                                 (nth labelss 3) (nth values 3)
-                                 (nth labelss 4) (nth values 4)
-                                 (nth labelss 5) (nth values 5)}
-                                (m/histogram-values-sum-map (m/prune-stale-histogram-values filled-histogram-values 9))))
-                       ;; the same
-                       (t/is (= {(nth labelss 0) (nth values 0)
-                                 (nth labelss 1) (nth values 1)
-                                 (nth labelss 2) (nth values 2)
-                                 (nth labelss 3) (nth values 3)
-                                 (nth labelss 4) (nth values 4)
-                                 (nth labelss 5) (nth values 5)}
-                                (m/histogram-values-sum-map (m/prune-stale-histogram-values filled-histogram-values 10))))
-                       ;; mixture
-                       (t/is (= {(nth labelss 3) (nth values 3)
-                                 (nth labelss 4) (nth values 4)
-                                 (nth labelss 5) (nth values 5)}
-                                (m/histogram-values-sum-map (m/prune-stale-histogram-values filled-histogram-values 13))))
-
-                       ;; count-map
-                       ;; empty labels-value-map
-                       (t/is (= {}
-                                (m/histogram-values-count-map (m/prune-stale-histogram-values empty-histogram-values 1))))
-                       ;; not older
-                       (t/is (= {(nth labelss 0) (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 0)))
-                                 (nth labelss 1) (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 1)))
-                                 (nth labelss 2) (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 2)))
-                                 (nth labelss 3) (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 3)))
-                                 (nth labelss 4) (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 4)))
-                                 (nth labelss 5) (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 5)))}
-                                (m/histogram-values-count-map (m/prune-stale-histogram-values filled-histogram-values 9))))
-                       ;; the same
-                       (t/is (= {(nth labelss 0) (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 0)))
-                                 (nth labelss 1) (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 1)))
-                                 (nth labelss 2) (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 2)))
-                                 (nth labelss 3) (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 3)))
-                                 (nth labelss 4) (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 4)))
-                                 (nth labelss 5) (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 5)))}
-                                (m/histogram-values-count-map (m/prune-stale-histogram-values filled-histogram-values 10))))
-                       ;; mixture
-                       (t/is (= {(nth labelss 3) (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 3)))
-                                 (nth labelss 4) (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 4)))
-                                 (nth labelss 5) (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 5)))}
-                                (m/histogram-values-count-map (m/prune-stale-histogram-values filled-histogram-values 13))))
-
-                       ;; bucket-map
                        (let [value-value-0 (if (<= (m/metric-value-value (nth values 0)) threshold) 1.0 0.0)
                              value-value-1 (if (<= (m/metric-value-value (nth values 1)) threshold) 1.0 0.0)
                              value-value-2 (if (<= (m/metric-value-value (nth values 2)) threshold) 1.0 0.0)
                              value-value-3 (if (<= (m/metric-value-value (nth values 3)) threshold) 1.0 0.0)
                              value-value-4 (if (<= (m/metric-value-value (nth values 4)) threshold) 1.0 0.0)
                              value-value-5 (if (<= (m/metric-value-value (nth values 5)) threshold) 1.0 0.0)]
-
-                         ;; empty labels-value-map
-                         (t/is (= [{}]
-                                  (m/histogram-values-bucket-maps (m/prune-stale-histogram-values empty-histogram-values 1))))
-                         ;; not older
-                         (t/is (= [{(nth labelss 0) (m/make-metric-value value-value-0 (m/metric-value-last-update-time-ms (nth values 0)))
-                                    (nth labelss 1) (m/make-metric-value value-value-1 (m/metric-value-last-update-time-ms (nth values 1)))
-                                    (nth labelss 2) (m/make-metric-value value-value-2 (m/metric-value-last-update-time-ms (nth values 2)))
-                                    (nth labelss 3) (m/make-metric-value value-value-3 (m/metric-value-last-update-time-ms (nth values 3)))
-                                    (nth labelss 4) (m/make-metric-value value-value-4 (m/metric-value-last-update-time-ms (nth values 4)))
-                                    (nth labelss 5) (m/make-metric-value value-value-5 (m/metric-value-last-update-time-ms (nth values 5)))}]
-                                  (m/histogram-values-bucket-maps (m/prune-stale-histogram-values filled-histogram-values 9))))
-                         ;; the same
-                         (t/is (= [{(nth labelss 0) (m/make-metric-value value-value-0 (m/metric-value-last-update-time-ms (nth values 0)))
-                                    (nth labelss 1) (m/make-metric-value value-value-1 (m/metric-value-last-update-time-ms (nth values 1)))
-                                    (nth labelss 2) (m/make-metric-value value-value-2 (m/metric-value-last-update-time-ms (nth values 2)))
-                                    (nth labelss 3) (m/make-metric-value value-value-3 (m/metric-value-last-update-time-ms (nth values 3)))
-                                    (nth labelss 4) (m/make-metric-value value-value-4 (m/metric-value-last-update-time-ms (nth values 4)))
-                                    (nth labelss 5) (m/make-metric-value value-value-5 (m/metric-value-last-update-time-ms (nth values 5)))}]
-                                  (m/histogram-values-bucket-maps (m/prune-stale-histogram-values filled-histogram-values 10))))
-                         ;; mixture
-                         (t/is (= [{(nth labelss 3) (m/make-metric-value value-value-3 (m/metric-value-last-update-time-ms (nth values 3)))
-                                    (nth labelss 4) (m/make-metric-value value-value-4 (m/metric-value-last-update-time-ms (nth values 4)))
-                                    (nth labelss 5) (m/make-metric-value value-value-5 (m/metric-value-last-update-time-ms (nth values 5)))}]
-                                  (m/histogram-values-bucket-maps (m/prune-stale-histogram-values filled-histogram-values 13)))))))))))
+                       ;; empty labels-value-map
+                       (t/is (= {}
+                                (m/histogram-values-map (m/prune-stale-histogram-values empty-histogram-values 1))))
+                       ;; not older
+                       (t/is (= {(nth labelss 0) (m/make-histogram-metric-values (nth values 0)
+                                                                                 (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 0)))
+                                                                                 [(m/make-metric-value value-value-0 (m/metric-value-last-update-time-ms (nth values 0)))])
+                                 (nth labelss 1) (m/make-histogram-metric-values (nth values 1)
+                                                                                 (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 1)))
+                                                                                 [(m/make-metric-value value-value-0 (m/metric-value-last-update-time-ms (nth values 1)))])
+                                 (nth labelss 2) (m/make-histogram-metric-values (nth values 2)
+                                                                                 (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 2)))
+                                                                                 [(m/make-metric-value value-value-0 (m/metric-value-last-update-time-ms (nth values 2)))])
+                                 (nth labelss 3) (m/make-histogram-metric-values (nth values 3)
+                                                                                 (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 3)))
+                                                                                 [(m/make-metric-value value-value-0 (m/metric-value-last-update-time-ms (nth values 3)))])
+                                 (nth labelss 4) (m/make-histogram-metric-values (nth values 4)
+                                                                                 (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 4)))
+                                                                                 [(m/make-metric-value value-value-0 (m/metric-value-last-update-time-ms (nth values 4)))])
+                                 (nth labelss 5) (m/make-histogram-metric-values (nth values 5)
+                                                                                 (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 5)))
+                                                                                 [(m/make-metric-value value-value-0 (m/metric-value-last-update-time-ms (nth values 5)))])}
+                                (m/histogram-values-map (m/prune-stale-histogram-values filled-histogram-values 9))))
+                       ;; the same
+                       (t/is (= {(nth labelss 0) (m/make-histogram-metric-values (nth values 0)
+                                                                                 (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 0)))
+                                                                                 [(m/make-metric-value value-value-0 (m/metric-value-last-update-time-ms (nth values 0)))])
+                                 (nth labelss 1) (m/make-histogram-metric-values (nth values 1)
+                                                                                 (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 1)))
+                                                                                 [(m/make-metric-value value-value-0 (m/metric-value-last-update-time-ms (nth values 1)))])
+                                 (nth labelss 2) (m/make-histogram-metric-values (nth values 2)
+                                                                                 (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 2)))
+                                                                                 [(m/make-metric-value value-value-0 (m/metric-value-last-update-time-ms (nth values 2)))])
+                                 (nth labelss 3) (m/make-histogram-metric-values (nth values 3)
+                                                                                 (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 3)))
+                                                                                 [(m/make-metric-value value-value-0 (m/metric-value-last-update-time-ms (nth values 3)))])
+                                 (nth labelss 4) (m/make-histogram-metric-values (nth values 4)
+                                                                                 (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 4)))
+                                                                                 [(m/make-metric-value value-value-0 (m/metric-value-last-update-time-ms (nth values 4)))])
+                                 (nth labelss 5) (m/make-histogram-metric-values (nth values 5)
+                                                                                 (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 5)))
+                                                                                 [(m/make-metric-value value-value-0 (m/metric-value-last-update-time-ms (nth values 5)))])}
+                                (m/histogram-values-map (m/prune-stale-histogram-values filled-histogram-values 10))))
+                       ;; mixture
+                       (t/is (= {(nth labelss 3) (m/make-histogram-metric-values (nth values 3)
+                                                                                 (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 3)))
+                                                                                 [(m/make-metric-value value-value-0 (m/metric-value-last-update-time-ms (nth values 3)))])
+                                 (nth labelss 4) (m/make-histogram-metric-values (nth values 4)
+                                                                                 (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 4)))
+                                                                                 [(m/make-metric-value value-value-0 (m/metric-value-last-update-time-ms (nth values 4)))])
+                                 (nth labelss 5) (m/make-histogram-metric-values (nth values 5)
+                                                                                 (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 5)))
+                                                                                 [(m/make-metric-value value-value-0 (m/metric-value-last-update-time-ms (nth values 5)))])}
+                                (m/histogram-values-map (m/prune-stale-histogram-values filled-histogram-values 13)))))))))))
 
 (t/deftest t-empty-stored-values?
   (t/testing "Checking whether a stored-values-map is empty works."
     (t/is (quickcheck
-           (property [threshold (spec ::m/threshold)
+           (property [threshold (spec ::gen/threshold)
                       labelss   (spec (gen-distinct-metric-labels 6))
                       values    (spec (gen-metric-values          6))]
                      (let [empty-gauge-values (m/make-gauge-values)
@@ -1087,10 +989,10 @@
 (t/deftest t-make-metric-sample
   (t/testing "All fields of a metric-sample are set correct."
     (t/is (quickcheck
-           (property [metric-name (spec ::m/metric-name)
-                      labels      (spec ::m/metric-labels)
-                      value       (spec ::m/metric-value-value)
-                      timestamp   (spec ::m/metric-value-last-update-time-ms)]
+           (property [metric-name (spec ::gen/metric-name)
+                      labels      (spec ::gen/metric-labels)
+                      value       (spec ::gen/metric-value-value)
+                      timestamp   (spec ::gen/metric-value-last-update-time-ms)]
                      (let [example-metric-sample (m/make-metric-sample metric-name
                                                                        labels
                                                                        value
@@ -1109,7 +1011,7 @@
     (t/is (quickcheck
            (property [names               (spec (gen-distinct-metric-names  3))
                       helps               (spec (gen-metric-helps           3))
-                      threshold           (spec ::m/threshold)
+                      threshold           (spec ::gen/threshold)
                       [label-x & labelss] (spec (gen-distinct-metric-labels 7))
                       [value-x & values] (spec (gen-metric-values          7))]
                      (let [example-gauge-metric     (m/make-gauge-metric     (nth names 0) (nth helps 0))
@@ -1250,7 +1152,7 @@
     (t/is (quickcheck
            (property [names               (spec (gen-distinct-metric-names  3))
                       helps               (spec (gen-metric-helps           3))
-                      threshold           (spec ::m/threshold)
+                      threshold           (spec ::gen/threshold)
                       [label-x & labelss] (spec (gen-distinct-metric-labels 7))
                       [value-x & values] (spec (gen-metric-values          7))]
                      (let [example-gauge-metric     (m/make-gauge-metric     (nth names 0) (nth helps 0))
@@ -1447,47 +1349,7 @@
                                                        (assoc (nth labelss 3) :le (str threshold))
                                                        (if (<= (m/metric-value-value (nth values 3)) threshold) 1.0 0.0)
                                                        (m/metric-value-last-update-time-ms (nth values 3)))]
-                                (m/get-metric-samples! a-metric-store example-histogram-metric (nth labelss 3))))
-
-                       ;; TODO: commented to tests due to "method code too large"
-                       ;; update-time: nil
-                       (let [example-metric-sample-sum
-                             (nth (m/get-metric-samples! a-metric-store example-histogram-metric (nth labelss 4)) 0)
-                             example-metric-sample-count
-                             (nth (m/get-metric-samples! a-metric-store example-histogram-metric (nth labelss 4)) 1)
-                             example-metric-sample-inf
-                             (nth (m/get-metric-samples! a-metric-store example-histogram-metric (nth labelss 4)) 2)
-                             example-metric-sample-bucket
-                             (nth (m/get-metric-samples! a-metric-store example-histogram-metric (nth labelss 4)) 3)]
-
-                         (t/is (= (str (nth names 2) "_sum")
-                                  (m/metric-sample-name   example-metric-sample-sum)))
-                         (t/is (= (nth labelss 4)
-                                  (m/metric-sample-labels example-metric-sample-sum)))
-                         (t/is (= (m/metric-value-value (nth values 4))
-                                  (m/metric-sample-value example-metric-sample-sum)))
-                         (t/is (nat-int? (m/metric-sample-timestamp example-metric-sample-sum)))
-                         (t/is (= (str (nth names 2) "_count")
-                                  (m/metric-sample-name   example-metric-sample-count)))
-                         (t/is (= (nth labelss 4)
-                                  (m/metric-sample-labels example-metric-sample-count)))
-                         (t/is (= 1.0
-                                  (m/metric-sample-value example-metric-sample-count)))
-                         (t/is (nat-int? (m/metric-sample-timestamp example-metric-sample-count)))
-                         ;; (t/is (= (str (nth names 2) "_bucket")
-                         ;;          (m/metric-sample-name   example-metric-sample-inf)))
-                         (t/is (= (assoc (nth labelss 4) :le "+Inf")
-                                  (m/metric-sample-labels example-metric-sample-inf)))
-                         (t/is (= 1.0
-                                  (m/metric-sample-value example-metric-sample-inf)))
-                         (t/is (nat-int? (m/metric-sample-timestamp example-metric-sample-inf)))
-                         ;; (t/is (= (str (nth names 2) "_bucket")
-                         ;;          (m/metric-sample-name   example-metric-sample-bucket)))
-                         (t/is (= (assoc (nth labelss 4) :le (str threshold))
-                                  (m/metric-sample-labels example-metric-sample-bucket)))
-                         (t/is (= (if (<= (m/metric-value-value (nth values 4)) threshold) 1.0 0.0)
-                                  (m/metric-sample-value example-metric-sample-bucket)))
-                         (t/is (nat-int? (m/metric-sample-timestamp example-metric-sample-bucket))))))))))
+                                (m/get-metric-samples! a-metric-store example-histogram-metric (nth labelss 3))))))))))
 
 ;; t-record-metric!-get-metric-samples!-global-store
 ;; including timestamp nil and not given for record-metric!
@@ -1496,12 +1358,12 @@
   (t/testing "Getting metric-samples for a specific label from stored values
   works for all kind of metrics."
     (t/is (quickcheck
-           (property [example-gauge-metric     (spec ::m/gauge-metric)
-                      example-counter-metric   (spec ::m/counter-metric)
-                      example-histogram-metric (spec ::m/histogram-metric)
+           (property [example-gauge-metric     (spec ::gen/gauge-metric)
+                      example-counter-metric   (spec ::gen/counter-metric)
+                      example-histogram-metric (spec ::gen/histogram-metric)
                       [label-x & labelss]      (spec (gen-distinct-metric-labels 4))
                       values                   (spec (gen-metric-values          3))
-                      threshold                (spec ::m/threshold)]
+                      threshold                (spec ::gen/threshold)]
                      (let [empty-gauge-values      (m/make-gauge-values)
                            filled-gauge-values     (gen-filled-gauge-values empty-gauge-values labelss values)
                            empty-counter-values    (m/make-counter-values)
@@ -1559,12 +1421,12 @@
   (t/testing "Getting all metric-samples from stored values works for all kind
   of metrics."
     (t/is (quickcheck
-           (property [example-gauge-metric     (spec ::m/gauge-metric)
-                      example-counter-metric   (spec ::m/counter-metric)
-                      example-histogram-metric (spec ::m/histogram-metric)
+           (property [example-gauge-metric     (spec ::gen/gauge-metric)
+                      example-counter-metric   (spec ::gen/counter-metric)
+                      example-histogram-metric (spec ::gen/histogram-metric)
                       labelss                  (spec (gen-distinct-metric-labels 3))
                       values                   (spec (gen-metric-values          3))
-                      threshold                (spec ::m/threshold)]
+                      threshold                (spec ::gen/threshold)]
                      (let [empty-gauge-values      (m/make-gauge-values)
                            filled-gauge-values     (gen-filled-gauge-values empty-gauge-values labelss values)
                            empty-counter-values    (m/make-counter-values)
@@ -1661,9 +1523,9 @@
 (t/deftest t-make-metric-sample-set
   (t/testing "Creating a metric-sample-set works."
     (t/is (quickcheck
-           (property [name        (spec ::m/metric-name)
-                      type (spec ::m/metric-type)
-                      help        (spec ::m/metric-help)
+           (property [name        (spec ::gen/metric-name)
+                      type (spec ::gen/metric-type)
+                      help        (spec ::gen/metric-help)
                       samples     (spec (gen-metric-samples 4))]
                      (let [example-metric-sample-set (m/make-metric-sample-set name
                                                                                type
@@ -1678,9 +1540,9 @@
 (t/deftest t-metric-type
   (t/testing "Getting the metric type as string works."
     (t/is (quickcheck
-           (property [example-gauge-metric     (spec ::m/gauge-metric)
-                      example-counter-metric   (spec ::m/counter-metric)
-                      example-histogram-metric (spec ::m/histogram-metric)]
+           (property [example-gauge-metric     (spec ::gen/gauge-metric)
+                      example-counter-metric   (spec ::gen/counter-metric)
+                      example-histogram-metric (spec ::gen/histogram-metric)]
                      (t/is (= :gauge     (m/metric-type example-gauge-metric)))
                      (t/is (= :counter   (m/metric-type example-counter-metric)))
                      (t/is (= :histogram (m/metric-type example-histogram-metric))))))))
@@ -1688,9 +1550,9 @@
 (t/deftest t-metric-name
   (t/testing "Getting the metric name works."
     (t/is (quickcheck
-           (property [example-gauge-metric     (spec ::m/gauge-metric)
-                      example-counter-metric   (spec ::m/counter-metric)
-                      example-histogram-metric (spec ::m/histogram-metric)]
+           (property [example-gauge-metric     (spec ::gen/gauge-metric)
+                      example-counter-metric   (spec ::gen/counter-metric)
+                      example-histogram-metric (spec ::gen/histogram-metric)]
                      (t/is (= (m/gauge-metric-name example-gauge-metric)
                               (m/metric-name example-gauge-metric)))
 
@@ -1703,9 +1565,9 @@
 (t/deftest t-metric-help
   (t/testing "Getting the metric help works."
     (t/is (quickcheck
-           (property [example-gauge-metric     (spec ::m/gauge-metric)
-                      example-counter-metric   (spec ::m/counter-metric)
-                      example-histogram-metric (spec ::m/histogram-metric)]
+           (property [example-gauge-metric     (spec ::gen/gauge-metric)
+                      example-counter-metric   (spec ::gen/counter-metric)
+                      example-histogram-metric (spec ::gen/histogram-metric)]
                      (t/is (= (m/gauge-metric-help example-gauge-metric)
                               (m/metric-help example-gauge-metric)))
 
@@ -1722,7 +1584,7 @@
     (t/is (quickcheck
            (property [names     (spec (gen-distinct-metric-names  3))
                       helps     (spec (gen-metric-helps           3))
-                      threshold (spec ::m/threshold)
+                      threshold (spec ::gen/threshold)
                       labelss   (spec (gen-distinct-metric-labels 4))
                       values    (spec (gen-metric-values          4))]
                      (let [example-gauge-metric          (m/make-gauge-metric     (nth names 0) (nth helps 0))
@@ -1862,7 +1724,7 @@
     (t/is (quickcheck
            (property [names     (spec (gen-distinct-metric-names  3))
                       helps     (spec (gen-metric-helps           3))
-                      threshold (spec ::m/threshold)
+                      threshold (spec ::gen/threshold)
                       labelss   (spec (gen-distinct-metric-labels 4))
                       values    (spec (gen-metric-values          4))]
                      (let [example-gauge-metric          (m/make-gauge-metric     (nth names 0) (nth helps 0))
@@ -1995,7 +1857,7 @@
     (t/is (quickcheck
            (property [names     (spec (gen-distinct-metric-names  3))
                       helps     (spec (gen-metric-helps           3))
-                      threshold (spec ::m/threshold)
+                      threshold (spec ::gen/threshold)
                       labelss   (spec (gen-distinct-metric-labels 4))
                       values    (spec (gen-metric-values          4))]
                      (let [example-gauge-metric     (m/make-gauge-metric     (nth names 0) (nth helps 0))
@@ -2169,7 +2031,7 @@
     (t/is (quickcheck
            (property [names     (spec (gen-distinct-metric-names  3))
                       helps     (spec (gen-metric-helps           3))
-                      threshold (spec ::m/threshold)
+                      threshold (spec ::gen/threshold)
                       labelss   (spec (gen-distinct-metric-labels 4))
                       values    (spec (gen-metric-values          4))]
                      (let [example-gauge-metric     (m/make-gauge-metric     (nth names 0) (nth helps 0))
@@ -2638,7 +2500,7 @@
     (t/is (quickcheck
            (property [names     (spec (gen-distinct-metric-names  3))
                       helps     (spec (gen-metric-helps           3))
-                      threshold (spec ::m/threshold)
+                      threshold (spec ::gen/threshold)
                       labelss   (spec (gen-distinct-metric-labels 4))]
                      (let [values                        [(m/make-metric-value 300 10)
                                                           (m/make-metric-value 300 12)
@@ -2722,7 +2584,7 @@
     (t/is (quickcheck
            (property [names     (spec (gen-distinct-metric-names  3))
                       helps     (spec (gen-metric-helps           3))
-                      threshold (spec ::m/threshold)
+                      threshold (spec ::gen/threshold)
                       labelss   (spec (gen-distinct-metric-labels 4))]
                      (let [values                        [(m/make-metric-value 300 10)
                                                           (m/make-metric-value 300 12)
@@ -2821,10 +2683,10 @@
     (t/is (quickcheck
            (property [names       (spec (gen-distinct-metric-names  3))
                       helps       (spec (gen-metric-helps           3))
-                      threshold   (spec ::m/threshold)
-                      labels      (spec ::m/metric-labels)
-                      value-value (spec ::m/metric-value-value)
-                      update-time (spec ::m/metric-value-last-update-time-ms)]
+                      threshold   (spec ::gen/threshold)
+                      labels      (spec ::gen/metric-labels)
+                      value-value (spec ::gen/metric-value-value)
+                      update-time (spec ::gen/metric-value-last-update-time-ms)]
                      (let [example-gauge-metric     (m/make-gauge-metric     (nth names 0) (nth helps 0))
                            example-counter-metric   (m/make-counter-metric   (nth names 1) (nth helps 1))
                            example-histogram-metric (m/make-histogram-metric (nth names 2) (nth helps 2) [threshold])
@@ -2886,7 +2748,7 @@
 (t/deftest t-prune-stale-metrics
   (t/testing "Creating the `PruneStaleMetrics` record type works."
     (t/is (quickcheck
-           (property [update-time (spec ::m/metric-value-last-update-time-ms)]
+           (property [update-time (spec ::gen/metric-value-last-update-time-ms)]
                      (let [example-prune-stale-metrics  (m/prune-stale-metrics update-time)]
 
                        (t/is                (m/prune-stale-metrics?        example-prune-stale-metrics))
@@ -2897,8 +2759,8 @@
     (t/is (quickcheck
            (property [names       (spec (gen-distinct-metric-names  3))
                       helps       (spec (gen-metric-helps           3))
-                      threshold   (spec ::m/threshold)
-                      labels      (spec ::m/metric-labels)]
+                      threshold   (spec ::gen/threshold)
+                      labels      (spec ::gen/metric-labels)]
                      (let [example-gauge-metric     (m/make-gauge-metric     (nth names 0) (nth helps 0))
                            example-counter-metric   (m/make-counter-metric   (nth names 1) (nth helps 1))
                            example-histogram-metric (m/make-histogram-metric (nth names 2) (nth helps 2) [threshold])
@@ -2931,8 +2793,8 @@
     (t/is (quickcheck
            (property [names     (spec (gen-distinct-metric-names  3))
                       helps     (spec (gen-metric-helps           3))
-                      threshold (spec ::m/threshold)
-                      labels    (spec ::m/metric-labels)
+                      threshold (spec ::gen/threshold)
+                      labels    (spec ::gen/metric-labels)
                       values    (spec (gen-metric-values          2))]
                      (let [example-gauge-metric     (m/make-gauge-metric     (nth names 0) (nth helps 0))
                            example-counter-metric   (m/make-counter-metric   (nth names 1) (nth helps 1))
@@ -3040,8 +2902,8 @@
     (t/is (quickcheck
            (property [names     (spec (gen-distinct-metric-names  3))
                       helps     (spec (gen-metric-helps           3))
-                      threshold (spec ::m/threshold)
-                      labels    (spec ::m/metric-labels)
+                      threshold (spec ::gen/threshold)
+                      labels    (spec ::gen/metric-labels)
                       values    (spec (gen-metric-values          2))]
                      (let [example-gauge-metric     (m/make-gauge-metric     (nth names 0) (nth helps 0))
                            example-counter-metric   (m/make-counter-metric   (nth names 1) (nth helps 1))
@@ -3154,8 +3016,8 @@
     (t/is (quickcheck
            (property [names     (spec (gen-distinct-metric-names  3))
                       helps     (spec (gen-metric-helps           3))
-                      threshold (spec ::m/threshold)
-                      labels    (spec ::m/metric-labels)
+                      threshold (spec ::gen/threshold)
+                      labels    (spec ::gen/metric-labels)
                       values    (spec (gen-metric-values          2))]
                      (let [example-gauge-metric     (m/make-gauge-metric     (nth names 0) (nth helps 0))
                            example-counter-metric   (m/make-counter-metric   (nth names 1) (nth helps 1))
