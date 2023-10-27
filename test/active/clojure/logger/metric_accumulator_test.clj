@@ -10,7 +10,13 @@
             [active.clojure.mock-monad :as mock-monad])
   (:use [active.quickcheck]))
 
-(stest/instrument)
+(t/use-fixtures :once
+  (fn [f]
+    (stest/instrument)
+    (s/check-asserts true)
+    (f)
+    (s/check-asserts false)
+    (stest/unstrument)))
 
 ;; GENERATORS
 
