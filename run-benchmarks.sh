@@ -9,6 +9,8 @@ bench () {
   echo "$NS DONE " `date`
 }
 
+bench active.clojure.logger.metric-accumulator
+
 bench active.clojure.logger.benchmark.clojure-map-record
 
 bench active.clojure.logger.benchmark.java-map-record
