@@ -533,138 +533,90 @@
                                    (m/make-metric-value 300 14)
                                    (m/make-metric-value 300 15)]
                            filled-histogram-values (gen-filled-histogram-values empty-histogram-values labelss values)]
-                       ;; sum-map
                        ;; empty labels-value-map
                        (t/is (= {}
-                                (let [pruned (m/histogram-values-map (m/prune-stale-histogram-values empty-histogram-values 1))]
-                                  (reduce-kv (fn [r k v]
-                                               (assoc r k (m/histogram-metric-values-sum-value v)))
-                                             (empty pruned)
-                                             pruned))))
+                                (m/histogram-values-map (m/prune-stale-histogram-values empty-histogram-values 1))))
                        ;; not older
-                       (t/is (= {(nth labelss 0) (nth values 0)
-                                 (nth labelss 1) (nth values 1)
-                                 (nth labelss 2) (nth values 2)
-                                 (nth labelss 3) (nth values 3)
-                                 (nth labelss 4) (nth values 4)
-                                 (nth labelss 5) (nth values 5)}
-                                (let [pruned (m/histogram-values-map (m/prune-stale-histogram-values filled-histogram-values 9))]
-                                  (reduce-kv (fn [r k v]
-                                               (assoc r k (m/histogram-metric-values-sum-value v)))
-                                             (empty pruned)
-                                             pruned))))
+                       (t/is (= {(nth labelss 0) (let [value (nth values 0)]
+                                                   (m/make-histogram-metric-values (m/metric-value-last-update-time-ms value)
+                                                                                   (m/metric-value-value value)
+                                                                                   1.0
+                                                                                   [(if (<= (m/metric-value-value value) threshold) 1.0 0.0)]))
+                                 (nth labelss 1) (let [value (nth values 1)]
+                                                   (m/make-histogram-metric-values (m/metric-value-last-update-time-ms value)
+                                                                                   (m/metric-value-value value)
+                                                                                   1.0
+                                                                                   [(if (<= (m/metric-value-value value) threshold) 1.0 0.0)]))
+                                 (nth labelss 2) (let [value (nth values 2)]
+                                                   (m/make-histogram-metric-values (m/metric-value-last-update-time-ms value)
+                                                                                   (m/metric-value-value value)
+                                                                                   1.0
+                                                                                   [(if (<= (m/metric-value-value value) threshold) 1.0 0.0)]))
+                                 (nth labelss 3) (let [value (nth values 3)]
+                                                   (m/make-histogram-metric-values (m/metric-value-last-update-time-ms value)
+                                                                                   (m/metric-value-value value)
+                                                                                   1.0
+                                                                                   [(if (<= (m/metric-value-value value) threshold) 1.0 0.0)]))
+                                 (nth labelss 4) (let [value (nth values 4)]
+                                                   (m/make-histogram-metric-values (m/metric-value-last-update-time-ms value)
+                                                                                   (m/metric-value-value value)
+                                                                                   1.0
+                                                                                   [(if (<= (m/metric-value-value value) threshold) 1.0 0.0)]))
+                                 (nth labelss 5) (let [value (nth values 5)]
+                                                   (m/make-histogram-metric-values (m/metric-value-last-update-time-ms value)
+                                                                                   (m/metric-value-value value)
+                                                                                   1.0
+                                                                                   [(if (<= (m/metric-value-value value) threshold) 1.0 0.0)]))}
+                                (m/histogram-values-map (m/prune-stale-histogram-values filled-histogram-values 9))))
                        ;; the same
-                       (t/is (= {(nth labelss 0) (nth values 0)
-                                 (nth labelss 1) (nth values 1)
-                                 (nth labelss 2) (nth values 2)
-                                 (nth labelss 3) (nth values 3)
-                                 (nth labelss 4) (nth values 4)
-                                 (nth labelss 5) (nth values 5)}
-                                (let [pruned (m/histogram-values-map (m/prune-stale-histogram-values filled-histogram-values 10))]
-                                  (reduce-kv (fn [r k v]
-                                               (assoc r k (m/histogram-metric-values-sum-value v)))
-                                             (empty pruned)
-                                             pruned))))
+                       (t/is (= {(nth labelss 0) (let [value (nth values 0)]
+                                                   (m/make-histogram-metric-values (m/metric-value-last-update-time-ms value)
+                                                                                   (m/metric-value-value value)
+                                                                                   1.0
+                                                                                   [(if (<= (m/metric-value-value value) threshold) 1.0 0.0)]))
+                                 (nth labelss 1) (let [value (nth values 1)]
+                                                   (m/make-histogram-metric-values (m/metric-value-last-update-time-ms value)
+                                                                                   (m/metric-value-value value)
+                                                                                   1.0
+                                                                                   [(if (<= (m/metric-value-value value) threshold) 1.0 0.0)]))
+                                 (nth labelss 2) (let [value (nth values 2)]
+                                                   (m/make-histogram-metric-values (m/metric-value-last-update-time-ms value)
+                                                                                   (m/metric-value-value value)
+                                                                                   1.0
+                                                                                   [(if (<= (m/metric-value-value value) threshold) 1.0 0.0)]))
+                                 (nth labelss 3) (let [value (nth values 3)]
+                                                   (m/make-histogram-metric-values (m/metric-value-last-update-time-ms value)
+                                                                                   (m/metric-value-value value)
+                                                                                   1.0
+                                                                                   [(if (<= (m/metric-value-value value) threshold) 1.0 0.0)]))
+                                 (nth labelss 4) (let [value (nth values 4)]
+                                                   (m/make-histogram-metric-values (m/metric-value-last-update-time-ms value)
+                                                                                   (m/metric-value-value value)
+                                                                                   1.0
+                                                                                   [(if (<= (m/metric-value-value value) threshold) 1.0 0.0)]))
+                                 (nth labelss 5) (let [value (nth values 5)]
+                                                   (m/make-histogram-metric-values (m/metric-value-last-update-time-ms value)
+                                                                                   (m/metric-value-value value)
+                                                                                   1.0
+                                                                                   [(if (<= (m/metric-value-value value) threshold) 1.0 0.0)]))}
+                                (m/histogram-values-map (m/prune-stale-histogram-values filled-histogram-values 10))))
                        ;; mixture
-                       (t/is (= {(nth labelss 3) (nth values 3)
-                                 (nth labelss 4) (nth values 4)
-                                 (nth labelss 5) (nth values 5)}
-                                (let [pruned (m/histogram-values-map (m/prune-stale-histogram-values filled-histogram-values 13))]
-                                  (reduce-kv (fn [r k v]
-                                               (assoc r k (m/histogram-metric-values-sum-value v)))
-                                             (empty pruned)
-                                             pruned))))
-
-                       ;; count-map
-                       ;; empty labels-value-map
-                       (t/is (= {}
-                                (let [pruned (m/histogram-values-map (m/prune-stale-histogram-values empty-histogram-values 1))]
-                                  (reduce-kv (fn [r k v]
-                                               (assoc r k (m/histogram-metric-values-count-value v)))
-                                             (empty pruned)
-                                             pruned))))
-                       ;; not older
-                       (t/is (= {(nth labelss 0) (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 0)))
-                                 (nth labelss 1) (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 1)))
-                                 (nth labelss 2) (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 2)))
-                                 (nth labelss 3) (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 3)))
-                                 (nth labelss 4) (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 4)))
-                                 (nth labelss 5) (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 5)))}
-                                (let [pruned (m/histogram-values-map (m/prune-stale-histogram-values filled-histogram-values 9))]
-                                  (reduce-kv (fn [r k v]
-                                               (assoc r k (m/histogram-metric-values-count-value v)))
-                                             (empty pruned)
-                                             pruned))))
-                       ;; the same
-                       (t/is (= {(nth labelss 0) (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 0)))
-                                 (nth labelss 1) (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 1)))
-                                 (nth labelss 2) (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 2)))
-                                 (nth labelss 3) (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 3)))
-                                 (nth labelss 4) (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 4)))
-                                 (nth labelss 5) (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 5)))}
-                                (let [pruned (m/histogram-values-map (m/prune-stale-histogram-values filled-histogram-values 10))]
-                                  (reduce-kv (fn [r k v]
-                                               (assoc r k (m/histogram-metric-values-count-value v)))
-                                             (empty pruned)
-                                             pruned))))
-                       ;; mixture
-                       (t/is (= {(nth labelss 3) (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 3)))
-                                 (nth labelss 4) (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 4)))
-                                 (nth labelss 5) (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 5)))}
-                                (let [pruned (m/histogram-values-map (m/prune-stale-histogram-values filled-histogram-values 13))]
-                                  (reduce-kv (fn [r k v]
-                                               (assoc r k (m/histogram-metric-values-count-value v)))
-                                             (empty pruned)
-                                             pruned))))
-
-                      ;; bucket-map
-                       (let [value-value-0 (if (<= (m/metric-value-value (nth values 0)) threshold) 1.0 0.0)
-                             value-value-1 (if (<= (m/metric-value-value (nth values 1)) threshold) 1.0 0.0)
-                             value-value-2 (if (<= (m/metric-value-value (nth values 2)) threshold) 1.0 0.0)
-                             value-value-3 (if (<= (m/metric-value-value (nth values 3)) threshold) 1.0 0.0)
-                             value-value-4 (if (<= (m/metric-value-value (nth values 4)) threshold) 1.0 0.0)
-                             value-value-5 (if (<= (m/metric-value-value (nth values 5)) threshold) 1.0 0.0)]
-
-                       ;; empty labels-value-map
-                         (t/is (= {}
-                                  (let [pruned (m/histogram-values-map (m/prune-stale-histogram-values empty-histogram-values 1))]
-                                    (reduce-kv (fn [r k v]
-                                                 (assoc r k (m/histogram-metric-values-bucket-values v)))
-                                               (empty pruned)
-                                               pruned))))
-                       ;; not older
-                         (t/is (= {(nth labelss 0) [(m/make-metric-value value-value-0 (m/metric-value-last-update-time-ms (nth values 0)))]
-                                   (nth labelss 1) [(m/make-metric-value value-value-1 (m/metric-value-last-update-time-ms (nth values 1)))]
-                                   (nth labelss 2) [(m/make-metric-value value-value-2 (m/metric-value-last-update-time-ms (nth values 2)))]
-                                   (nth labelss 3) [(m/make-metric-value value-value-3 (m/metric-value-last-update-time-ms (nth values 3)))]
-                                   (nth labelss 4) [(m/make-metric-value value-value-4 (m/metric-value-last-update-time-ms (nth values 4)))]
-                                   (nth labelss 5) [(m/make-metric-value value-value-5 (m/metric-value-last-update-time-ms (nth values 5)))]}
-                                  (let [pruned (m/histogram-values-map (m/prune-stale-histogram-values filled-histogram-values 9))]
-                                    (reduce-kv (fn [r k v]
-                                                 (assoc r k (m/histogram-metric-values-bucket-values v)))
-                                               (empty pruned)
-                                               pruned))))
-                       ;; the same
-                         (t/is (= {(nth labelss 0) [(m/make-metric-value value-value-0 (m/metric-value-last-update-time-ms (nth values 0)))]
-                                   (nth labelss 1) [(m/make-metric-value value-value-1 (m/metric-value-last-update-time-ms (nth values 1)))]
-                                   (nth labelss 2) [(m/make-metric-value value-value-2 (m/metric-value-last-update-time-ms (nth values 2)))]
-                                   (nth labelss 3) [(m/make-metric-value value-value-3 (m/metric-value-last-update-time-ms (nth values 3)))]
-                                   (nth labelss 4) [(m/make-metric-value value-value-4 (m/metric-value-last-update-time-ms (nth values 4)))]
-                                   (nth labelss 5) [(m/make-metric-value value-value-5 (m/metric-value-last-update-time-ms (nth values 5)))]}
-                                  (let [pruned (m/histogram-values-map (m/prune-stale-histogram-values filled-histogram-values 10))]
-                                    (reduce-kv (fn [r k v]
-                                                 (assoc r k (m/histogram-metric-values-bucket-values v)))
-                                               (empty pruned)
-                                               pruned))))
-                       ;; mixture
-                         (t/is (= {(nth labelss 3) [(m/make-metric-value value-value-3 (m/metric-value-last-update-time-ms (nth values 3)))]
-                                   (nth labelss 4) [(m/make-metric-value value-value-4 (m/metric-value-last-update-time-ms (nth values 4)))]
-                                   (nth labelss 5) [(m/make-metric-value value-value-5 (m/metric-value-last-update-time-ms (nth values 5)))]}
-                                  (let [pruned (m/histogram-values-map (m/prune-stale-histogram-values filled-histogram-values 13))]
-                                    (reduce-kv (fn [r k v]
-                                                 (assoc r k (m/histogram-metric-values-bucket-values v)))
-                                               (empty pruned)
-                                               pruned)))))))))))
+                       (t/is (= {(nth labelss 3) (let [value (nth values 3)]
+                                                   (m/make-histogram-metric-values (m/metric-value-last-update-time-ms value)
+                                                                                   (m/metric-value-value value)
+                                                                                   1.0
+                                                                                   [(if (<= (m/metric-value-value value) threshold) 1.0 0.0)]))
+                                 (nth labelss 4) (let [value (nth values 4)]
+                                                   (m/make-histogram-metric-values (m/metric-value-last-update-time-ms value)
+                                                                                   (m/metric-value-value value)
+                                                                                   1.0
+                                                                                   [(if (<= (m/metric-value-value value) threshold) 1.0 0.0)]))
+                                 (nth labelss 5) (let [value (nth values 5)]
+                                                   (m/make-histogram-metric-values (m/metric-value-last-update-time-ms value)
+                                                                                   (m/metric-value-value value)
+                                                                                   1.0
+                                                                                   [(if (<= (m/metric-value-value value) threshold) 1.0 0.0)]))}
+                                (m/histogram-values-map (m/prune-stale-histogram-values filled-histogram-values 13))))))))))
 
 (t/deftest t-empty-histogram-values?
   (t/testing "Checking whether histogram-values-map (sum-map) is empty works."
@@ -729,72 +681,77 @@
                                  (nth labelss 5) (nth values 5)}
                                 (m/counter-values-map (m/update-stored-values filled-counter-values (nth labelss 2) value-x))))
                        ;; Histogram values
-                       ;; sum
-                       (t/is (= {labels-x (m/make-histogram-metric-values value-x
-                                                                          (m/make-metric-value 1 (m/metric-value-last-update-time-ms value-x))
-                                                                          [(m/make-metric-value (if (<= (m/metric-value-value value-x) threshold) 1.0 0.0)
-                                                                                                (m/metric-value-last-update-time-ms value-x))])}
+                       (t/is (= {labels-x (m/make-histogram-metric-values (m/metric-value-last-update-time-ms value-x)
+                                                                          (m/metric-value-value value-x)
+                                                                          1.0
+                                                                          [(if (<= (m/metric-value-value value-x) threshold) 1.0 0.0)])}
                                 (m/histogram-values-map (m/update-stored-values (m/make-histogram-values [threshold]) labels-x value-x))))
-                       (t/is (= {(nth labelss 0) (m/make-histogram-metric-values (nth values 0)
-                                                                                 (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 0)))
-                                                                                 [(m/make-metric-value (if (<= (m/metric-value-value (nth values 0)) threshold) 1.0 0.0)
-                                                                                                       (m/metric-value-last-update-time-ms (nth values 0)))])
-                                 (nth labelss 1) (m/make-histogram-metric-values (nth values 1)
-                                                                                 (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 1)))
-                                                                                 [(m/make-metric-value (if (<= (m/metric-value-value (nth values 1)) threshold) 1.0 0.0)
-                                                                                                       (m/metric-value-last-update-time-ms (nth values 1)))])
-                                 (nth labelss 2) (m/make-histogram-metric-values (nth values 2)
-                                                                                 (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 2)))
-                                                                                 [(m/make-metric-value (if (<= (m/metric-value-value (nth values 2)) threshold) 1.0 0.0)
-                                                                                                       (m/metric-value-last-update-time-ms (nth values 2)))])
-                                 (nth labelss 3) (m/make-histogram-metric-values (nth values 3)
-                                                                                 (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 3)))
-                                                                                 [(m/make-metric-value (if (<= (m/metric-value-value (nth values 3)) threshold) 1.0 0.0)
-                                                                                                       (m/metric-value-last-update-time-ms (nth values 3)))])
-                                 (nth labelss 4) (m/make-histogram-metric-values (nth values 4)
-                                                                                 (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 4)))
-                                                                                 [(m/make-metric-value (if (<= (m/metric-value-value (nth values 4)) threshold) 1.0 0.0)
-                                                                                                       (m/metric-value-last-update-time-ms (nth values 4)))])
-                                 (nth labelss 5) (m/make-histogram-metric-values (nth values 5)
-                                                                                 (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 5)))
-                                                                                 [(m/make-metric-value (if (<= (m/metric-value-value (nth values 5)) threshold) 1.0 0.0)
-                                                                                                       (m/metric-value-last-update-time-ms (nth values 5)))])
-                                 labels-x        (m/make-histogram-metric-values value-x
-                                                                                 (m/make-metric-value 1 (m/metric-value-last-update-time-ms value-x))
-                                                                                 [(m/make-metric-value (if (<= (m/metric-value-value value-x) threshold) 1.0 0.0)
-                                                                                                       (m/metric-value-last-update-time-ms value-x))])}
+                       (t/is (= {(nth labelss 0) (let [value (nth values 0)]
+                                                   (m/make-histogram-metric-values (m/metric-value-last-update-time-ms value)
+                                                                                   (m/metric-value-value value)
+                                                                                   1.0
+                                                                                   [(if (<= (m/metric-value-value value) threshold) 1.0 0.0)]))
+                                 (nth labelss 1) (let [value (nth values 1)]
+                                                   (m/make-histogram-metric-values (m/metric-value-last-update-time-ms value)
+                                                                                   (m/metric-value-value value)
+                                                                                   1.0
+                                                                                   [(if (<= (m/metric-value-value value) threshold) 1.0 0.0)]))
+                                 (nth labelss 2) (let [value (nth values 2)]
+                                                   (m/make-histogram-metric-values (m/metric-value-last-update-time-ms value)
+                                                                                   (m/metric-value-value value)
+                                                                                   1.0
+                                                                                   [(if (<= (m/metric-value-value value) threshold) 1.0 0.0)]))
+                                 (nth labelss 3) (let [value (nth values 3)]
+                                                   (m/make-histogram-metric-values (m/metric-value-last-update-time-ms value)
+                                                                                   (m/metric-value-value value)
+                                                                                   1.0
+                                                                                   [(if (<= (m/metric-value-value value) threshold) 1.0 0.0)]))
+                                 (nth labelss 4) (let [value (nth values 4)]
+                                                   (m/make-histogram-metric-values (m/metric-value-last-update-time-ms value)
+                                                                                   (m/metric-value-value value)
+                                                                                   1.0
+                                                                                   [(if (<= (m/metric-value-value value) threshold) 1.0 0.0)]))
+                                 (nth labelss 5) (let [value (nth values 5)]
+                                                   (m/make-histogram-metric-values (m/metric-value-last-update-time-ms value)
+                                                                                   (m/metric-value-value value)
+                                                                                   1.0
+                                                                                   [(if (<= (m/metric-value-value value) threshold) 1.0 0.0)]))
+                                 labels-x        (m/make-histogram-metric-values (m/metric-value-last-update-time-ms value-x)
+                                                                                 (m/metric-value-value value-x)
+                                                                                 1.0
+                                                                                 [(if (<= (m/metric-value-value value-x) threshold) 1.0 0.0)])}
                                 (m/histogram-values-map (m/update-stored-values filled-histogram-values labels-x value-x))))
-                       (t/is (= {(nth labelss 0) (m/make-histogram-metric-values (nth values 0)
-                                                                                 (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 0)))
-                                                                                 [(m/make-metric-value (if (<= (m/metric-value-value (nth values 0)) threshold) 1.0 0.0)
-                                                                                                       (m/metric-value-last-update-time-ms (nth values 0)))])
-                                 (nth labelss 1) (m/make-histogram-metric-values (nth values 1)
-                                                                                 (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 1)))
-                                                                                 [(m/make-metric-value (if (<= (m/metric-value-value (nth values 1)) threshold) 1.0 0.0)
-                                                                                                       (m/metric-value-last-update-time-ms (nth values 1)))])
-                                 (nth labelss 2) (m/make-histogram-metric-values (m/make-metric-value (+ (m/metric-value-value (nth values 2))
-                                                                                                         (m/metric-value-value value-x))
-                                                                                                      (m/metric-value-last-update-time-ms value-x))
-                                                                                 (m/make-metric-value 2 (m/metric-value-last-update-time-ms value-x))
-                                                                                 [(m/make-metric-value (cond
-                                                                                                         (and (<= (m/metric-value-value (nth values 2)) threshold)
-                                                                                                              (<= (m/metric-value-value value-x)        threshold)) 2
-                                                                                                         (or  (<= (m/metric-value-value (nth values 2)) threshold)
-                                                                                                              (<= (m/metric-value-value value-x)        threshold)) 1
-                                                                                                         :else                                                      0)
-                                                                                                       (m/metric-value-last-update-time-ms value-x))])
-                                 (nth labelss 3) (m/make-histogram-metric-values (nth values 3)
-                                                                                 (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 3)))
-                                                                                 [(m/make-metric-value (if (<= (m/metric-value-value (nth values 3)) threshold) 1.0 0.0)
-                                                                                                       (m/metric-value-last-update-time-ms (nth values 3)))])
-                                 (nth labelss 4) (m/make-histogram-metric-values (nth values 4)
-                                                                                 (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 4)))
-                                                                                 [(m/make-metric-value (if (<= (m/metric-value-value (nth values 4)) threshold) 1.0 0.0)
-                                                                                                       (m/metric-value-last-update-time-ms (nth values 4)))])
-                                 (nth labelss 5) (m/make-histogram-metric-values (nth values 5)
-                                                                                 (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 5)))
-                                                                                 [(m/make-metric-value (if (<= (m/metric-value-value (nth values 5)) threshold) 1.0 0.0)
-                                                                                                       (m/metric-value-last-update-time-ms (nth values 5)))])}
+                       (t/is (= {(nth labelss 0) (let [value (nth values 0)]
+                                                   (m/make-histogram-metric-values (m/metric-value-last-update-time-ms value)
+                                                                                   (m/metric-value-value value)
+                                                                                   1.0
+                                                                                   [(if (<= (m/metric-value-value value) threshold) 1.0 0.0)]))
+                                 (nth labelss 1) (let [value (nth values 1)]
+                                                   (m/make-histogram-metric-values (m/metric-value-last-update-time-ms value)
+                                                                                   (m/metric-value-value value)
+                                                                                   1.0
+                                                                                   [(if (<= (m/metric-value-value value) threshold) 1.0 0.0)]))
+                                 (nth labelss 2) (let [value (nth values 2)]
+                                                   (m/make-histogram-metric-values (m/metric-value-last-update-time-ms value-x)
+                                                                                   (+ (m/metric-value-value value) (m/metric-value-value value-x))
+                                                                                   2.0
+                                                                                   [(+ (if (<= (m/metric-value-value value) threshold) 1.0 0.0)
+                                                                                       (if (<= (m/metric-value-value value-x) threshold) 1.0 0.0))]))
+                                 (nth labelss 3) (let [value (nth values 3)]
+                                                   (m/make-histogram-metric-values (m/metric-value-last-update-time-ms value)
+                                                                                   (m/metric-value-value value)
+                                                                                   1.0
+                                                                                   [(if (<= (m/metric-value-value value) threshold) 1.0 0.0)]))
+                                 (nth labelss 4) (let [value (nth values 4)]
+                                                   (m/make-histogram-metric-values (m/metric-value-last-update-time-ms value)
+                                                                                   (m/metric-value-value value)
+                                                                                   1.0
+                                                                                   [(if (<= (m/metric-value-value value) threshold) 1.0 0.0)]))
+                                 (nth labelss 5) (let [value (nth values 5)]
+                                                   (m/make-histogram-metric-values (m/metric-value-last-update-time-ms value)
+                                                                                   (m/metric-value-value value)
+                                                                                   1.0
+                                                                                   [(if (<= (m/metric-value-value value) threshold) 1.0 0.0)]))}
                                 (m/histogram-values-map (m/update-stored-values filled-histogram-values (nth labelss 2) value-x))))))))))
 
 (t/deftest t-make-stored-values
@@ -822,14 +779,14 @@
                        (t/is (m/histogram-values? histogram-stored-values))
                        (t/is (= (m/histogram-metric-thresholds example-histogram-metric)
                                 (m/histogram-values-thresholds histogram-stored-values)))
-                       (t/is (= {labels (m/make-histogram-metric-values value
-                                                                      (m/make-metric-value 1 (m/metric-value-last-update-time-ms value))
-                                                                      (mapv (fn [threshold]
-                                                                              (m/make-metric-value (if (<= (m/metric-value-value value)
-                                                                                                           threshold)
-                                                                                                     1 0)
-                                                                                                   (m/metric-value-last-update-time-ms value)))
-                                                                            (m/histogram-metric-thresholds example-histogram-metric)))}
+                       (t/is (= {labels (m/make-histogram-metric-values (m/metric-value-last-update-time-ms value)
+                                                                        (m/metric-value-value value)
+                                                                        1.0
+                                                                        (mapv (fn [threshold]
+                                                                                (if (<= (m/metric-value-value value)
+                                                                                        threshold)
+                                                                                  1.0 0.0))
+                                                                              (m/histogram-metric-thresholds example-histogram-metric)))}
                                 (m/histogram-values-map histogram-stored-values)))))))))
 
 (t/deftest t-prune-stale-stored-values
@@ -910,55 +867,85 @@
                        (t/is (= {}
                                 (m/histogram-values-map (m/prune-stale-histogram-values empty-histogram-values 1))))
                        ;; not older
-                       (t/is (= {(nth labelss 0) (m/make-histogram-metric-values (nth values 0)
-                                                                                 (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 0)))
-                                                                                 [(m/make-metric-value value-value-0 (m/metric-value-last-update-time-ms (nth values 0)))])
-                                 (nth labelss 1) (m/make-histogram-metric-values (nth values 1)
-                                                                                 (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 1)))
-                                                                                 [(m/make-metric-value value-value-0 (m/metric-value-last-update-time-ms (nth values 1)))])
-                                 (nth labelss 2) (m/make-histogram-metric-values (nth values 2)
-                                                                                 (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 2)))
-                                                                                 [(m/make-metric-value value-value-0 (m/metric-value-last-update-time-ms (nth values 2)))])
-                                 (nth labelss 3) (m/make-histogram-metric-values (nth values 3)
-                                                                                 (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 3)))
-                                                                                 [(m/make-metric-value value-value-0 (m/metric-value-last-update-time-ms (nth values 3)))])
-                                 (nth labelss 4) (m/make-histogram-metric-values (nth values 4)
-                                                                                 (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 4)))
-                                                                                 [(m/make-metric-value value-value-0 (m/metric-value-last-update-time-ms (nth values 4)))])
-                                 (nth labelss 5) (m/make-histogram-metric-values (nth values 5)
-                                                                                 (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 5)))
-                                                                                 [(m/make-metric-value value-value-0 (m/metric-value-last-update-time-ms (nth values 5)))])}
+                       (t/is (= {(nth labelss 0) (let [value (nth values 0)]
+                                                   (m/make-histogram-metric-values (m/metric-value-last-update-time-ms value)
+                                                                                   (m/metric-value-value value)
+                                                                                   1.0
+                                                                                   [(if (<= (m/metric-value-value value) threshold) 1.0 0.0)]))
+                                 (nth labelss 1) (let [value (nth values 1)]
+                                                   (m/make-histogram-metric-values (m/metric-value-last-update-time-ms value)
+                                                                                   (m/metric-value-value value)
+                                                                                   1.0
+                                                                                   [(if (<= (m/metric-value-value value) threshold) 1.0 0.0)]))
+                                 (nth labelss 2) (let [value (nth values 2)]
+                                                   (m/make-histogram-metric-values (m/metric-value-last-update-time-ms value)
+                                                                                   (m/metric-value-value value)
+                                                                                   1.0
+                                                                                   [(if (<= (m/metric-value-value value) threshold) 1.0 0.0)]))
+                                 (nth labelss 3) (let [value (nth values 3)]
+                                                   (m/make-histogram-metric-values (m/metric-value-last-update-time-ms value)
+                                                                                   (m/metric-value-value value)
+                                                                                   1.0
+                                                                                   [(if (<= (m/metric-value-value value) threshold) 1.0 0.0)]))
+                                 (nth labelss 4) (let [value (nth values 4)]
+                                                   (m/make-histogram-metric-values (m/metric-value-last-update-time-ms value)
+                                                                                   (m/metric-value-value value)
+                                                                                   1.0
+                                                                                   [(if (<= (m/metric-value-value value) threshold) 1.0 0.0)]))
+                                 (nth labelss 5) (let [value (nth values 5)]
+                                                   (m/make-histogram-metric-values (m/metric-value-last-update-time-ms value)
+                                                                                   (m/metric-value-value value)
+                                                                                   1.0
+                                                                                   [(if (<= (m/metric-value-value value) threshold) 1.0 0.0)]))}
                                 (m/histogram-values-map (m/prune-stale-histogram-values filled-histogram-values 9))))
                        ;; the same
-                       (t/is (= {(nth labelss 0) (m/make-histogram-metric-values (nth values 0)
-                                                                                 (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 0)))
-                                                                                 [(m/make-metric-value value-value-0 (m/metric-value-last-update-time-ms (nth values 0)))])
-                                 (nth labelss 1) (m/make-histogram-metric-values (nth values 1)
-                                                                                 (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 1)))
-                                                                                 [(m/make-metric-value value-value-0 (m/metric-value-last-update-time-ms (nth values 1)))])
-                                 (nth labelss 2) (m/make-histogram-metric-values (nth values 2)
-                                                                                 (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 2)))
-                                                                                 [(m/make-metric-value value-value-0 (m/metric-value-last-update-time-ms (nth values 2)))])
-                                 (nth labelss 3) (m/make-histogram-metric-values (nth values 3)
-                                                                                 (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 3)))
-                                                                                 [(m/make-metric-value value-value-0 (m/metric-value-last-update-time-ms (nth values 3)))])
-                                 (nth labelss 4) (m/make-histogram-metric-values (nth values 4)
-                                                                                 (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 4)))
-                                                                                 [(m/make-metric-value value-value-0 (m/metric-value-last-update-time-ms (nth values 4)))])
-                                 (nth labelss 5) (m/make-histogram-metric-values (nth values 5)
-                                                                                 (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 5)))
-                                                                                 [(m/make-metric-value value-value-0 (m/metric-value-last-update-time-ms (nth values 5)))])}
+                       (t/is (= {(nth labelss 0) (let [value (nth values 0)]
+                                                   (m/make-histogram-metric-values (m/metric-value-last-update-time-ms value)
+                                                                                   (m/metric-value-value value)
+                                                                                   1.0
+                                                                                   [(if (<= (m/metric-value-value value) threshold) 1.0 0.0)]))
+                                 (nth labelss 1) (let [value (nth values 1)]
+                                                   (m/make-histogram-metric-values (m/metric-value-last-update-time-ms value)
+                                                                                   (m/metric-value-value value)
+                                                                                   1.0
+                                                                                   [(if (<= (m/metric-value-value value) threshold) 1.0 0.0)]))
+                                 (nth labelss 2) (let [value (nth values 2)]
+                                                   (m/make-histogram-metric-values (m/metric-value-last-update-time-ms value)
+                                                                                   (m/metric-value-value value)
+                                                                                   1.0
+                                                                                   [(if (<= (m/metric-value-value value) threshold) 1.0 0.0)]))
+                                 (nth labelss 3) (let [value (nth values 3)]
+                                                   (m/make-histogram-metric-values (m/metric-value-last-update-time-ms value)
+                                                                                   (m/metric-value-value value)
+                                                                                   1.0
+                                                                                   [(if (<= (m/metric-value-value value) threshold) 1.0 0.0)]))
+                                 (nth labelss 4) (let [value (nth values 4)]
+                                                   (m/make-histogram-metric-values (m/metric-value-last-update-time-ms value)
+                                                                                   (m/metric-value-value value)
+                                                                                   1.0
+                                                                                   [(if (<= (m/metric-value-value value) threshold) 1.0 0.0)]))
+                                 (nth labelss 5) (let [value (nth values 5)]
+                                                   (m/make-histogram-metric-values (m/metric-value-last-update-time-ms value)
+                                                                                   (m/metric-value-value value)
+                                                                                   1.0
+                                                                                   [(if (<= (m/metric-value-value value) threshold) 1.0 0.0)]))}
                                 (m/histogram-values-map (m/prune-stale-histogram-values filled-histogram-values 10))))
                        ;; mixture
-                       (t/is (= {(nth labelss 3) (m/make-histogram-metric-values (nth values 3)
-                                                                                 (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 3)))
-                                                                                 [(m/make-metric-value value-value-0 (m/metric-value-last-update-time-ms (nth values 3)))])
-                                 (nth labelss 4) (m/make-histogram-metric-values (nth values 4)
-                                                                                 (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 4)))
-                                                                                 [(m/make-metric-value value-value-0 (m/metric-value-last-update-time-ms (nth values 4)))])
-                                 (nth labelss 5) (m/make-histogram-metric-values (nth values 5)
-                                                                                 (m/make-metric-value 1 (m/metric-value-last-update-time-ms (nth values 5)))
-                                                                                 [(m/make-metric-value value-value-0 (m/metric-value-last-update-time-ms (nth values 5)))])}
+                       (t/is (= {(nth labelss 3) (let [value (nth values 3)]
+                                                   (m/make-histogram-metric-values (m/metric-value-last-update-time-ms value)
+                                                                                   (m/metric-value-value value)
+                                                                                   1.0
+                                                                                   [(if (<= (m/metric-value-value value) threshold) 1.0 0.0)]))
+                                 (nth labelss 4) (let [value (nth values 4)]
+                                                   (m/make-histogram-metric-values (m/metric-value-last-update-time-ms value)
+                                                                                   (m/metric-value-value value)
+                                                                                   1.0
+                                                                                   [(if (<= (m/metric-value-value value) threshold) 1.0 0.0)]))
+                                 (nth labelss 5) (let [value (nth values 5)]
+                                                   (m/make-histogram-metric-values (m/metric-value-last-update-time-ms value)
+                                                                                   (m/metric-value-value value)
+                                                                                   1.0
+                                                                                   [(if (<= (m/metric-value-value value) threshold) 1.0 0.0)]))}
                                 (m/histogram-values-map (m/prune-stale-histogram-values filled-histogram-values 13)))))))))))
 
 (t/deftest t-empty-stored-values?
@@ -2885,14 +2872,8 @@
                                                          (m/metric-value-last-update-time-ms (nth values 1)))
                                    (m/make-metric-sample (str (nth names 2) "_bucket")
                                                          (assoc labels :le (str threshold))
-                                                         (cond (and (<= (m/metric-value-value (nth values 0)) threshold)
-                                                                    (<= (m/metric-value-value (nth values 1)) threshold))
-                                                               2.0
-                                                               (or  (<= (m/metric-value-value (nth values 0)) threshold)
-                                                                    (<= (m/metric-value-value (nth values 1)) threshold))
-                                                               1.0
-                                                               :else
-                                                               0.0)
+                                                         (+ (if (<= (m/metric-value-value (nth values 0)) threshold) 1.0 0.0)
+                                                            (if (<= (m/metric-value-value (nth values 1)) threshold) 1.0 0.0))
                                                          (m/metric-value-last-update-time-ms (nth values 1)))]
                                   example-record-and-get!)))))))))
 
@@ -2999,14 +2980,8 @@
                                                          (m/metric-value-last-update-time-ms (nth values 1)))
                                    (m/make-metric-sample (str (nth names 2) "_bucket")
                                                          (assoc labels :le (str threshold))
-                                                         (cond (and (<= (m/metric-value-value (nth values 0)) threshold)
-                                                                    (<= (m/metric-value-value (nth values 1)) threshold))
-                                                               2.0
-                                                               (or  (<= (m/metric-value-value (nth values 0)) threshold)
-                                                                    (<= (m/metric-value-value (nth values 1)) threshold))
-                                                               1.0
-                                                               :else
-                                                               0.0)
+                                                         (+ (if (<= (m/metric-value-value (nth values 0)) threshold) 1.0 0.0)
+                                                            (if (<= (m/metric-value-value (nth values 1)) threshold) 1.0 0.0))
                                                          (m/metric-value-last-update-time-ms (nth values 1)))]
                                   example-record-and-get!)))))))))
 
@@ -3138,14 +3113,8 @@
                                                          (m/metric-value-last-update-time-ms (nth values 1)))
                                    (m/make-metric-sample (str (nth names 2) "_bucket")
                                                          (assoc labels :le (str threshold))
-                                                         (cond (and (<= (m/metric-value-value (nth values 0)) threshold)
-                                                                    (<= (m/metric-value-value (nth values 1)) threshold))
-                                                               2.0
-                                                               (or  (<= (m/metric-value-value (nth values 0)) threshold)
-                                                                    (<= (m/metric-value-value (nth values 1)) threshold))
-                                                               1.0
-                                                               :else
-                                                               0.0)
+                                                         (+ (if (<= (m/metric-value-value (nth values 0)) threshold) 1.0 0.0)
+                                                            (if (<= (m/metric-value-value (nth values 1)) threshold) 1.0 0.0))
                                                          (m/metric-value-last-update-time-ms (nth values 1)))]
                                   example-record-and-get-2)))))))))
 
