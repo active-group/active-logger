@@ -414,11 +414,11 @@
     (-> (or histogram-metric-values (make-empty-histogram-metric-values thresholds))
         (histogram-metric-values-last-update-time-ms last-update-time-ms)
         (lens/overhaul histogram-metric-values-sum-value + value-value)
-        (lens/overhaul histogram-metric-values-count-value inc)
+        (lens/overhaul histogram-metric-values-count-value + 1.0)
         (lens/overhaul histogram-metric-values-bucket-values
                        #(mapv (fn [threshold bucket-value]
                                 (if (<= value-value threshold)
-                                  (inc bucket-value)
+                                  (+ bucket-value 1.0)
                                   bucket-value))
                               thresholds %)))))
 
