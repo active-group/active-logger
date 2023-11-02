@@ -1,0 +1,45 @@
+@startuml
+
+package "metric-store-map" {
+  object metric
+
+  object GaugeMetric
+  object CounterMetric
+  object HistogramMetric
+
+  metric -d- GaugeMetric
+  metric -d- CounterMetric
+  metric -d- HistogramMetric
+
+  object "stored-values" as storedvalues
+
+  metric --[dashed]r--> storedvalues
+
+  object GaugeValues
+  GaugeValues : map : metric-labels:{...} --> MetricValue
+  object CounterValues
+  CounterValues : map : metric-labels:{...} --> MetricValue
+  object HistogramValues
+  HistogramValues : thresholds:[Double]
+  HistogramValues : map : metric-labels:{...} --> HistogramMetricValues
+
+  storedvalues -d- GaugeValues
+  storedvalues -d- CounterValues
+  storedvalues -d- HistogramValues
+
+  object MetricValue
+  MetricValue : value:Double
+  MetricValue : last-update-time-ms:Long
+
+  object HistogramMetricValues
+  HistogramMetricValues : sum-value:Double
+  HistogramMetricValues : count-value:Double
+  HistogramMetricValues : bucket-values:[Double]
+  HistogramMetricValues : last-update-time-ms:Long
+
+  GaugeValues -[dotted]d-> MetricValue
+  CounterValues -[dotted]d-> MetricValue
+
+  HistogramValues -[dotted]d-> HistogramMetricValues
+}
+@enduml
