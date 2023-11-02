@@ -9,6 +9,14 @@
             [clojure.spec.alpha :as s]
             [clojure.spec.gen.alpha :as sgen]))
 
+(s/def ::metric (s/or :gauge-metric     ::gauge-metric
+                      :counter-metric   ::counter-metric
+                      :histogram-metric ::histogram-metric))
+
+(s/def ::stored-values (s/or :gauge     ::gauge-values
+                             :counter   ::counter-values
+                             :histogram ::histogram-values))
+
 ;; ::metric-store-maps stores contains all known metrics and their stored values
 
 (s/def ::metric-store-map (s/map-of ::metric ::stored-values))
@@ -18,6 +26,25 @@
 (defn ^:no-doc fresh-metric-store-map
   []
   {})
+
+(s/fdef assoc-metric-store
+  :args (s/cat :metric-store  ::metric-store-map
+               :metric        ::metric
+               :stored-values ::stored-values)
+  :ret ::metric-store-map)
+(defn assoc-metric-store
+  [metric-store metric stored-values]
+  (assoc metric-store metric stored-values))
+
+(s/fdef update-metric-store
+  :args (s/cat :metric-store ::metric-store-map
+               :metric       ::metric
+               :f            fn?
+               :args         (s/* any?))
+  :ret ::metric-store-map)
+(defn update-metric-store
+  [metric-store metric f & args]
+  (apply update metric-store metric f args))
 
 ;; TODO: Can we improve the type of the metric-store?
 (s/def ::metric-store (partial instance? clojure.lang.Atom))
@@ -46,17 +73,24 @@
   (reset! metric-store (fresh-metric-store-map))
   nil)
 
-(declare make-metric-sample)
+;; -----------------------------------------------------------------
 
 ;; Maps from labels to value hold the current state of the metric
 ;; These maps are stored in ::stored-values
 
-(s/def ::labels-value-map (s/map-of ::metric-labels (s/or :metric-value ::metric-value
-                                                          :histogram-metric-value ::histogram-metric-values)))
+(s/def ::labels-metric-value-map (s/map-of ::metric-labels ::metric-value))
+
+(s/def ::labels-histogram-metric-value-map (s/map-of ::metric-labels ::histogram-metric-values))
+
+(s/def ::labels-value-map (s/or :labels-metric-value-map ::labels-metric-value-map
+                                :labels-histogram-metric-value-map ::labels-histogram-metric-value-map))
 
 (def ^:const empty-values-map {})
 
 (s/def ::metric-labels (s/map-of keyword? any?))
+
+(s/def ::metric-name string?)
+(s/def ::metric-help string?)
 
 (define-record-type ^{:doc "Metric value is a combination of the `value` itself
   and the `last-update-time-ms` of the value."}
@@ -74,13 +108,12 @@
 ;; take care of that."
 (s/def ::metric-value-last-update-time-ms nat-int?)
 
-(declare make-metric-value)
 (s/def ::metric-value
   (s/spec
    (partial instance? MetricValue)
    :gen (fn []
           (sgen/fmap (fn [{:keys [metric-value-value-double metric-value-last-update-time-ms]}]
-                       (make-metric-value metric-value-value-double metric-value-last-update-time-ms))
+                       (really-make-metric-value metric-value-value-double metric-value-last-update-time-ms))
                      (s/gen (s/keys :req-un [::metric-value-value-double ::metric-value-last-update-time-ms]))))))
 
 ;; stores value as double
@@ -94,15 +127,25 @@
 
 ;; Primitives on `labels-value-map`s
 
-(s/fdef set-metric-value
+(s/fdef assoc-labels-value-map
   :args (s/cat :labels-value-map ::labels-value-map
-               :metric-labels            ::metric-labels
-               :metric-value             ::metric-value)
+               :metric-labels    ::metric-labels
+               :metric-value     (s/or :metric-value ::metric-value
+                                       :histogram-metric-values ::histogram-metric-values))
+  :ret ::labels-value-map)
+(defn assoc-labels-value-map
+  [labels-value-map metric-labels metric-value]
+  (assoc labels-value-map metric-labels metric-value))
+
+(s/fdef set-metric-value
+  :args (s/cat :labels-value-map ::labels-metric-value-map
+               :metric-labels    ::metric-labels
+               :metric-value     ::metric-value)
   :ret ::labels-value-map)
 (defn set-metric-value
   "Set a metric-value within a labels-value-map."
   [labels-value-map metric-labels metric-value]
-  (assoc labels-value-map metric-labels metric-value))
+  (assoc-labels-value-map labels-value-map metric-labels metric-value))
 
 (s/fdef update-metric-value
   :args (s/cat
@@ -124,17 +167,31 @@
         (metric-value-last-update-time-ms (metric-value-last-update-time-ms metric-value-2)))
     metric-value-2))
 
+(s/fdef update-labels-value-map
+  :args (s/cat
+         :labels-value-map ::labels-value-map
+         :metric-labels    ::metric-labels
+         :f                (s/fspec
+                             :args (s/cat :metric-value-1 ::metric-value)
+                             :ret ::metric-value))
+  :ret ::labels-value-map)
+(defn update-labels-value-map
+  [labels-value-map metric-labels f]
+  (update labels-value-map metric-labels f))
+
 (s/fdef inc-metric-value
-  :args (s/cat :labels-value-map ::labels-value-map
+  :args (s/cat :labels-value-map ::labels-metric-value-map
                :metric-labels            ::metric-labels
                :metric-value             ::metric-value)
-  :ret ::labels-value-map)
+  :ret ::labels-metric-value-map)
 (defn inc-metric-value
   "Increment a metric-value within a labels-value-map."
   [labels-value-map metric-labels metric-value-2]
-  (update labels-value-map metric-labels
-          (fn [metric-value-1]
-            (update-metric-value + metric-value-1 metric-value-2))))
+  (update-labels-value-map labels-value-map metric-labels
+                           (fn [metric-value-1]
+                             (update-metric-value + metric-value-1 metric-value-2))))
+
+;; -----------------------------------------------------------------
 
 (s/fdef stale?
   :args (s/cat :last-update-time-ms ::metric-value-last-update-time-ms
@@ -153,29 +210,59 @@
   (stale? (metric-value-last-update-time-ms metric-value) time-ms))
 
 (s/fdef prune-stale-metric-value
-  :args (s/cat :labels-value-map ::labels-value-map
+  :args (s/cat :labels-value-map ::labels-metric-value-map
                :time-ms          ::metric-value-last-update-time-ms)
-  :ret ::labels-value-map)
+  :ret ::labels-metric-value-map)
 (defn prune-stale-metric-value
   [labels-value-map time-ms]
   (reduce-kv (fn [new-labels-value-map metric-labels metric-value]
                (if (stale-metric-value? metric-value time-ms)
                  new-labels-value-map
-                 (assoc new-labels-value-map metric-labels metric-value)))
+                 (assoc-labels-value-map new-labels-value-map metric-labels metric-value)))
              (empty labels-value-map)
              labels-value-map))
 
-(s/def ::metric (s/or :gauge-metric     ::gauge-metric
-                      :counter-metric   ::counter-metric
-                      :histogram-metric ::histogram-metric))
+;; -----------------------------------------------------------------
 
-(s/def ::stored-values (s/or :gauge     ::gauge-values
-                             :counter   ::counter-values
-                             :histogram ::histogram-values))
+;; Metrics samples and sample sets
 
-(s/def ::metric-name string?)
-(s/def ::metric-help string?)
+(define-record-type ^{:doc "Metric sample."}
+  MetricSample
+  ^:private really-make-metric-sample
+  metric-sample?
+  [name      metric-sample-name
+   labels    metric-sample-labels
+   value     metric-sample-value
+   timestamp metric-sample-timestamp])
 
+(s/def ::metric-sample
+  (s/spec
+   (partial instance? MetricSample)
+   :gen (fn []
+          (sgen/fmap (fn [{:keys [metric-name
+                                  metric-labels
+                                  metric-value-value
+                                  metric-value-last-update-time-ms]}]
+                       (really-make-metric-sample metric-name
+                                                  metric-labels
+                                                  metric-value-value
+                                                  metric-value-last-update-time-ms))
+                     (s/gen (s/keys :req-un [::metric-name
+                                             ::metric-labels
+                                             ::metric-value-value
+                                             ::metric-value-last-update-time-ms]))))))
+
+(s/fdef make-metric-sample
+  :args (s/cat :name      ::metric-name
+               :labels    ::metric-labels
+               :value     ::metric-value-value
+               :timestamp ::metric-value-last-update-time-ms)
+  :ret ::metric-sample)
+(defn make-metric-sample
+  [name labels value timestamp]
+  (really-make-metric-sample name labels value timestamp))
+
+;; -----------------------------------------------------------------
 
 ;; 1. Gauges
 
@@ -186,13 +273,12 @@
   [name gauge-metric-name
    help gauge-metric-help])
 
-(declare make-gauge-metric)
 (s/def ::gauge-metric
   (s/spec
    (partial instance? GaugeMetric)
    :gen (fn []
           (sgen/fmap (fn [{:keys [metric-name metric-help]}]
-                       (make-gauge-metric metric-name metric-help))
+                       (really-make-gauge-metric metric-name metric-help))
                      (s/gen (s/keys :req-un [::metric-name ::metric-help]))))))
 
 (s/fdef make-gauge-metric
@@ -210,7 +296,13 @@
   gauge-values?
   [map gauge-values-map])
 
-(s/def ::gauge-values (s/spec (partial instance? GaugeValues)))
+(s/def ::gauge-values
+  (s/spec
+    (partial instance? GaugeValues)
+    :gen (fn []
+           (sgen/fmap (fn [{:keys [gauge-values-map]}]
+                        (really-make-gauge-values gauge-values-map))
+                      (s/gen (s/keys :req-un [::labels-metric-value-map]))))))
 
 (s/fdef make-gauge-values
   :args (s/cat)
@@ -273,13 +365,12 @@
    help counter-metric-help
    set-value? counter-metric-set-value?])
 
-(declare make-counter-metric)
 (s/def ::counter-metric
   (s/spec
    (partial instance? CounterMetric)
    :gen (fn []
           (sgen/fmap (fn [{:keys [metric-name metric-help]}]
-                       (make-counter-metric metric-name metric-help))
+                       (really-make-counter-metric metric-name metric-help false))
                      (s/gen (s/keys :req-un [::metric-name ::metric-help]))))))
 
 (s/fdef make-counter-metric
@@ -298,7 +389,13 @@
   counter-values?
   [map counter-values-map])
 
-(s/def ::counter-values (s/spec (partial instance? CounterValues)))
+(s/def ::counter-values
+  (s/spec
+    (partial instance? CounterValues)
+    :gen (fn []
+          (sgen/fmap (fn [{:keys [counter-values-map]}]
+                       (really-make-counter-values counter-values-map))
+                     (s/gen (s/keys :req-un [::labels-metric-value-map]))))))
 
 (s/fdef make-counter-values
   :args (s/cat)
@@ -364,13 +461,12 @@
    help       histogram-metric-help
    thresholds histogram-metric-thresholds])
 
-(declare make-histogram-metric)
 (s/def ::histogram-metric
   (s/spec
    (partial instance? HistogramMetric)
    :gen (fn []
           (sgen/fmap (fn [{:keys [metric-name metric-help thresholds]}]
-                       (make-histogram-metric metric-name metric-help thresholds))
+                       (really-make-histogram-metric metric-name metric-help thresholds))
                      (s/gen (s/keys :req-un [::metric-name ::metric-help ::thresholds]))))))
 
 (s/fdef make-histogram-metric
@@ -384,21 +480,46 @@
 
 (define-record-type ^{:doc "Stored Histogram metric values."}
   HistogramMetricValues
-  make-histogram-metric-values
+  really-make-histogram-metric-values
   histogram-metric-values?
   [last-update-time-ms histogram-metric-values-last-update-time-ms
    sum-value histogram-metric-values-sum-value
    count-value histogram-metric-values-count-value
    bucket-values histogram-metric-values-bucket-values])
 
-(s/def ::histogram-metric-values (s/spec (partial instance? HistogramMetricValues)))
+(s/def ::bucket-values (s/coll-of ::metric-value-value))
+
+(s/def ::histogram-metric-values
+  (s/spec
+    (partial instance? HistogramMetricValues)
+    :gen (fn []
+          (sgen/fmap (fn [{:keys [histogram-metric-values-last-update-time-ms
+                                  histogram-metric-values-sum-value
+                                  histogram-metric-values-count-value
+                                  histogram-metric-values-bucket-values]}]
+                       (really-make-histogram-metric-values histogram-metric-values-last-update-time-ms
+                                                            histogram-metric-values-sum-value
+                                                            histogram-metric-values-count-value
+                                                            histogram-metric-values-bucket-values))
+                     (s/gen (s/keys :req-un [::metric-value-last-update-time-ms ::metric-value-value ::metric-value-value
+                                             ::bucket-values]))))))
+
+(s/fdef make-histogram-metric-values
+  :args (s/cat :last-update-time-ms ::metric-value-last-update-time-ms
+               :sum-value ::metric-value-value
+               :count-value ::metric-value-value
+               :bucket-values ::bucket-values)
+  :ret ::histogram-metric)
+(defn make-histogram-metric-values
+  [last-update-time-ms sum-value count-value bucket-values]
+  (really-make-histogram-metric-values last-update-time-ms sum-value count-value bucket-values))
 
 (s/fdef make-empty-histogram-metric-values
   :args (s/cat :thresholds ::thresholds)
   :ret ::histogram-metric-values)
 (defn make-empty-histogram-metric-values
   [thresholds]
-  (make-histogram-metric-values nil 0.0 0.0 (vec (repeat (count thresholds) 0.0))))
+  (make-histogram-metric-values 0 0.0 0.0 (vec (repeat (count thresholds) 0.0))))
 
 (s/fdef update-histogram-values
   :args (s/cat :histogram-metric-values ::histogram-metric-values
@@ -422,14 +543,20 @@
                                   bucket-value))
                               thresholds %)))))
 
-(define-record-type ^{:doc "Stored Histogram values, i.e. a threshold and a map from labels to HistogramValues."}
+(define-record-type ^{:doc "Stored Histogram values, i.e. a threshold and a map from labels to HistogramMetricValues."}
   HistogramValues
   ^:private really-make-histogram-values
   histogram-values?
   [thresholds histogram-values-thresholds
    map histogram-values-map])
 
-(s/def ::histogram-values (s/spec (partial instance? HistogramValues)))
+(s/def ::histogram-values
+  (s/spec
+    (partial instance? HistogramValues)
+    :gen (fn []
+           (sgen/fmap (fn [{:keys [histogram-values-thresholds histogram-values-map]}]
+                        (really-make-histogram-values histogram-values-thresholds histogram-values-map))
+                      (s/gen (s/keys :req-un [::thresholds ::histogram-metric-values]))))))
 
 (s/fdef make-histogram-values
   :args (s/cat :thresholds ::thresholds)
@@ -438,16 +565,27 @@
   [thresholds]
   (really-make-histogram-values thresholds empty-values-map))
 
-(s/fdef update-histogram-values
-  :args (s/cat :histogram-values-map ::labels-value-map
+(s/fdef really-update-histogram-values-map
+  :args (s/cat :histogram-values-map ::labels-histogram-metric-value-map
+               :metric-labels ::metric-labels
+               :thresholds ::thresholds
+               :metric-value     ::metric-value)
+  :ret ::histogram-metric-values)
+(defn really-update-histogram-values-map
+  [histogram-values-map metric-labels thresholds metric-value]
+  (update histogram-values-map metric-labels update-histogram-metric-values
+          thresholds metric-value))
+
+(s/fdef update-histogram-values-map
+  :args (s/cat :histogram-values-map ::labels-histogram-metric-value-map
                :thresholds ::thresholds
                :metric-labels    ::metric-labels
                :metric-value     ::metric-value)
-  :ret ::labels-value-map)
+  :ret ::labels-histogram-metric-value-map)
 (defn update-histogram-values-map
   [histogram-values-map thresholds metric-labels metric-value]
-  (update histogram-values-map metric-labels update-histogram-metric-values
-          thresholds metric-value))
+  (really-update-histogram-values-map histogram-values-map metric-labels
+                                      thresholds metric-value))
 
 (s/fdef update-histogram-values
   :args (s/cat :histogram-values ::histogram-values
@@ -499,15 +637,15 @@
       [])))
 
 (s/fdef prune-stale-histogram-metric-value
-  :args (s/cat :histogram-values-map ::labels-value-map
+  :args (s/cat :histogram-values-map ::labels-histogram-metric-value-map
                :time-ms ::metric-value-last-update-time-ms)
-  :ret ::labels-value-map)
+  :ret ::labels-histogram-metric-value-map)
 (defn prune-stale-histogram-metric-value
   [histogram-values-map time-ms]
   (reduce-kv (fn [new-labels-value-map metric-labels histogram-metric-values]
                (if (stale? (histogram-metric-values-last-update-time-ms histogram-metric-values) time-ms)
                  new-labels-value-map
-                 (assoc new-labels-value-map metric-labels histogram-metric-values)))
+                 (assoc-labels-value-map new-labels-value-map metric-labels histogram-metric-values)))
              (empty histogram-values-map)
              histogram-values-map))
 
@@ -560,6 +698,19 @@
      (histogram-metric? metric) (make-histogram-values (histogram-metric-thresholds metric)))
    metric-labels metric-value))
 
+(s/fdef update-or-make-stored-values
+  :args (s/cat :maybe-stored-values (s/nilable ::stored-values)
+               :metric ::metric
+               :metric-labels ::metric-labels
+               :metric-value ::metric-value)
+  :ret ::stored-values)
+(defn update-or-make-stored-values
+  [maybe-stored-values metric metric-labels metric-value]
+  (if (some? maybe-stored-values)
+    (update-stored-values maybe-stored-values metric-labels metric-value)
+    (make-stored-values metric metric-labels metric-value)))
+
+
 (s/fdef prune-stale-stored-values
   :args (s/cat :stored-values ::stored-values
                :time-ms       ::metric-value-last-update-time-ms)
@@ -591,46 +742,8 @@
     (histogram-values? stored-values)
     (empty-histogram-values? stored-values)))
 
-;; Metrics samples and sample sets
-
-(define-record-type ^{:doc "Metric sample."}
-  MetricSample
-  ^:private really-make-metric-sample
-  metric-sample?
-  [name      metric-sample-name
-   labels    metric-sample-labels
-   value     metric-sample-value
-   timestamp metric-sample-timestamp])
-
-(s/def ::metric-sample
-  (s/spec
-   (partial instance? MetricSample)
-   :gen (fn []
-          (sgen/fmap (fn [{:keys [metric-name
-                                  metric-labels
-                                  metric-value-value
-                                  metric-value-last-update-time-ms]}]
-                       (make-metric-sample metric-name
-                                           metric-labels
-                                           metric-value-value
-                                           metric-value-last-update-time-ms))
-                     (s/gen (s/keys :req-un [::metric-name
-                                             ::metric-labels
-                                             ::metric-value-value
-                                             ::metric-value-last-update-time-ms]))))))
-
-(s/fdef make-metric-sample
-  :args (s/cat :name      ::metric-name
-               :labels    ::metric-labels
-               :value     ::metric-value-value
-               :timestamp ::metric-value-last-update-time-ms)
-  :ret ::metric-sample)
-(defn make-metric-sample
-  [name labels value timestamp]
-  (really-make-metric-sample name labels value timestamp))
 
 ;; -----------------------------------------------------------------
-
 
 (s/fdef record-metric-1
   :args (s/cat :metric-store ::metric-store-map
@@ -640,10 +753,7 @@
   :ret ::metric-store-map)
 (defn record-metric-1
   [metric-store metric metric-labels metric-value]
-  (update metric-store metric (fn [maybe-stored-values]
-                                (if (some? maybe-stored-values)
-                                  (update-stored-values maybe-stored-values metric-labels metric-value)
-                                  (make-stored-values metric metric-labels metric-value)))))
+  (update-metric-store metric-store metric update-or-make-stored-values metric metric-labels metric-value))
 
 (s/fdef record-metric!
   :args (s/cat :optional-1  (s/? (s/cat :a-metric-store ::metric-store))
@@ -822,7 +932,7 @@
                          (let [new-stored-values (prune-stale-stored-values stored-values time-ms)]
                            (if (empty-stored-values? new-stored-values)
                              new-metric-store
-                             (assoc new-metric-store metric new-stored-values))))
+                             (assoc-metric-store new-metric-store metric new-stored-values))))
                        (empty old-metric-store)
                        old-metric-store)))
    nil))
