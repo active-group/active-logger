@@ -950,7 +950,7 @@
                (let [now (time/get-milli-time!)
                      earlier (- now stale-milliseconds)]
                  (prune-stale-metrics! earlier)
-                 (Thread/sleep every-milliseconds)
+                 (Thread/sleep ^long every-milliseconds)
                  (recur)))))
       (.setDaemon true)
       (.start))))
