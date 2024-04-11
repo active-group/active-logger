@@ -18,7 +18,7 @@
 (defn log-ignore-test-fixture
   "For use as clojure.test fixture."
   [f]
-  (log-config-test-fixture (timbre-config/make-timbre-config {})
+  (log-config-test-fixture (timbre-config/make-timbre-config {:appenders {}})
                            f))
 
 (defn log-stdout-test-fixture
