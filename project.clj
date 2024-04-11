@@ -8,7 +8,7 @@
                  [com.taoensso/timbre "5.2.1"]
                  [de.active-group/active-clojure "0.40.0"]
                  [de.active-group/active-quickcheck "0.8.0"]
-                 [de.active-group/timbre-riemann "0.2.0"]
+                 [de.active-group/timbre-riemann "0.2.1"]
                  [cheshire "5.10.1"] ;; for logstash 3rd-party-appender of timbre
                  [riemann-clojure-client "0.5.4"]
                  [org.slf4j/log4j-over-slf4j "1.7.36"]
