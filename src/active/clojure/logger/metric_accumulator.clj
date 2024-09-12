@@ -942,8 +942,8 @@
   every `every-seconds` seconds.  If called without an argument, it prunes
   metrics older than 24h every 5m."
   [& [stale-seconds every-seconds]]
-  (let [stale-milliseconds (* (or stale-seconds (* 5 60)) 1000)
-        every-milliseconds (* (or every-seconds (* 24 60 60)) 1000)]
+  (let [stale-milliseconds (* (or stale-seconds (* 24 60 60)) 1000)
+        every-milliseconds (* (or every-seconds (* 5 60)) 1000)]
     (doto (Thread.
            (fn []
              (loop []
