@@ -1,0 +1,4 @@
+{:deps {de.active-group/active-clojure {:mvn/version "0.41.0"}
+        de.active-group/active-logger  {:mvn/version "0.13.2"}}
+ :paths ["src"]
+ :aliases {:app {:exec-fn example.app/-main}}}
