@@ -3,8 +3,8 @@
             [taoensso.encore :as encore]
             [taoensso.timbre :as timbre]
             [taoensso.timbre.appenders.core :as timbre-appenders]
-            [taoensso.timbre.appenders.3rd-party.rotor :as timbre-rotor]
-            [taoensso.timbre.appenders.3rd-party.logstash :as timbre-logstash]
+            [taoensso.timbre.appenders.community.rotor :as timbre-rotor]
+            [taoensso.timbre.appenders.community.logstash :as timbre-logstash]
 
             [active.clojure.condition :as c]
             [active.clojure.config :as config]
