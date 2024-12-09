@@ -10,6 +10,11 @@ java.util.logging (JUL), and Apache Commons Logging (JCL).
 
 * Breaking changes
 
+** Breaking changes in version 0.14.0:
+
+- Upgraded Timbre from version 5 to 6, which are incompatible due to
+  namespace changes of the 'community'/'3rdparty' appenders.
+
 ** Breaking changes in version 0.10.0:
 
 - We removed ~active.clojure.logger.timbre/timbre-config-section~; the client
@@ -32,7 +37,7 @@ start logging events.
    1. Add =active-logger= and =active-clojure= to your =deps.edn=:
       #+begin_src clojure
         {:deps {de.active-group/active-clojure {:mvn/version "0.42.0"}
-                de.active-group/active-logger  {:mvn/version "0.13.3"}}}
+                de.active-group/active-logger  {:mvn/version "0.14.0"}}}
       #+end_src
    2. Start logging some events:
       #+begin_src clojure
