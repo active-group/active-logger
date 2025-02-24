@@ -4,7 +4,7 @@
   :license {:name "EPL-2.0 OR GPL-2.0-or-later WITH Classpath-exception-2.0"
             :url  "https://www.eclipse.org/legal/epl-2.0/"}
   :dependencies [[org.clojure/clojure "1.11.0" :scope "provided"]
-                 [com.fzakaria/slf4j-timbre "0.3.21"]
+                 [com.fzakaria/slf4j-timbre "0.4.1"]
                  [com.taoensso/timbre "6.6.1"]
                  [de.active-group/active-clojure "0.40.0"]
                  [de.active-group/active-quickcheck "0.8.0"]
