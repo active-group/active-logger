@@ -98,12 +98,12 @@ Or use [[https://github.com/active-group/active-clojure][active-clojure]]'s =act
 #+end_src
 
 * Prerequisites
-For =active-logger= to work as expected, please make sure to exclude
-any direct or transitive dependencies on =org.slf4j/slf4j-log4j12= and
-other =slf4j= bindings.
+For =active-logger= to work as expected, the only SLF4J binding on the
+classpath should be =slf4j-timbre=, which comes with =active-logger=.
 
-You compiler should give you a warning along these lines if you still
-depend on it:
+Exclude direct or transitive dependencies on =org.slf4j/slf4j-log4j12=
+and other =slf4j= bindings from your project. SLF4J should give you a
+warning along these lines if you still have any of those:
 
 #+begin_src
 SLF4J: Class path contains multiple SLF4J bindings.
