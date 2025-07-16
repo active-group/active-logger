@@ -11,7 +11,7 @@
                  [de.active-group/timbre-riemann "0.2.1"]
                  [cheshire "5.10.1"] ;; for logstash 3rd-party-appender of timbre
                  [riemann-clojure-client "0.5.4"]
-                 [org.apache.logging.log4j/log4j-to-slf4j] ;; 'log4j2'
+                 [org.apache.logging.log4j/log4j-to-slf4j "2.25.1"] ;; 'log4j2'
                  [org.slf4j/log4j-over-slf4j "1.7.36"] ;; 'log4j1'
                  [org.slf4j/jul-to-slf4j     "1.7.36"]
                  [org.slf4j/jcl-over-slf4j   "1.7.36"]])
