@@ -1,4 +1,4 @@
-(defproject de.active-group/active-logger "0.15-SNAPSHOT"
+(defproject de.active-group/active-logger "0.14.1"
   :description "Active Logger: Utilities and DSL for logging on top of Timbre."
   :url "http://github.com/active-group/active-logger"
   :license {:name "EPL-2.0 OR GPL-2.0-or-later WITH Classpath-exception-2.0"
