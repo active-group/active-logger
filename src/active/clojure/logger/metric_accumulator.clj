@@ -150,9 +150,9 @@
 (s/fdef update-metric-value
   :args (s/cat
          :f              (s/fspec
-                           :args (s/cat :metric-value-value-1 ::metric-value-value
-                                        :metric-value-value-2 ::metric-value-value)
-                           :ret number?)
+                          :args (s/cat :metric-value-value-1 ::metric-value-value
+                                       :metric-value-value-2 ::metric-value-value)
+                          :ret number?)
          :metric-value-1 (s/nilable ::metric-value)
          :metric-value-2 ::metric-value)
   :ret ::metric-value)
@@ -172,8 +172,8 @@
          :labels-value-map ::labels-value-map
          :metric-labels    ::metric-labels
          :f                (s/fspec
-                             :args (s/cat :metric-value-1 ::metric-value)
-                             :ret ::metric-value))
+                            :args (s/cat :metric-value-1 ::metric-value)
+                            :ret ::metric-value))
   :ret ::labels-value-map)
 (defn update-labels-value-map
   [labels-value-map metric-labels f]
@@ -298,11 +298,11 @@
 
 (s/def ::gauge-values
   (s/spec
-    (partial instance? GaugeValues)
-    :gen (fn []
-           (sgen/fmap (fn [{:keys [gauge-values-map]}]
-                        (really-make-gauge-values gauge-values-map))
-                      (s/gen (s/keys :req-un [::labels-metric-value-map]))))))
+   (partial instance? GaugeValues)
+   :gen (fn []
+          (sgen/fmap (fn [{:keys [gauge-values-map]}]
+                       (really-make-gauge-values gauge-values-map))
+                     (s/gen (s/keys :req-un [::labels-metric-value-map]))))))
 
 (s/fdef make-gauge-values
   :args (s/cat)
@@ -391,8 +391,8 @@
 
 (s/def ::counter-values
   (s/spec
-    (partial instance? CounterValues)
-    :gen (fn []
+   (partial instance? CounterValues)
+   :gen (fn []
           (sgen/fmap (fn [{:keys [counter-values-map]}]
                        (really-make-counter-values counter-values-map))
                      (s/gen (s/keys :req-un [::labels-metric-value-map]))))))
@@ -491,8 +491,8 @@
 
 (s/def ::histogram-metric-values
   (s/spec
-    (partial instance? HistogramMetricValues)
-    :gen (fn []
+   (partial instance? HistogramMetricValues)
+   :gen (fn []
           (sgen/fmap (fn [{:keys [histogram-metric-values-last-update-time-ms
                                   histogram-metric-values-sum-value
                                   histogram-metric-values-count-value
@@ -552,11 +552,11 @@
 
 (s/def ::histogram-values
   (s/spec
-    (partial instance? HistogramValues)
-    :gen (fn []
-           (sgen/fmap (fn [{:keys [histogram-values-thresholds histogram-values-map]}]
-                        (really-make-histogram-values histogram-values-thresholds histogram-values-map))
-                      (s/gen (s/keys :req-un [::thresholds ::histogram-metric-values]))))))
+   (partial instance? HistogramValues)
+   :gen (fn []
+          (sgen/fmap (fn [{:keys [histogram-values-thresholds histogram-values-map]}]
+                       (really-make-histogram-values histogram-values-thresholds histogram-values-map))
+                     (s/gen (s/keys :req-un [::thresholds ::histogram-metric-values]))))))
 
 (s/fdef make-histogram-values
   :args (s/cat :thresholds ::thresholds)
@@ -616,23 +616,23 @@
             count (histogram-metric-values-count-value histogram-metric-values)
             buckets (histogram-metric-values-bucket-values histogram-metric-values)]
         (concat
-          [(make-metric-sample (str basename "_sum")
-                               metric-labels
-                               sum
-                               last-update-time-ms)
-           (make-metric-sample (str basename "_count")
-                               metric-labels
-                               count
-                               last-update-time-ms)
-           (make-metric-sample (str basename "_bucket")
-                               (assoc metric-labels :le "+Inf")
-                               count
-                               last-update-time-ms)]
-          (mapcat (fn [threshold bucket]
-                    [(make-metric-sample (str basename "_bucket")
-                                         (assoc metric-labels :le (str threshold))
-                                         bucket
-                                         last-update-time-ms)])
+         [(make-metric-sample (str basename "_sum")
+                              metric-labels
+                              sum
+                              last-update-time-ms)
+          (make-metric-sample (str basename "_count")
+                              metric-labels
+                              count
+                              last-update-time-ms)
+          (make-metric-sample (str basename "_bucket")
+                              (assoc metric-labels :le "+Inf")
+                              count
+                              last-update-time-ms)]
+         (mapcat (fn [threshold bucket]
+                   [(make-metric-sample (str basename "_bucket")
+                                        (assoc metric-labels :le (str threshold))
+                                        bucket
+                                        last-update-time-ms)])
                  thresholds buckets)))
       [])))
 
@@ -710,7 +710,6 @@
     (update-stored-values maybe-stored-values metric-labels metric-value)
     (make-stored-values metric metric-labels metric-value)))
 
-
 (s/fdef prune-stale-stored-values
   :args (s/cat :stored-values ::stored-values
                :time-ms       ::metric-value-last-update-time-ms)
@@ -741,7 +740,6 @@
 
     (histogram-values? stored-values)
     (empty-histogram-values? stored-values)))
-
 
 ;; -----------------------------------------------------------------
 
