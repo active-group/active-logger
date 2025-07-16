@@ -3,7 +3,9 @@
 
 (defn cleanup-non-prometheus-label-characters
   [s]
-  (string/replace s #"[^a-zA-Z0-9_:]" "_"))
+  (-> s
+      (string/replace #"[^a-zA-Z0-9_]" "_")
+      (string/replace #"(^[0-9])" "_\\1")))
 
 (defn render-label
   [k v]
