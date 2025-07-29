@@ -10,6 +10,11 @@ java.util.logging (JUL), and Apache Commons Logging (JCL).
 
 * Breaking changes
 
+** Breaking changes in version 0.15.0:
+
+- Prometheus metrics do no longer render the timestamp of their last sample.
+  Use events if you need data with timestamps.
+
 ** Breaking changes in version 0.14.0:
 
 - Upgraded Timbre from version 5 to 6, which are incompatible due to

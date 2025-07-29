@@ -31,8 +31,3 @@
 (defn render-value
   [v]
   (double v))
-
-(defn maybe-render-timestamp
-  [maybe-timestamp]
-  (when maybe-timestamp
-    (format " %d" maybe-timestamp)))

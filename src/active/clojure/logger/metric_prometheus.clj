@@ -8,8 +8,7 @@
   [metric-sample]
   (str (util/cleanup-non-prometheus-label-characters (metric-accumulator/metric-sample-name metric-sample))
        (util/render-labels (metric-accumulator/metric-sample-labels metric-sample))
-       " " (util/render-value (metric-accumulator/metric-sample-value metric-sample))
-       (util/maybe-render-timestamp (metric-accumulator/metric-sample-timestamp metric-sample))))
+       " " (util/render-value (metric-accumulator/metric-sample-value metric-sample))))
 
 (defn render-metric-type
   [metric-type]
