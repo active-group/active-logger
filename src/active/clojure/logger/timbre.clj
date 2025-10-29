@@ -191,9 +191,9 @@
 (defn output-fn
   "Timbre output function, adapted to our needs"
   ([data] (output-fn nil data))
-  ([{:keys [no-stacktrace?] :as opts} data]
-   (let [{:keys [level ?err_ vargs_ msg_ ?ns-str hostname_
-                 timestamp_ ?line]} data
+  ([{:keys [no-stacktrace?] :as _opts} data]
+   (let [{:keys [level ?err msg_ ?ns-str hostname_
+                 timestamp_]} data
          origin-info
          (cond-> (or ?ns-str "?") ;; we never have line number, for which Timbre would print a ?
            ;; append a task or service name, and domain if we have one (e.g. log4j logs don't have one):
@@ -209,7 +209,7 @@
       "[" origin-info "] - "
       (force msg_)
       (when-not no-stacktrace?
-        (when-let [err (force ?err_)]
+        (when-let [err ?err]
           (str "\n" (with-out-str (internal/pr-exception-stacktrace err)))))))))
 
 (defn fixed-properties-timbre-middleware [hostname application]

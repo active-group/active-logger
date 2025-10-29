@@ -152,8 +152,7 @@
   ;; return zero or more riemann events for one timbre appender data structure.
   (let [{:keys [context instant hostname_ msg_ level]} data
 
-        stacktrace     (when-let [?err (and (:?err_ data) (force (:?err_ data)))]
-                         ;; Note: ?err_ will be replaced by ?err in newer timbre versions.
+        stacktrace     (when-let [?err (:?err data)]
                          (with-out-str (internal/pr-exception-stacktrace ?err)))
         [time time-ms] (current-time-for-riemann)]
     ;; Note: context already may contain some riemann specific props too, like
@@ -194,8 +193,8 @@
                              ;; in an IOException("no channels available") when the connection drops/server stopped, or in
                              ;; an OverloadedException when the client produces more message than the server can handle.
                              ;; For now, we think it's more important that the platform keeps on running.
-                             false ;; don't retry.
-                             )
+                              false ;; don't retry.
+                              )
                  :events-fn timbre-event->riemann}
                 opts))
         ;; cleanup-fn is our own extension to the appenders spec; see destroy-timbre-config! below
