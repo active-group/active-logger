@@ -12,7 +12,7 @@
 
 (defn escape-prometheus-label-value-1
   [s]
-  (string/escape (or s "") {\" "\\\""}))
+  (string/escape (str s) {\" "\\\""}))
 
 (def escape-prometheus-label-value
   (memoize escape-prometheus-label-value-1))
