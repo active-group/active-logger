@@ -208,9 +208,10 @@
       (string/upper-case (name level))  " "
       "[" origin-info "] - "
       (force msg_)
-      (when-not no-stacktrace?
-        (when-let [err ?err]
-          (str "\n" (with-out-str (internal/pr-exception-stacktrace err)))))))))
+      (when-let [err ?err]
+        (str "\n" (pr-str err)
+             (when-not no-stacktrace?
+               (str "\n" (with-out-str (internal/pr-exception-stacktrace err))))))))))
 
 (defn fixed-properties-timbre-middleware [hostname application]
   ;; A timbre middleware, that sets log event properties that should
