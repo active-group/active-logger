@@ -8,4 +8,6 @@
 
 (t/deftest t-render-label
   (t/is (= "description_short=\"Station [Frontside] failed to inspect wafer... An error has occurred in \\\"load()\\\" with the following details\""
-           (sut/render-label "description-short" "Station [Frontside] failed to inspect wafer... An error has occurred in \"load()\" with the following details"))))
+           (sut/render-label "description-short" "Station [Frontside] failed to inspect wafer... An error has occurred in \"load()\" with the following details")))
+  (t/is (= "description_short=\"\""
+           (sut/render-label "description-short" nil))))
