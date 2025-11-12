@@ -10,12 +10,16 @@
 (def cleanup-non-prometheus-label-characters
   (memoize cleanup-non-prometheus-label-characters-1))
 
-(defn render-label-1
-  [k v]
-  (str (cleanup-non-prometheus-label-characters (name k)) "=\"" v "\""))
+(defn escape-prometheus-label-value-1
+  [s]
+  (string/escape s {\" "\\\""}))
 
-(def render-label
-  (memoize render-label-1))
+(def escape-prometheus-label-value
+  (memoize escape-prometheus-label-value-1))
+
+(defn render-label
+  [k v]
+  (str (cleanup-non-prometheus-label-characters (name k)) "=\"" (escape-prometheus-label-value v) "\""))
 
 (defn render-labels-1
   [labels]
