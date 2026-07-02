@@ -171,6 +171,13 @@
   (test-utils/is-metric-set-stored? "name" :counter "name")
   (test-utils/is-metric-stored? "name" {} 23.0))
 
+(t/deftest t-log-counter-counts-up-and-down
+  (m/log-counter-metric! "name" {:label "a"} 23)
+  (m/log-counter-metric! "name" {:label "a"} 2)
+  (test-utils/is-metric-stored? "name" {:label "a"} 25.0)
+  (m/log-counter-metric! "name" {:label "a"} -2)
+  (test-utils/is-metric-stored? "name" {:label "a"} 23.0))
+
 (t/deftest t-log-counter-metric!-3
   (m/log-counter-metric! "name" {:label "a"} 23)
   (test-utils/is-metric-set-stored? "name" :counter "name")
