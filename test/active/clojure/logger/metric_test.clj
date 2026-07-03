@@ -1,6 +1,7 @@
 (ns active.clojure.logger.metric-test
   (:require [active.clojure.logger.metric :as m]
             [active.clojure.logger.metric-accumulator :as metric-accumulator]
+            [active.clojure.logger.metric-monad :as metric-monad]
             [active.clojure.logger.metric-emitter :as metric-emitter]
             [clojure.test :as t]
             [active.clojure.monad :as monad]
@@ -31,7 +32,7 @@
     (stest/unstrument)))
 
 (t/deftest t-log-metric!-internal
-  (m/log-metric!-internal (str *ns*) (metric-accumulator/make-gauge-metric "name" "help") {:label "a"} 23 {:context "b"})
+  (m/log-metric!-internal (str *ns*) (m/make-gauge-metric "name" "help") {:label "a"} 23 {:context "b"})
     (test-utils/is-metric-set-stored? "name" :gauge "help")
     (test-utils/is-metric-stored? "name" {:label "a"} 23.0))
 
@@ -40,23 +41,23 @@
                 m/monad-command-config
                 []
                 (monad/monadic
-                 (m/log-metric-internal (str *ns*) (metric-accumulator/make-gauge-metric "name" "help") {:label "a"} 23 {:context "b"})
-                 (metric-accumulator/get-all-metric-sample-sets)))]
+                 (m/log-metric-internal (str *ns*) (m/make-gauge-metric "name" "help") {:label "a"} 23 {:context "b"})
+                 (metric-monad/get-all-metric-sample-sets)))]
     (test-utils/is-metric-set-stored? "name" :gauge "help" result)
     (test-utils/is-metric-stored? "name" {:label "a"} 23.0 result)))
 
 (t/deftest t-log-metric!-2
-  (m/log-metric! (metric-accumulator/make-gauge-metric "name" "help") {:label "a"} 23)
+  (m/log-metric! (m/make-gauge-metric "name" "help") {:label "a"} 23)
   (test-utils/is-metric-set-stored? "name" :gauge "help")
   (test-utils/is-metric-stored? "name" {:label "a"} 23.0))
 
 (t/deftest t-log-metric!-3
-  (m/log-metric! (metric-accumulator/make-gauge-metric "name" "help") {:label "a"} 23 {:context "b"})
+  (m/log-metric! (m/make-gauge-metric "name" "help") {:label "a"} 23 {:context "b"})
   (test-utils/is-metric-set-stored? "name" :gauge "help")
   (test-utils/is-metric-stored? "name" {:label "a"} 23.0))
 
 (t/deftest t-log-metric!-4
-  (m/log-metric! (metric-accumulator/make-gauge-metric "name" "help") {:label "a"} 23 {:context "b"} (str *ns*))
+  (m/log-metric! (m/make-gauge-metric "name" "help") {:label "a"} 23 {:context "b"} (str *ns*))
   (test-utils/is-metric-set-stored? "name" :gauge "help")
   (test-utils/is-metric-stored? "name" {:label "a"} 23.0))
 
@@ -66,8 +67,8 @@
                 m/monad-command-config
                 []
                 (monad/monadic
-                 (m/log-metric (metric-accumulator/make-gauge-metric "name" "help") {:label "a"} 23)
-                 (metric-accumulator/get-all-metric-sample-sets)))]
+                 (m/log-metric (m/make-gauge-metric "name" "help") {:label "a"} 23)
+                 (metric-monad/get-all-metric-sample-sets)))]
     (test-utils/is-metric-set-stored? "name" :gauge "help" result)
     (test-utils/is-metric-stored? "name" {:label "a"} 23.0)))
 
@@ -76,8 +77,8 @@
                 m/monad-command-config
                 []
                 (monad/monadic
-                 (m/log-metric (metric-accumulator/make-gauge-metric "name" "help") {:label "a"} 23 {:context "b"})
-                 (metric-accumulator/get-all-metric-sample-sets)))]
+                 (m/log-metric (m/make-gauge-metric "name" "help") {:label "a"} 23 {:context "b"})
+                 (metric-monad/get-all-metric-sample-sets)))]
     (test-utils/is-metric-set-stored? "name" :gauge "help" result)
     (test-utils/is-metric-stored? "name" {:label "a"} 23.0)))
 
@@ -86,8 +87,8 @@
                 m/monad-command-config
                 []
                 (monad/monadic
-                 (m/log-metric (metric-accumulator/make-gauge-metric "name" "help") {:label "a"} 23 {:context "b"} (str *ns*))
-                 (metric-accumulator/get-all-metric-sample-sets)))]
+                 (m/log-metric (m/make-gauge-metric "name" "help") {:label "a"} 23 {:context "b"} (str *ns*))
+                 (metric-monad/get-all-metric-sample-sets)))]
     (test-utils/is-metric-set-stored? "name" :gauge "help" result)
     (test-utils/is-metric-stored? "name" {:label "a"} 23.0)))
 
@@ -122,7 +123,7 @@
                 []
                 (monad/monadic
                  (m/log-gauge-metric "name" 23)
-                 (metric-accumulator/get-all-metric-sample-sets)))]
+                 (metric-monad/get-all-metric-sample-sets)))]
     (test-utils/is-metric-set-stored? "name" :gauge "name" result)
     (test-utils/is-metric-stored? "name" {} 23.0 result)))
 
@@ -132,7 +133,7 @@
                 []
                 (monad/monadic
                  (m/log-gauge-metric "name" {:label "a"} 23)
-                 (metric-accumulator/get-all-metric-sample-sets)))]
+                 (metric-monad/get-all-metric-sample-sets)))]
     (test-utils/is-metric-set-stored? "name" :gauge "name" result)
     (test-utils/is-metric-stored? "name" {:label "a"} 23.0 result)))
 
@@ -142,7 +143,7 @@
                 []
                 (monad/monadic
                  (m/log-gauge-metric "name" {:label "a"} "help" 23)
-                 (metric-accumulator/get-all-metric-sample-sets)))]
+                 (metric-monad/get-all-metric-sample-sets)))]
     (test-utils/is-metric-set-stored? "name" :gauge "help" result)
     (test-utils/is-metric-stored? "name" {:label "a"} 23.0 result)))
 
@@ -152,7 +153,7 @@
                 []
                 (monad/monadic
                  (m/log-gauge-metric "name" {:label "a"} "help" 23 {:context "b"})
-                 (metric-accumulator/get-all-metric-sample-sets)))]
+                 (metric-monad/get-all-metric-sample-sets)))]
     (test-utils/is-metric-set-stored? "name" :gauge "help" result)
     (test-utils/is-metric-stored? "name" {:label "a"} 23.0 result)))
 
@@ -162,7 +163,7 @@
                 []
                 (monad/monadic
                  (m/log-gauge-metric "name" {:label "a"} "help" 23 {:context "b"} (str *ns*))
-                 (metric-accumulator/get-all-metric-sample-sets)))]
+                 (metric-monad/get-all-metric-sample-sets)))]
     (test-utils/is-metric-set-stored? "name" :gauge "help" result)
     (test-utils/is-metric-stored? "name" {:label "a"} 23.0 result)))
 
@@ -204,7 +205,7 @@
                 []
                 (monad/monadic
                  (m/log-counter-metric "name" 23)
-                 (metric-accumulator/get-all-metric-sample-sets)))]
+                 (metric-monad/get-all-metric-sample-sets)))]
     (test-utils/is-metric-set-stored? "name" :counter "name" result)
     (test-utils/is-metric-stored? "name" {} 23.0 result)))
 
@@ -214,7 +215,7 @@
                 []
                 (monad/monadic
                  (m/log-counter-metric "name" {:label "a"} 23)
-                 (metric-accumulator/get-all-metric-sample-sets)))]
+                 (metric-monad/get-all-metric-sample-sets)))]
     (test-utils/is-metric-set-stored? "name" :counter "name" result)
     (test-utils/is-metric-stored? "name" {:label "a"} 23.0 result)))
 
@@ -224,7 +225,7 @@
                 []
                 (monad/monadic
                  (m/log-counter-metric "name" {:label "a"} "help" 23)
-                 (metric-accumulator/get-all-metric-sample-sets)))]
+                 (metric-monad/get-all-metric-sample-sets)))]
     (test-utils/is-metric-set-stored? "name" :counter "help" result)
     (test-utils/is-metric-stored? "name" {:label "a"} 23.0 result)))
 
@@ -234,7 +235,7 @@
                 []
                 (monad/monadic
                  (m/log-counter-metric "name" {:label "a"} "help" 23 {:context "b"})
-                 (metric-accumulator/get-all-metric-sample-sets)))]
+                 (metric-monad/get-all-metric-sample-sets)))]
     (test-utils/is-metric-set-stored? "name" :counter "help" result)
     (test-utils/is-metric-stored? "name" {:label "a"} 23.0 result)))
 
@@ -244,7 +245,7 @@
                 []
                 (monad/monadic
                  (m/log-counter-metric "name" {:label "a"} "help" 23 {:context "b"} (str *ns*))
-                 (metric-accumulator/get-all-metric-sample-sets)))]
+                 (metric-monad/get-all-metric-sample-sets)))]
     (test-utils/is-metric-set-stored? "name" :counter "help" result)
     (test-utils/is-metric-stored? "name" {:label "a"} 23.0 result)))
 
@@ -285,7 +286,7 @@
                 (monad/monadic
                  (m/set-counter-metric "name" 23)
                  (m/set-counter-metric "name" 42)
-                 (metric-accumulator/get-all-metric-sample-sets)))]
+                 (metric-monad/get-all-metric-sample-sets)))]
     (test-utils/is-metric-set-stored? "name" :counter "name" result)
     (test-utils/is-metric-stored? "name" {} 42.0 result)))
 
@@ -296,7 +297,7 @@
                 (monad/monadic
                  (m/set-counter-metric "name" {:label "a"} 23)
                  (m/set-counter-metric "name" {:label "a"} 42)
-                 (metric-accumulator/get-all-metric-sample-sets)))]
+                 (metric-monad/get-all-metric-sample-sets)))]
     (test-utils/is-metric-set-stored? "name" :counter "name" result)
     (test-utils/is-metric-stored? "name" {:label "a"} 42.0 result)))
 
@@ -307,7 +308,7 @@
                 (monad/monadic
                  (m/set-counter-metric "name" {:label "a"} "help" 23)
                  (m/set-counter-metric "name" {:label "a"} "help" 42)
-                 (metric-accumulator/get-all-metric-sample-sets)))]
+                 (metric-monad/get-all-metric-sample-sets)))]
     (test-utils/is-metric-set-stored? "name" :counter "help" result)
     (test-utils/is-metric-stored? "name" {:label "a"} 42.0 result)))
 
@@ -318,7 +319,7 @@
                 (monad/monadic
                  (m/set-counter-metric "name" {:label "a"} "help" 23 {:context "b"})
                  (m/set-counter-metric "name" {:label "a"} "help" 42 {:context "b"})
-                 (metric-accumulator/get-all-metric-sample-sets)))]
+                 (metric-monad/get-all-metric-sample-sets)))]
     (test-utils/is-metric-set-stored? "name" :counter "help" result)
     (test-utils/is-metric-stored? "name" {:label "a"} 42.0 result)))
 
@@ -329,7 +330,7 @@
                 (monad/monadic
                  (m/set-counter-metric "name" {:label "a"} "help" 23 {:context "b"} (str *ns*))
                  (m/set-counter-metric "name" {:label "a"} "help" 42 {:context "b"} (str *ns*))
-                 (metric-accumulator/get-all-metric-sample-sets)))]
+                 (metric-monad/get-all-metric-sample-sets)))]
     (test-utils/is-metric-set-stored? "name" :counter "help" result)
     (test-utils/is-metric-stored? "name" {:label "a"} 42.0 result)))
 
@@ -386,7 +387,7 @@
                 []
                 (monad/monadic
                  (m/log-histogram-metric "name" [] 23)
-                 (metric-accumulator/get-all-metric-sample-sets)))]
+                 (metric-monad/get-all-metric-sample-sets)))]
     (test-utils/is-metric-set-stored? "name" :histogram "name" result)
     (test-utils/is-metric-stored? "name_sum" {} 23.0 result)
     (test-utils/is-metric-stored? "name_count" {} 1.0 result)
@@ -398,7 +399,7 @@
                 []
                 (monad/monadic
                  (m/log-histogram-metric "name" [20] 23)
-                 (metric-accumulator/get-all-metric-sample-sets)))]
+                 (metric-monad/get-all-metric-sample-sets)))]
     (test-utils/is-metric-set-stored? "name" :histogram "name" result)
     (test-utils/is-metric-stored? "name_sum" {} 23.0 result)
     (test-utils/is-metric-stored? "name_count" {} 1.0 result)
@@ -411,7 +412,7 @@
                 []
                 (monad/monadic
                  (m/log-histogram-metric "name" [20] {:label "a"} 23)
-                 (metric-accumulator/get-all-metric-sample-sets)))]
+                 (metric-monad/get-all-metric-sample-sets)))]
     (test-utils/is-metric-set-stored? "name" :histogram "name" result)
     (test-utils/is-metric-stored? "name_sum" {:label "a"} 23.0 result)
     (test-utils/is-metric-stored? "name_count" {:label "a"} 1.0 result)
@@ -424,7 +425,7 @@
                 []
                 (monad/monadic
                  (m/log-histogram-metric "name" [20] {:label "a"} "help" 23)
-                 (metric-accumulator/get-all-metric-sample-sets)))]
+                 (metric-monad/get-all-metric-sample-sets)))]
     (test-utils/is-metric-set-stored? "name" :histogram "help" result)
     (test-utils/is-metric-stored? "name_sum" {:label "a"} 23.0 result)
     (test-utils/is-metric-stored? "name_count" {:label "a"} 1.0 result)
@@ -437,7 +438,7 @@
                 []
                 (monad/monadic
                  (m/log-histogram-metric "name" [20] {:label "a"} "help" 23 {:context "b"})
-                 (metric-accumulator/get-all-metric-sample-sets)))]
+                 (metric-monad/get-all-metric-sample-sets)))]
     (test-utils/is-metric-set-stored? "name" :histogram "help" result)
     (test-utils/is-metric-stored? "name_sum" {:label "a"} 23.0 result)
     (test-utils/is-metric-stored? "name_count" {:label "a"} 1.0 result)
@@ -450,7 +451,7 @@
                 []
                 (monad/monadic
                  (m/log-histogram-metric "name" [20] {:label "a"} "help" 23 {:context "b"} (str *ns*))
-                 (metric-accumulator/get-all-metric-sample-sets)))]
+                 (metric-monad/get-all-metric-sample-sets)))]
     (test-utils/is-metric-set-stored? "name" :histogram "help" result)
     (test-utils/is-metric-stored? "name_sum" {:label "a"} 23.0 result)
     (test-utils/is-metric-stored? "name_count" {:label "a"} 1.0 result)
@@ -463,7 +464,7 @@
                 []
                 (monad/monadic
                  (m/log-histogram-metric "name" [] {:label "a"} "help" 23 {:context "b"} (str *ns*))
-                 (metric-accumulator/get-all-metric-sample-sets)))]
+                 (metric-monad/get-all-metric-sample-sets)))]
     (test-utils/is-metric-set-stored? "name" :histogram "help" result)
     (test-utils/is-metric-stored? "name_sum" {:label "a"} 23.0 result)
     (test-utils/is-metric-stored? "name_count" {:label "a"} 1.0 result)

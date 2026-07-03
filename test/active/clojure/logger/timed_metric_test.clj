@@ -5,6 +5,8 @@
             [active.clojure.logger.event :as event]
             [active.clojure.logger.metric-emitter :as metric-emitter]
             [active.clojure.logger.metric-accumulator :as metric-accumulator]
+            [active.clojure.logger.metric-samples :as metric-samples]
+            [active.clojure.logger.metric-monad :as metric-monad]
             [active.clojure.logger.test-utils :as test-utils]
             [active.clojure.logger.time :as time]
             [active.clojure.logger.timed-metric :as timed-metric]))
@@ -41,13 +43,13 @@
 (def monad-command-config-gauges
   (monad/combine-monad-command-configs
    (monad/make-monad-command-config timed-metric/run-timed-metrics-as-gauges {} {})
-   (monad/make-monad-command-config metric-accumulator/run-metrics {} {})
+   (monad/make-monad-command-config metric-monad/run-metrics {} {})
    metric-emitter/log-metrics-command-config))
 
 (def monad-command-config-histograms
   (monad/combine-monad-command-configs
    (monad/make-monad-command-config timed-metric/run-timed-metrics-as-histograms {} {})
-   (monad/make-monad-command-config metric-accumulator/run-metrics {} {})
+   (monad/make-monad-command-config metric-monad/run-metrics {} {})
    metric-emitter/log-metrics-command-config))
 
 (deftest t-start-stop
@@ -71,7 +73,7 @@
            (monad/monadic
             [name (timed-metric/start-metric-timer "example-metric" {})]
             (timed-metric/stop-metric-timer name)
-            (metric-accumulator/get-all-metric-sample-sets)))]
+            (metric-monad/get-all-metric-sample-sets)))]
       (is (= [] result))))
 
   (testing "Stopping a timer that has not been started causes a log error."
@@ -131,12 +133,12 @@
            (monad/monadic
             [name (timed-metric/start-metric-timer "example-metric" {})]
             (timed-metric/stop-and-log-metric-timer name)
-            (metric-accumulator/get-all-metric-sample-sets)
+            (metric-monad/get-all-metric-sample-sets)
             ))]
-      (is (= [(metric-accumulator/make-metric-sample-set "example-metric" :histogram "example-metric"
-                                                         [(metric-accumulator/make-metric-sample "example-metric_sum" {} 10.0 12345)
-                                                          (metric-accumulator/make-metric-sample "example-metric_count" {} 1.0 12345)
-                                                          (metric-accumulator/make-metric-sample "example-metric_bucket" {:le "+Inf"} 1.0 12345)])]
+      (is (= [(metric-samples/make-metric-sample-set "example-metric" :histogram "example-metric"
+                                                     [(metric-samples/make-metric-sample "example-metric_sum" {} 10.0 12345)
+                                                      (metric-samples/make-metric-sample "example-metric_count" {} 1.0 12345)
+                                                      (metric-samples/make-metric-sample "example-metric_bucket" {:le "+Inf"} 1.0 12345)])]
              result))
 
       (test-utils/is-metric-set-stored? "example-metric" :histogram "example-metric"))))

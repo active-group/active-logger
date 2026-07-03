@@ -2,7 +2,7 @@
   "Facilities for emitting metrics."
   (:require [active.clojure.logger.riemann :as riemann-config]
             [active.clojure.logger.internal :as internal]
-            [active.clojure.logger.metric-accumulator :as metric-accumulator]
+            [active.clojure.logger.metric-samples :as metric-samples]
             [active.clojure.logger.metric-prometheus-util :as metric-prometheus]
             [active.clojure.monad :as monad]
             [active.clojure.config :as config]
@@ -70,9 +70,9 @@
    (emit-metric-sample!-internal @metrics-config namespace metric-sample context-map))
   ([scconf namespace metric-sample context-map]
    (when (not= :no-push scconf)
-     (let [metric-name   (metric-accumulator/metric-sample-name metric-sample)
-           metric-labels (metric-accumulator/metric-sample-labels metric-sample)
-           metric-value  (metric-accumulator/metric-sample-value metric-sample)
+     (let [metric-name   (metric-samples/metric-sample-name metric-sample)
+           metric-labels (metric-samples/metric-sample-labels metric-sample)
+           metric-value  (metric-samples/metric-sample-value metric-sample)
            labels-context-map (merge metric-labels context-map)]
        (cond
          (events-config? scconf)
