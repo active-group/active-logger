@@ -42,6 +42,7 @@
 ;; "You should not set timestamps on the metrics you expose, let Prometheus
 ;; take care of that."
 
+;; Note: metric-value is both the type of new values coming in, and the internal storage type for singular values. (TODO: that's not good)
 (s/def ::metric-value
   (s/spec
    (partial instance? MetricValue)
@@ -158,137 +159,88 @@
 
 ;; -----------------------------------------------------------------
 
-(define-record-type ^{:doc "Stored Gauge values, i.e. a map from labels to
+(define-record-type ^{:doc "Stored Singular values, i.e. a map from labels to
   metric-values."}
-  GaugeValues
-  ^:private really-make-gauge-values
-  gauge-values?
-  [map gauge-values-map])
+  SingularValues
+  ^:private really-make-singular-values
+  singular-values?
+  [map singular-values-map])
 
-(s/def ::gauge-values
+(s/def ::singular-values
   (s/spec
-   (partial instance? GaugeValues)
+   (partial instance? SingularValues)
    :gen (fn []
-          (sgen/fmap really-make-gauge-values
+          (sgen/fmap really-make-singular-values
                      (s/gen ::labels-metric-value-map)))))
 
-(s/fdef make-gauge-values
+(s/fdef make-singular-values
   :args (s/cat)
-  :ret ::gauge-values)
-(defn make-gauge-values
+  :ret ::singular-values)
+(defn make-singular-values
   []
-  (really-make-gauge-values empty-values-map))
+  (really-make-singular-values empty-values-map))
 
-(s/fdef update-gauge-values
-  :args (s/cat :gauge-values  ::gauge-values
-               :metric-labels ::metric-types/metric-labels
-               :metric-value  ::metric-value)
-  :ret ::gauge-values)
-(defn update-gauge-values
-  "Updates a `GaugeValues`"
-  [gauge-values metric-labels metric-value]
-  (lens/overhaul gauge-values
-                 gauge-values-map
-                 (fn [labels-values-map]
-                   (set-metric-value labels-values-map
-                                     metric-labels
-                                     metric-value))))
+(def empty-singular-values (make-singular-values))
 
-(s/fdef gauge-values->metric-samples
-  :args (s/cat :name          ::metric-types/metric-name
-               :gauge-values  ::gauge-values
-               :metric-labels ::metric-types/metric-labels)
-  :ret (s/coll-of ::metric-samples/metric-sample))
-(defn gauge-values->metric-samples
-  [name gauge-values metric-labels]
-  (if-let [metric-value (get (gauge-values-map gauge-values) metric-labels)]
-    [(metric-samples/make-metric-sample name
-                                        metric-labels
-                                        (metric-value-value               metric-value)
-                                        (metric-value-last-update-time-ms metric-value))]
-    []))
-
-(s/fdef prune-stale-gauge-values
-  :args (s/cat :gauge-values ::gauge-values
-               :time-ms      ::metric-types/metric-last-update-time-ms)
-  :ret ::gauge-values)
-(defn prune-stale-gauge-values
-  [gauge-values time-ms]
-  (lens/overhaul gauge-values gauge-values-map prune-stale-metric-value time-ms))
-
-(s/fdef empty-gauge-values?
-  :args (s/cat :gauge-values ::gauge-values)
-  :ret boolean?)
-(defn empty-gauge-values?
-  [gauge-values]
-  (empty? (gauge-values-map gauge-values)))
-
-;; -----------------------------------------------------------------
-
-(define-record-type ^{:doc "Stored Counter values, i.e. a map from labels to
-  metric-values."}
-  CounterValues
-  ^:private really-make-counter-values
-  counter-values?
-  [map counter-values-map])
-
-(s/def ::counter-values
-  (s/spec
-   (partial instance? CounterValues)
-   :gen (fn []
-          (sgen/fmap really-make-counter-values
-                     (s/gen ::labels-metric-value-map)))))
-
-(s/fdef make-counter-values
-  :args (s/cat)
-  :ret ::counter-values)
-(defn make-counter-values
-  []
-  (really-make-counter-values empty-values-map))
-
-(s/fdef update-counter-values
-  :args (s/cat :counter-values ::counter-values
-               :metric-labels  ::metric-types/metric-labels
-               :metric-value   ::metric-value)
-  :ret ::counter-values)
-(defn update-counter-values
-  "Updates a `CounterMetric`."
-  [counter-values metric-labels metric-value]
-  (lens/overhaul counter-values
-                 counter-values-map
+(s/fdef inc-singular-values
+  :args (s/cat :singular-values ::singular-values
+               :metric-labels   ::metric-types/metric-labels
+               :metric-value    ::metric-value)
+  :ret ::singular-values)
+(defn inc-singular-values
+  "Updates a `SingularMetric`."
+  [singular-values metric-labels metric-value]
+  (lens/overhaul singular-values
+                 singular-values-map
                  (fn [labels-values-map]
                    (inc-metric-value labels-values-map
                                      metric-labels
                                      metric-value))))
 
-(s/fdef counter-values->metric-samples
+(s/fdef set-singular-values
+  :args (s/cat :singular-values ::singular-values
+               :metric-labels   ::metric-types/metric-labels
+               :metric-value    ::metric-value)
+  :ret ::singular-values)
+(defn set-singular-values
+  "Updates a `SingularMetric`."
+  [singular-values metric-labels metric-value]
+  (lens/overhaul singular-values
+                 singular-values-map
+                 (fn [labels-values-map]
+                   (set-metric-value labels-values-map
+                                     metric-labels
+                                     metric-value))))
+
+(s/fdef singular-values->metric-samples
   :args (s/cat :name           ::metric-types/metric-name
-               :counter-values ::counter-values
+               :singular-values ::singular-values
                :metric-labels  ::metric-types/metric-labels)
   :ret (s/coll-of ::metric-samples/metric-sample))
-(defn counter-values->metric-samples
-  [name counter-values metric-labels]
-  (if-let [metric-value (get (counter-values-map counter-values) metric-labels)]
+(defn singular-values->metric-samples
+  [name singular-values metric-labels]
+  (if-let [metric-value (get (singular-values-map singular-values) metric-labels)]
     [(metric-samples/make-metric-sample name
                                         metric-labels
                                         (metric-value-value               metric-value)
                                         (metric-value-last-update-time-ms metric-value))]
     []))
 
-(s/fdef prune-stale-counter-values
-  :args (s/cat :counter-values ::counter-values
-               :time-ms        ::metric-types/metric-last-update-time-ms)
-  :ret ::counter-values)
-(defn prune-stale-counter-values
-  [counter-values time-ms]
-  (lens/overhaul counter-values counter-values-map prune-stale-metric-value time-ms))
+(s/fdef prune-stale-singular-values
+  :args (s/cat :singular-values ::singular-values
+               :time-ms         ::metric-types/metric-last-update-time-ms)
+  :ret ::singular-values)
+(defn prune-stale-singular-values
+  [singular-values time-ms]
+  (lens/overhaul singular-values singular-values-map prune-stale-metric-value time-ms))
 
-(s/fdef empty-counter-values?
-  :args (s/cat :counter-values ::counter-values)
+;; TODO: if the api is exposing the inner map anyway, then this does not need to exist.
+(s/fdef empty-singular-values?
+  :args (s/cat :singular-values ::singular-values)
   :ret boolean?)
-(defn empty-counter-values?
-  [counter-values]
-  (empty? (counter-values-map counter-values)))
+(defn empty-singular-values?
+  [singular-values]
+  (empty? (singular-values-map singular-values)))
 
 ;; -----------------------------------------------------------------
 
@@ -321,7 +273,7 @@
 (s/fdef make-histogram-metric-values
   :args (s/cat :last-update-time-ms ::metric-types/metric-last-update-time-ms
                :sum-value ::metric-types/metric-value
-               :count-value ::metric-types/metric-value
+               :count-value ::metric-types/metric-value ;; TODO: should ne pos-int?
                :bucket-values ::bucket-values)
   :ret ::histogram-metric-values)
 (defn make-histogram-metric-values
@@ -338,18 +290,17 @@
 (s/fdef update-histogram-values
   :args (s/cat :histogram-metric-values ::histogram-metric-values
                :thresholds ::metric-types/thresholds
-               :metric-value     ::metric-value
-               :metric-value-0   ::metric-value
-               :metric-value-1   ::metric-value)
+               :metric-value     ::metric-value)
   :ret ::histogram-metric-values)
 (defn update-histogram-metric-values
   [histogram-metric-values thresholds metric-value]
   (let [value-value (metric-value-value metric-value)
         last-update-time-ms (metric-value-last-update-time-ms metric-value)]
+    ;; OPT: construct a new record only once.
     (-> (or histogram-metric-values (make-empty-histogram-metric-values thresholds))
         (histogram-metric-values-last-update-time-ms last-update-time-ms)
         (lens/overhaul histogram-metric-values-sum-value + value-value)
-        (lens/overhaul histogram-metric-values-count-value + 1.0)
+        (lens/overhaul histogram-metric-values-count-value + 1.0) ;; counts are doubles?
         (lens/overhaul histogram-metric-values-bucket-values
                        #(mapv (fn [threshold bucket-value]
                                 (if (<= value-value threshold)
@@ -424,7 +375,7 @@
   [basename histogram-values metric-labels]
   (let [thresholds  (histogram-values-thresholds histogram-values)
         histogram-metric-values (get (histogram-values-map histogram-values) metric-labels)]
-    (if (histogram-metric-values? histogram-metric-values)
+    (if histogram-metric-values
       (let [last-update-time-ms (histogram-metric-values-last-update-time-ms histogram-metric-values)
             sum (histogram-metric-values-sum-value histogram-metric-values)
             count (histogram-metric-values-count-value histogram-metric-values)
@@ -481,26 +432,23 @@
 
 ;; -----------------------------------------------------------------
 
-(s/def ::stored-values (s/or :gauge     ::gauge-values
-                             :counter   ::counter-values
+(s/def ::stored-values (s/or :singular  ::singular-values
                              :histogram ::histogram-values))
 
 (s/fdef update-stored-values
   :args (s/cat :stored-values ::stored-values
+               :metric        ::metric-types/metric
                :metric-labels ::metric-types/metric-labels
                :metric-value  ::metric-value)
   :ret ::stored-values)
-(defn update-stored-values
-  [stored-values metric-labels metric-value]
+(defn- update-stored-values
+  [stored-values metric metric-labels metric-value]
   (cond
-    (gauge-values? stored-values)
-    (update-gauge-values stored-values metric-labels metric-value)
-
-    (counter-values? stored-values)
-    (update-counter-values stored-values metric-labels metric-value)
-
-    (histogram-values? stored-values)
-    (update-histogram-values stored-values metric-labels metric-value)))
+    (metric-types/gauge-metric?     metric) (set-singular-values stored-values metric-labels metric-value)
+    (metric-types/counter-metric?   metric) (if (metric-types/counter-metric-set-value? metric)
+                                              (set-singular-values stored-values metric-labels metric-value)
+                                              (inc-singular-values stored-values metric-labels metric-value))
+    (metric-types/histogram-metric? metric) (update-histogram-values stored-values metric-labels metric-value)))
 
 (s/fdef make-stored-values
   :args (s/cat :metric        ::metric-types/metric
@@ -511,10 +459,10 @@
   [metric metric-labels metric-value]
   (update-stored-values
    (cond
-     (metric-types/gauge-metric?     metric) (make-gauge-values)
-     (metric-types/counter-metric?   metric) (if (metric-types/counter-metric-set-value? metric) (make-gauge-values) (make-counter-values))
+     (metric-types/gauge-metric?     metric) empty-singular-values
+     (metric-types/counter-metric?   metric) empty-singular-values
      (metric-types/histogram-metric? metric) (make-histogram-values (metric-types/histogram-metric-thresholds metric)))
-   metric-labels metric-value))
+   metric metric-labels metric-value))
 
 (s/fdef update-or-make-stored-values
   :args (s/cat :maybe-stored-values (s/nilable ::stored-values)
@@ -524,8 +472,13 @@
   :ret ::stored-values)
 (defn update-or-make-stored-values
   [maybe-stored-values metric metric-labels metric-value]
-  (if (some? maybe-stored-values)
-    (update-stored-values maybe-stored-values metric-labels metric-value)
+  ;; Note: updated thresholds in a histogram metric are ignored.
+  (if (and (some? maybe-stored-values)
+           (cond
+             (metric-types/gauge-metric?     metric) (singular-values? maybe-stored-values)
+             (metric-types/counter-metric?   metric) (singular-values? maybe-stored-values)
+             (metric-types/histogram-metric? metric) (histogram-values? maybe-stored-values)))
+    (update-stored-values maybe-stored-values metric metric-labels metric-value)
     (make-stored-values metric metric-labels metric-value)))
 
 (s/fdef prune-stale-stored-values
@@ -535,11 +488,8 @@
 (defn prune-stale-stored-values
   [stored-values time-ms]
   (cond
-    (gauge-values? stored-values)
-    (prune-stale-gauge-values stored-values time-ms)
-
-    (counter-values? stored-values)
-    (prune-stale-counter-values stored-values time-ms)
+    (singular-values? stored-values)
+    (prune-stale-singular-values stored-values time-ms)
 
     (histogram-values? stored-values)
     (prune-stale-histogram-values stored-values time-ms)))
@@ -550,11 +500,8 @@
 (defn empty-stored-values?
   [stored-values]
   (cond
-    (gauge-values? stored-values)
-    (empty-gauge-values? stored-values)
-
-    (counter-values? stored-values)
-    (empty-counter-values? stored-values)
+    (singular-values? stored-values)
+    (empty-singular-values? stored-values)
 
     (histogram-values? stored-values)
     (empty-histogram-values? stored-values)))
@@ -569,10 +516,8 @@
 (defn stored-value->metric-samples
   [metric stored-value metric-labels]
   (cond
-    (gauge-values? stored-value)
-    (gauge-values->metric-samples (metric-types/metric-name metric) stored-value metric-labels)
-    (counter-values? stored-value)
-    (counter-values->metric-samples (metric-types/metric-name metric) stored-value metric-labels)
+    (singular-values? stored-value)
+    (singular-values->metric-samples (metric-types/metric-name metric) stored-value metric-labels)
     (histogram-values? stored-value)
     (histogram-values->metric-samples (metric-types/metric-name metric) stored-value metric-labels)))
 
@@ -583,12 +528,9 @@
 (defn stored-value->all-metric-samples
   [metric stored-value]
   (cond
-    (gauge-values? stored-value)
-    (mapcat (fn [metric-labels] (gauge-values->metric-samples (metric-types/metric-name metric) stored-value metric-labels))
-            (keys (gauge-values-map stored-value)))
-    (counter-values? stored-value)
-    (mapcat (fn [metric-labels] (counter-values->metric-samples (metric-types/metric-name metric) stored-value metric-labels))
-            (keys (counter-values-map stored-value)))
+    (singular-values? stored-value)
+    (mapcat (fn [metric-labels] (singular-values->metric-samples (metric-types/metric-name metric) stored-value metric-labels))
+            (keys (singular-values-map stored-value)))
     (histogram-values? stored-value)
     (mapcat (fn [metric-labels] (histogram-values->metric-samples (metric-types/metric-name metric) stored-value metric-labels))
             (keys (histogram-values-map stored-value)))))

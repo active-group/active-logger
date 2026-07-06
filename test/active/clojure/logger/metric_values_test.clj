@@ -24,25 +24,14 @@
   [num-elems]
   (s/spec (s/coll-of ::m/metric-value :distinct false :into [] :count num-elems)))
 
-(defn gen-filled-gauge-values
-  [gauge-values labelss values]
+(defn gen-filled-singular-values
+  [singular-values labelss values]
   (if (empty? labelss)
-    gauge-values
+    singular-values
     (let [[labels & rest-labelss] labelss
           [value & rest-values] values]
-      (gen-filled-gauge-values
-       (m/update-gauge-values gauge-values labels value)
-       rest-labelss
-       rest-values))))
-
-(defn gen-filled-counter-values
-  [counter-values labelss values]
-  (if (empty? labelss)
-    counter-values
-    (let [[labels & rest-labelss] labelss
-          [value & rest-values] values]
-      (gen-filled-counter-values
-       (m/update-counter-values counter-values labels value)
+      (gen-filled-singular-values
+       (m/set-singular-values singular-values labels value)
        rest-labelss
        rest-values))))
 
@@ -153,82 +142,82 @@
                                 (nth labelss 4) (m/make-metric-value 300 5)
                                 (nth labelss 5) (m/make-metric-value 300 6)} 4))))))))
 
-(t/deftest t-make-gauge-values
+(t/deftest t-make-singular-values
   (t/testing "All fields of a metric-value are set correct."
-    (let [example-gauge-values (m/make-gauge-values)]
-      (t/is                       (m/gauge-values?    example-gauge-values))
-      (t/is (= m/empty-values-map (m/gauge-values-map example-gauge-values))))))
+    (let [example-singular-values (m/make-singular-values)]
+      (t/is                       (m/singular-values?    example-singular-values))
+      (t/is (= m/empty-values-map (m/singular-values-map example-singular-values))))))
 
-(t/deftest t-update-gauge-values
-  (t/testing "Updating gauge-values works."
+(t/deftest t-set-singular-values
+  (t/testing "Setting new values works"
     (t/is (quickcheck
-           (property [labelss             (spec (util/gen-distinct-metric-labels 3))
-                      [value-x & values]  (spec (gen-metric-values          4))]
-                     (let [example-gauge-values (m/make-gauge-values)]
-                       (t/is (= {} (m/gauge-values-map example-gauge-values)))
-                       (t/is (= {(nth labelss 0) (nth values 0)}
-                                (m/gauge-values-map
-                                 (m/update-gauge-values example-gauge-values (nth labelss 0) (nth values 0)))))
-                       (t/is (= {(nth labelss 0) (nth values 0)
-                                 (nth labelss 1) (nth values 1)}
-                                (m/gauge-values-map
-                                 (m/update-gauge-values
-                                  (m/update-gauge-values example-gauge-values (nth labelss 0) (nth values 0))
-                                  (nth labelss 1) (nth values 1)))))
-                       (t/is (= {(nth labelss 0) (nth values 0)
-                                 (nth labelss 1) (nth values 1)
-                                 (nth labelss 2) (nth values 2)}
-                                (m/gauge-values-map
-                                 (m/update-gauge-values
-                                  (m/update-gauge-values
-                                   (m/update-gauge-values example-gauge-values (nth labelss 0) (nth values 0))
-                                   (nth labelss 1) (nth values 1))
-                                  (nth labelss 2) (nth values  2)))))
-                       (t/is (= {(nth labelss 0) (nth values 0)
-                                 (nth labelss 1) value-x
-                                 (nth labelss 2) (nth values 2)}
-                                (m/gauge-values-map
-                                 (m/update-gauge-values
-                                  (m/update-gauge-values
-                                   (m/update-gauge-values
-                                    (m/update-gauge-values example-gauge-values (nth labelss 0) (nth values 0))
-                                    (nth labelss 1) (nth values 1))
-                                   (nth labelss 2) (nth values  2))
-                                  (nth labelss 1) value-x))))))))))
+           (property [labels (spec ::metric-types/metric-labels)
+                      value (spec ::m/metric-value)]
+                     (= value
+                        (get (m/singular-values-map (m/set-singular-values m/empty-singular-values labels value))
+                             labels))))))
+  (t/testing "Setting existing value works"
+    (t/is (quickcheck
+           (property [singular-values (spec (s/and ::m/singular-values #(not (m/empty-singular-values? %))))
+                      value (spec ::m/metric-value)]
+                     (let [labels (first (keys (m/singular-values-map singular-values)))]
+                       (= value
+                          (get (m/singular-values-map (m/set-singular-values singular-values labels value))
+                               labels))))))))
 
-(t/deftest t-gauge-values->metric-samples
-  (t/testing "Creating metric-samples from gauge-values works."
+(t/deftest t-inc-singular-values
+  (t/testing "Inc empty singular-values works"
+    (t/is (quickcheck
+           (property [labels (spec ::metric-types/metric-labels)
+                      value (spec ::m/metric-value)]
+                     (= value
+                        (get (m/singular-values-map (m/inc-singular-values m/empty-singular-values labels value))
+                             labels))))))
+  (t/testing "Inc filled singular-values works"
+    (t/is (quickcheck
+           (property [singular-values (spec (s/and ::m/singular-values #(not (m/empty-singular-values? %))))
+                      value (spec ::m/metric-value)]
+                     (let [labels (first (keys (m/singular-values-map singular-values)))
+                           current-value (get (m/singular-values-map singular-values) labels)]
+                       (= (m/update-metric-value + current-value value)
+                          (get (m/singular-values-map (m/inc-singular-values singular-values labels value))
+                               labels))))))))
+
+(t/deftest t-singular-values->metric-samples
+  (t/testing "Creating metric-samples from singular-values works."
+    (t/is (quickcheck
+           (property [name (spec ::metric-types/metric-name)
+                      labels (spec ::metric-types/metric-labels)]
+                     (= [] (m/singular-values->metric-samples name m/empty-singular-values labels)))))
+    
     (t/is (quickcheck
            (property [name (spec ::metric-types/metric-name)
                       [label-x & labelss] (spec (util/gen-distinct-metric-labels 4))
                       values              (spec (gen-metric-values          3))]
-                     (let [empty-gauge-values (m/make-gauge-values)
-                           filled-gauge-values (gen-filled-gauge-values empty-gauge-values labelss values)]
-                       ;; empty gauge-values-map
-                       (t/is (= [] (m/gauge-values->metric-samples name empty-gauge-values label-x)))
-                       ;; labels not in gauge-values-map
-                       (t/is (= [] (m/gauge-values->metric-samples name filled-gauge-values label-x)))
-                       (t/is (= [(metric-samples/make-metric-sample name
-                                                                    (nth labelss 0)
-                                                                    (m/metric-value-value               (nth values  0))
-                                                                    (m/metric-value-last-update-time-ms (nth values  0)))]
-                                (m/gauge-values->metric-samples name filled-gauge-values (nth labelss 0))))))))))
+                     (let [filled-singular-values (gen-filled-singular-values m/empty-singular-values labelss values)]
+                       ;; a label not in singular-values-map
+                       (and (= [] (m/singular-values->metric-samples name filled-singular-values label-x))
+                            ;; and a label in the map
+                            (= [(metric-samples/make-metric-sample name
+                                                                   (nth labelss 0)
+                                                                   (m/metric-value-value               (nth values  0))
+                                                                   (m/metric-value-last-update-time-ms (nth values  0)))]
+                               (m/singular-values->metric-samples name filled-singular-values (nth labelss 0))))))))))
 
-(t/deftest t-prune-stale-gauge-values
-  (t/testing "Pruning stale gauge-values works."
+(t/deftest t-prune-stale-singular-values
+  (t/testing "Pruning stale singular-values works."
     (t/is (quickcheck
            (property [labelss (spec (util/gen-distinct-metric-labels 6))]
-                     (let [empty-gauge-values (m/make-gauge-values)
-                           values [(m/make-metric-value 300 10)
+                     (let [values [(m/make-metric-value 300 10)
                                    (m/make-metric-value 300 11)
                                    (m/make-metric-value 300 12)
                                    (m/make-metric-value 300 13)
                                    (m/make-metric-value 300 14)
                                    (m/make-metric-value 300 15)]
-                           filled-gauge-values (gen-filled-gauge-values empty-gauge-values labelss values)]
+                           filled-singular-values (gen-filled-singular-values m/empty-singular-values labelss values)]
                        ;; empty labels-value-map
                        (t/is (= {}
-                                (m/gauge-values-map (m/prune-stale-gauge-values empty-gauge-values 1))))
+                                (m/singular-values-map (m/prune-stale-singular-values m/empty-singular-values 1))))
                        ;; not older
                        (t/is (= {(nth labelss 0) (nth values 0)
                                  (nth labelss 1) (nth values 1)
@@ -236,7 +225,7 @@
                                  (nth labelss 3) (nth values 3)
                                  (nth labelss 4) (nth values 4)
                                  (nth labelss 5) (nth values 5)}
-                                (m/gauge-values-map (m/prune-stale-gauge-values filled-gauge-values 9))))
+                                (m/singular-values-map (m/prune-stale-singular-values filled-singular-values 9))))
                        ;; the same
                        (t/is (= {(nth labelss 0) (nth values 0)
                                  (nth labelss 1) (nth values 1)
@@ -244,134 +233,21 @@
                                  (nth labelss 3) (nth values 3)
                                  (nth labelss 4) (nth values 4)
                                  (nth labelss 5) (nth values 5)}
-                                (m/gauge-values-map (m/prune-stale-gauge-values filled-gauge-values 10))))
+                                (m/singular-values-map (m/prune-stale-singular-values filled-singular-values 10))))
                        ;; mixture
                        (t/is (= {(nth labelss 3) (nth values 3)
                                  (nth labelss 4) (nth values 4)
                                  (nth labelss 5) (nth values 5)}
-                                (m/gauge-values-map (m/prune-stale-gauge-values filled-gauge-values 13))))))))))
+                                (m/singular-values-map (m/prune-stale-singular-values filled-singular-values 13))))))))))
 
-(t/deftest t-empty-gauge-values?
-  (t/testing "Checking whether gauge-values-map is empty works."
+(t/deftest t-empty-singular-values?
+  (t/testing "Checking whether singular-values-map is empty works."
     (t/is (quickcheck
            (property [labelss (spec (util/gen-distinct-metric-labels 6))
                       values  (spec (gen-metric-values          6))]
-                     (let [empty-gauge-values (m/make-gauge-values)
-                           filled-gauge-values (gen-filled-gauge-values empty-gauge-values labelss values)]
-                       (t/is (= true  (m/empty-gauge-values? empty-gauge-values)))
-                       (t/is (= false (m/empty-gauge-values? filled-gauge-values)))))))))
-
-(t/deftest t-make-counter-values
-  (t/testing "All fields of a metric-value are set correct."
-    (let [example-counter-values (m/make-counter-values)]
-      (t/is                       (m/counter-values?    example-counter-values))
-      (t/is (= m/empty-values-map (m/counter-values-map example-counter-values))))))
-
-(t/deftest t-update-counter-values
-  (t/testing "Updating counter-values works."
-    (t/is (quickcheck
-           (property [labelss             (spec (util/gen-distinct-metric-labels 3))
-                      [value-x & values]  (spec (gen-metric-values          4))]
-                     (let [example-counter-values (m/make-counter-values)]
-                       (t/is (= {} (m/counter-values-map example-counter-values)))
-                       (t/is (= {(nth labelss 0) (nth values 0)}
-                                (m/counter-values-map
-                                 (m/update-counter-values example-counter-values (nth labelss 0) (nth values 0)))))
-                       (t/is (= {(nth labelss 0) (nth values 0)
-                                 (nth labelss 1) (nth values 1)}
-                                (m/counter-values-map
-                                 (m/update-counter-values
-                                  (m/update-counter-values example-counter-values (nth labelss 0) (nth values 0))
-                                  (nth labelss 1) (nth values 1)))))
-                       (t/is (= {(nth labelss 0) (nth values 0)
-                                 (nth labelss 1) (nth values 1)
-                                 (nth labelss 2) (nth values 2)}
-                                (m/counter-values-map
-                                 (m/update-counter-values
-                                  (m/update-counter-values
-                                   (m/update-counter-values example-counter-values (nth labelss 0) (nth values 0))
-                                   (nth labelss 1) (nth values 1))
-                                  (nth labelss 2) (nth values  2)))))
-                       (t/is (= {(nth labelss 0) (nth values 0)
-                                 (nth labelss 1) (m/make-metric-value (+ (m/metric-value-value (nth values 1))
-                                                                         (m/metric-value-value value-x))
-                                                                      (m/metric-value-last-update-time-ms value-x))
-                                 (nth labelss 2) (nth values 2)}
-                                (m/counter-values-map
-                                 (m/update-counter-values
-                                  (m/update-counter-values
-                                   (m/update-counter-values
-                                    (m/update-counter-values example-counter-values (nth labelss 0) (nth values 0))
-                                    (nth labelss 1) (nth values 1))
-                                   (nth labelss 2) (nth values  2))
-                                  (nth labelss 1) value-x))))))))))
-
-(t/deftest t-counter-values->metric-samples
-  (t/testing "Creating metric-samples from counter-values works."
-    (t/is (quickcheck
-           (property [name (spec ::metric-types/metric-name)
-                      [label-x & labelss] (spec (util/gen-distinct-metric-labels 4))
-                      values              (spec (gen-metric-values          3))]
-                     (let [empty-counter-values (m/make-counter-values)
-                           filled-counter-values (gen-filled-counter-values empty-counter-values labelss values)]
-                       ;; empty counter-values-map
-                       (t/is (empty?
-                              (m/counter-values->metric-samples name empty-counter-values label-x)))
-                       ;; labels not in counter-values-map
-                       (t/is (empty?
-                              (m/counter-values->metric-samples name filled-counter-values label-x)))
-                       (t/is (= [(metric-samples/make-metric-sample name
-                                                                    (nth labelss 0)
-                                                                    (m/metric-value-value               (nth values  0))
-                                                                    (m/metric-value-last-update-time-ms (nth values  0)))]
-                                (m/counter-values->metric-samples name filled-counter-values (nth labelss 0))))))))))
-
-(t/deftest t-prune-stale-counter-values
-  (t/testing "Pruning stale counter-values works."
-    (t/is (quickcheck
-           (property [labelss (spec (util/gen-distinct-metric-labels 6))]
-                     (let [empty-counter-values (m/make-counter-values)
-                           values [(m/make-metric-value 300 10)
-                                   (m/make-metric-value 300 11)
-                                   (m/make-metric-value 300 12)
-                                   (m/make-metric-value 300 13)
-                                   (m/make-metric-value 300 14)
-                                   (m/make-metric-value 300 15)]
-                           filled-counter-values (gen-filled-counter-values empty-counter-values labelss values)]
-                       ;; empty labels-value-map
-                       (t/is (= {}
-                                (m/counter-values-map (m/prune-stale-counter-values empty-counter-values 1))))
-                       ;; not older
-                       (t/is (= {(nth labelss 0) (nth values 0)
-                                 (nth labelss 1) (nth values 1)
-                                 (nth labelss 2) (nth values 2)
-                                 (nth labelss 3) (nth values 3)
-                                 (nth labelss 4) (nth values 4)
-                                 (nth labelss 5) (nth values 5)}
-                                (m/counter-values-map (m/prune-stale-counter-values filled-counter-values 9))))
-                       ;; the same
-                       (t/is (= {(nth labelss 0) (nth values 0)
-                                 (nth labelss 1) (nth values 1)
-                                 (nth labelss 2) (nth values 2)
-                                 (nth labelss 3) (nth values 3)
-                                 (nth labelss 4) (nth values 4)
-                                 (nth labelss 5) (nth values 5)}
-                                (m/counter-values-map (m/prune-stale-counter-values filled-counter-values 10))))
-                       ;; mixture
-                       (t/is (= {(nth labelss 3) (nth values 3)
-                                 (nth labelss 4) (nth values 4)
-                                 (nth labelss 5) (nth values 5)}
-                                (m/counter-values-map (m/prune-stale-counter-values filled-counter-values 13))))))))))
-
-(t/deftest t-empty-counter-values?
-  (t/testing "Checking whether counter-values-map is empty works."
-    (t/is (quickcheck
-           (property [labelss (spec (util/gen-distinct-metric-labels 6))
-                      values  (spec (gen-metric-values          6))]
-                     (let [empty-counter-values (m/make-counter-values)
-                           filled-counter-values (gen-filled-counter-values empty-counter-values labelss values)]
-                       (t/is (= true  (m/empty-counter-values? empty-counter-values)))
-                       (t/is (= false (m/empty-counter-values? filled-counter-values)))))))))
+                     (let [filled-singular-values (gen-filled-singular-values m/empty-singular-values labelss values)]
+                       (t/is (= true  (m/empty-singular-values? m/empty-singular-values)))
+                       (t/is (= false (m/empty-singular-values? filled-singular-values)))))))))
 
 (t/deftest t-make-histogram-values
   (t/testing "All fields of a metric-value are set correct."
@@ -512,7 +388,7 @@
                                 (m/histogram-values-map (m/prune-stale-histogram-values filled-histogram-values 13))))))))))
 
 (t/deftest t-empty-histogram-values?
-  (t/testing "Checking whether histogram-values-map (sum-map) is empty works."
+  (t/testing "Checking whether histogram-values is empty works."
     (t/is (quickcheck
            (property [threshold (spec ::metric-types/threshold)
                       labelss   (spec (util/gen-distinct-metric-labels 6))
@@ -525,59 +401,43 @@
 
 ;; TODO: testing with more elaborated value-counts? That is, not only where each label has the value 1.
 ;; TODO: testing that threshold for histogram doesn't change.
-(t/deftest t-update-stored-values
+(t/deftest t-update-or-make-stored-values
   (t/testing "Updating stored values works."
     (t/is (quickcheck
            (property [[labels-x & labelss] (spec (util/gen-distinct-metric-labels 7))
-                      [value-x  & values] (spec (gen-metric-values          7))
+                      [value-x  & values]  (spec (gen-metric-values          7))
                       threshold            (spec ::metric-types/threshold)]
-                     (let [filled-gauge-values     (gen-filled-gauge-values     (m/make-gauge-values)               labelss values)
-                           filled-counter-values   (gen-filled-counter-values   (m/make-counter-values)             labelss values)
-                           filled-histogram-values (gen-filled-histogram-values (m/make-histogram-values [threshold]) labelss values)]
-                       ;; Gauge values
+                     (let [filled-singular-values  (gen-filled-singular-values  m/empty-singular-values               labelss values)
+                           filled-histogram-values (gen-filled-histogram-values (m/make-histogram-values [threshold]) labelss values)
+
+                           counter-metric (metric-types/make-counter-metric "foo" "")
+                           gauge-metric (metric-types/make-gauge-metric "foo" "")
+                           histogram-metric (metric-types/make-histogram-metric "foo" "" [threshold])]
+                       
+                       ;; Singular gauge values
                        (t/is (= {labels-x value-x}
-                                (m/gauge-values-map (m/update-stored-values (m/make-gauge-values) labels-x value-x))))
-                       (t/is (= {(nth labelss 0) (nth values 0)
-                                 (nth labelss 1) (nth values 1)
-                                 (nth labelss 2) (nth values 2)
-                                 (nth labelss 3) (nth values 3)
-                                 (nth labelss 4) (nth values 4)
-                                 (nth labelss 5) (nth values 5)
-                                 labels-x        value-x}
-                                (m/gauge-values-map (m/update-stored-values filled-gauge-values labels-x value-x))))
-                       (t/is (= {(nth labelss 0) (nth values 0)
-                                 (nth labelss 1) (nth values 1)
-                                 (nth labelss 2) value-x
-                                 (nth labelss 3) (nth values 3)
-                                 (nth labelss 4) (nth values 4)
-                                 (nth labelss 5) (nth values 5)}
-                                (m/gauge-values-map (m/update-stored-values filled-gauge-values (nth labelss 2) value-x))))
-                       ;; Counter values
+                                (m/singular-values-map (m/update-or-make-stored-values m/empty-singular-values gauge-metric labels-x value-x))))
+                       (t/is (= (assoc (m/singular-values-map filled-singular-values)
+                                       labels-x value-x)
+                                (m/singular-values-map (m/update-or-make-stored-values filled-singular-values gauge-metric labels-x value-x))))
+                       (t/is (= (assoc (m/singular-values-map filled-singular-values)
+                                       (nth labelss 2) value-x)
+                                (m/singular-values-map (m/update-or-make-stored-values filled-singular-values gauge-metric (nth labelss 2) value-x))))
+                       ;; Singular counter values
                        (t/is (= {labels-x value-x}
-                                (m/counter-values-map (m/update-stored-values (m/make-counter-values) labels-x value-x))))
-                       (t/is (= {(nth labelss 0) (nth values 0)
-                                 (nth labelss 1) (nth values 1)
-                                 (nth labelss 2) (nth values 2)
-                                 (nth labelss 3) (nth values 3)
-                                 (nth labelss 4) (nth values 4)
-                                 (nth labelss 5) (nth values 5)
-                                 labels-x        value-x}
-                                (m/counter-values-map (m/update-stored-values filled-counter-values labels-x value-x))))
-                       (t/is (= {(nth labelss 0) (nth values 0)
-                                 (nth labelss 1) (nth values 1)
-                                 (nth labelss 2) (m/make-metric-value (+ (m/metric-value-value (nth values 2))
-                                                                         (m/metric-value-value value-x))
-                                                                      (m/metric-value-last-update-time-ms value-x))
-                                 (nth labelss 3) (nth values 3)
-                                 (nth labelss 4) (nth values 4)
-                                 (nth labelss 5) (nth values 5)}
-                                (m/counter-values-map (m/update-stored-values filled-counter-values (nth labelss 2) value-x))))
+                                (m/singular-values-map (m/update-or-make-stored-values m/empty-singular-values counter-metric labels-x value-x))))
+                       (t/is (= (assoc (m/singular-values-map filled-singular-values)
+                                       labels-x value-x)
+                                (m/singular-values-map (m/update-or-make-stored-values filled-singular-values counter-metric labels-x value-x))))
+                       (t/is (= (m/inc-metric-value (m/singular-values-map filled-singular-values) (nth labelss 2) value-x)
+                                (m/singular-values-map (m/update-or-make-stored-values filled-singular-values counter-metric (nth labelss 2) value-x))))
+                       
                        ;; Histogram values
                        (t/is (= {labels-x (m/make-histogram-metric-values (m/metric-value-last-update-time-ms value-x)
                                                                           (m/metric-value-value value-x)
                                                                           1.0
                                                                           [(if (<= (m/metric-value-value value-x) threshold) 1.0 0.0)])}
-                                (m/histogram-values-map (m/update-stored-values (m/make-histogram-values [threshold]) labels-x value-x))))
+                                (m/histogram-values-map (m/update-or-make-stored-values (m/make-histogram-values [threshold]) histogram-metric labels-x value-x))))
                        (t/is (= {(nth labelss 0) (let [value (nth values 0)]
                                                    (m/make-histogram-metric-values (m/metric-value-last-update-time-ms value)
                                                                                    (m/metric-value-value value)
@@ -612,7 +472,7 @@
                                                                                  (m/metric-value-value value-x)
                                                                                  1.0
                                                                                  [(if (<= (m/metric-value-value value-x) threshold) 1.0 0.0)])}
-                                (m/histogram-values-map (m/update-stored-values filled-histogram-values labels-x value-x))))
+                                (m/histogram-values-map (m/update-or-make-stored-values filled-histogram-values histogram-metric labels-x value-x))))
                        (t/is (= {(nth labelss 0) (let [value (nth values 0)]
                                                    (m/make-histogram-metric-values (m/metric-value-last-update-time-ms value)
                                                                                    (m/metric-value-value value)
@@ -644,10 +504,11 @@
                                                                                    (m/metric-value-value value)
                                                                                    1.0
                                                                                    [(if (<= (m/metric-value-value value) threshold) 1.0 0.0)]))}
-                                (m/histogram-values-map (m/update-stored-values filled-histogram-values (nth labelss 2) value-x))))))))))
+                                (m/histogram-values-map (m/update-or-make-stored-values filled-histogram-values histogram-metric (nth labelss 2) value-x))))))))))
 
-(t/deftest t-make-stored-values
+#_(t/deftest t-make-stored-values
   (t/testing "Making stored values works."
+    ;; TODO: breaks any abstraction; should not be tested like this.
     (t/is (quickcheck
            (property [example-gauge-metric     (spec ::metric-types/gauge-metric)
                       example-counter-metric   (spec ::metric-types/counter-metric)
@@ -658,14 +519,14 @@
                            counter-stored-values   (m/make-stored-values example-counter-metric   labels value)
                            histogram-stored-values (m/make-stored-values example-histogram-metric labels value)]
                        ;; Gauge
-                       (t/is (m/gauge-values? gauge-stored-values))
+                       (t/is (m/singular-values? gauge-stored-values))
                        (t/is (= {labels value}
-                                (m/gauge-values-map gauge-stored-values)))
+                                (m/singular-values-map gauge-stored-values)))
 
                        ;; Counter
-                       (t/is (m/counter-values? counter-stored-values))
+                       (t/is (m/singular-values? counter-stored-values))
                        (t/is (= {labels value}
-                                (m/counter-values-map counter-stored-values)))
+                                (m/singular-values-map counter-stored-values)))
 
                        ;; Histogram
                        (t/is (m/histogram-values? histogram-stored-values))
@@ -686,21 +547,18 @@
     (t/is (quickcheck
            (property [labelss   (spec (util/gen-distinct-metric-labels 6))
                       threshold (spec ::metric-types/threshold)]
-                     (let [empty-gauge-values (m/make-gauge-values)
-                           empty-counter-values (m/make-counter-values)
-                           empty-histogram-values (m/make-histogram-values [threshold])
+                     (let [empty-histogram-values (m/make-histogram-values [threshold])
                            values [(m/make-metric-value 300 10)
                                    (m/make-metric-value 300 11)
                                    (m/make-metric-value 300 12)
                                    (m/make-metric-value 300 13)
                                    (m/make-metric-value 300 14)
                                    (m/make-metric-value 300 15)]
-                           filled-gauge-values (gen-filled-gauge-values empty-gauge-values labelss values)
-                           filled-counter-values (gen-filled-counter-values empty-counter-values labelss values)
+                           filled-singular-values (gen-filled-singular-values m/empty-singular-values labelss values)
                            filled-histogram-values (gen-filled-histogram-values empty-histogram-values labelss values)]
-                       ;; Gauge
+                       ;; Singular values
                        (t/is (= {}
-                                (m/gauge-values-map (m/prune-stale-stored-values empty-gauge-values 1))))
+                                (m/singular-values-map (m/prune-stale-stored-values m/empty-singular-values 1))))
                        ;; not older
                        (t/is (= {(nth labelss 0) (nth values 0)
                                  (nth labelss 1) (nth values 1)
@@ -708,7 +566,7 @@
                                  (nth labelss 3) (nth values 3)
                                  (nth labelss 4) (nth values 4)
                                  (nth labelss 5) (nth values 5)}
-                                (m/gauge-values-map (m/prune-stale-stored-values filled-gauge-values 9))))
+                                (m/singular-values-map (m/prune-stale-stored-values filled-singular-values 9))))
                        ;; the same
                        (t/is (= {(nth labelss 0) (nth values 0)
                                  (nth labelss 1) (nth values 1)
@@ -716,37 +574,12 @@
                                  (nth labelss 3) (nth values 3)
                                  (nth labelss 4) (nth values 4)
                                  (nth labelss 5) (nth values 5)}
-                                (m/gauge-values-map (m/prune-stale-stored-values filled-gauge-values 10))))
+                                (m/singular-values-map (m/prune-stale-stored-values filled-singular-values 10))))
                        ;; mixture
                        (t/is (= {(nth labelss 3) (nth values 3)
                                  (nth labelss 4) (nth values 4)
                                  (nth labelss 5) (nth values 5)}
-                                (m/gauge-values-map (m/prune-stale-stored-values filled-gauge-values 13))))
-                       ;; Counter
-                       ;; empty labels-value-map
-                       (t/is (= {}
-                                (m/counter-values-map (m/prune-stale-stored-values empty-counter-values 1))))
-                       ;; not older
-                       (t/is (= {(nth labelss 0) (nth values 0)
-                                 (nth labelss 1) (nth values 1)
-                                 (nth labelss 2) (nth values 2)
-                                 (nth labelss 3) (nth values 3)
-                                 (nth labelss 4) (nth values 4)
-                                 (nth labelss 5) (nth values 5)}
-                                (m/counter-values-map (m/prune-stale-stored-values filled-counter-values 9))))
-                       ;; the same
-                       (t/is (= {(nth labelss 0) (nth values 0)
-                                 (nth labelss 1) (nth values 1)
-                                 (nth labelss 2) (nth values 2)
-                                 (nth labelss 3) (nth values 3)
-                                 (nth labelss 4) (nth values 4)
-                                 (nth labelss 5) (nth values 5)}
-                                (m/counter-values-map (m/prune-stale-stored-values filled-counter-values 10))))
-                       ;; mixture
-                       (t/is (= {(nth labelss 3) (nth values 3)
-                                 (nth labelss 4) (nth values 4)
-                                 (nth labelss 5) (nth values 5)}
-                                (m/counter-values-map (m/prune-stale-stored-values filled-counter-values 13))))
+                                (m/singular-values-map (m/prune-stale-stored-values filled-singular-values 13))))
 
                        ;; Histogram
                        (let [value-value-0 (if (<= (m/metric-value-value (nth values 0)) threshold) 1.0 0.0)
@@ -841,27 +674,15 @@
                                 (m/histogram-values-map (m/prune-stale-histogram-values filled-histogram-values 13)))))))))))
 
 (t/deftest t-empty-stored-values?
+  ;; Note: it's actually more a test of update-or-make-stored-value
+  ;; FIXME: this does not hold for some seeds (but they are random; which makes it flacky)
   (t/testing "Checking whether a stored-values-map is empty works."
     (t/is (quickcheck
-           (property [threshold (spec ::metric-types/threshold)
-                      labelss   (spec (util/gen-distinct-metric-labels 6))
-                      values    (spec (gen-metric-values          6))]
-                     (let [empty-gauge-values (m/make-gauge-values)
-                           filled-gauge-values (gen-filled-gauge-values empty-gauge-values labelss values)
-                           empty-counter-values (m/make-counter-values)
-                           filled-counter-values (gen-filled-counter-values empty-counter-values labelss values)
-                           empty-histogram-values (m/make-histogram-values [threshold])
-                           filled-histogram-values (gen-filled-histogram-values empty-histogram-values labelss values)]
-
-                       ;; Gauge
-                       (t/is (= true  (m/empty-stored-values? empty-gauge-values)))
-                       (t/is (= false (m/empty-stored-values? filled-gauge-values)))
-                       ;; Counter
-                       (t/is (= true  (m/empty-stored-values? empty-counter-values)))
-                       (t/is (= false (m/empty-stored-values? filled-counter-values)))
-                       ;; Histogram
-                       (t/is (= true  (m/empty-stored-values? empty-histogram-values)))
-                       (t/is (= false (m/empty-stored-values? filled-histogram-values)))))))))
+           (property [stored-values (spec ::m/stored-values)
+                      metric (spec ::metric-types/metric)
+                      labels (spec ::metric-types/metric-labels)
+                      value (spec ::m/metric-value)]
+                     (not (m/empty-stored-values? (m/update-or-make-stored-values stored-values metric labels value))))))))
 
 
 (t/deftest t-stored-value->metric-samples
@@ -874,10 +695,10 @@
                       [label-x & labelss]      (spec (util/gen-distinct-metric-labels 4))
                       values                   (spec (gen-metric-values          3))
                       threshold                (spec ::metric-types/threshold)]
-                     (let [empty-gauge-values      (m/make-gauge-values)
-                           filled-gauge-values     (gen-filled-gauge-values empty-gauge-values labelss values)
-                           empty-counter-values    (m/make-counter-values)
-                           filled-counter-values   (gen-filled-counter-values empty-counter-values labelss values)
+                     (let [empty-gauge-values      m/empty-singular-values
+                           filled-gauge-values     (gen-filled-singular-values empty-gauge-values labelss values)
+                           empty-counter-values    m/empty-singular-values
+                           filled-counter-values   (gen-filled-singular-values empty-counter-values labelss values)
                            empty-histogram-values  (m/make-histogram-values [threshold])
                            filled-histogram-values (gen-filled-histogram-values empty-histogram-values labelss values)
                            basename                (metric-types/histogram-metric-name example-histogram-metric)]
@@ -937,10 +758,10 @@
                       labelss                  (spec (util/gen-distinct-metric-labels 3))
                       values                   (spec (gen-metric-values          3))
                       threshold                (spec ::metric-types/threshold)]
-                     (let [empty-gauge-values      (m/make-gauge-values)
-                           filled-gauge-values     (gen-filled-gauge-values empty-gauge-values labelss values)
-                           empty-counter-values    (m/make-counter-values)
-                           filled-counter-values   (gen-filled-counter-values empty-counter-values labelss values)
+                     (let [empty-gauge-values      m/empty-singular-values
+                           filled-gauge-values     (gen-filled-singular-values empty-gauge-values labelss values)
+                           empty-counter-values    m/empty-singular-values
+                           filled-counter-values   (gen-filled-singular-values empty-counter-values labelss values)
                            empty-histogram-values  (m/make-histogram-values [threshold])
                            filled-histogram-values (gen-filled-histogram-values empty-histogram-values labelss values)
                            basename                (metric-types/histogram-metric-name example-histogram-metric)]
