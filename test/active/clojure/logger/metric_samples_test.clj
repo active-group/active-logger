@@ -84,17 +84,17 @@
                                                    time-ms)
                 (metric-samples/make-metric-sample (str metric-name "_count")
                                                    labels
-                                                   (+ count1 count2)
+                                                   (double (+ count1 count2))
                                                    time-ms)
                 (metric-samples/make-metric-sample (str metric-name "_bucket")
                                                    (assoc labels :le "+Inf")
-                                                   (+ count1 count2)
+                                                   (double (+ count1 count2))
                                                    time-ms)
                 (metric-samples/make-metric-sample (str metric-name "_bucket")
                                                    (assoc labels :le (str threshold1))
-                                                   count1
+                                                   (double count1)
                                                    time-ms)
                 (metric-samples/make-metric-sample (str metric-name "_bucket")
                                                    (assoc labels :le (str threshold2))
-                                                   count2
+                                                   (double count2)
                                                    time-ms)])))))

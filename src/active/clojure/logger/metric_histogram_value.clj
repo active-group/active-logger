@@ -18,7 +18,8 @@
    count-value histogram-metric-values-count-value
    bucket-values histogram-metric-values-bucket-values])
 
-(s/def ::bucket-values (s/coll-of ::metric-types/metric-value))
+(s/def ::metric-value-double (s/and double? #(not (Double/isNaN %))))
+(s/def ::bucket-values (s/coll-of nat-int?))
 
 (s/def ::histogram-metric-values
   (s/spec
@@ -32,18 +33,18 @@
                                                             histogram-metric-values-sum-value
                                                             histogram-metric-values-count-value
                                                             histogram-metric-values-bucket-values))
-                     (s/gen (s/tuple ::metric-types/metric-last-update-time-ms ::metric-types/metric-value ::metric-types/metric-value
+                     (s/gen (s/tuple ::metric-types/metric-last-update-time-ms ::metric-types/metric-double-value nat-int?
                                      ::bucket-values))))))
 
 (s/fdef make-histogram-metric-values
   :args (s/cat :last-update-time-ms ::metric-types/metric-last-update-time-ms
                :sum-value ::metric-types/metric-value
-               :count-value ::metric-types/metric-value
+               :count-value nat-int?
                :bucket-values ::bucket-values)
   :ret ::histogram-metric-values)
 (defn make-histogram-metric-values
   [last-update-time-ms sum-value count-value bucket-values]
-  (really-make-histogram-metric-values last-update-time-ms sum-value count-value bucket-values))
+  (really-make-histogram-metric-values last-update-time-ms (double sum-value) count-value bucket-values))
 
 (s/fdef make-empty-histogram-metric-values
   :args (s/cat :thresholds ::metric-types/thresholds)
@@ -51,12 +52,12 @@
 (defn- make-empty-histogram-metric-values
   "Creates an empty histogram."
   [thresholds]
-  ;; FIXME: I assume the sum should be 0.0 and the count 0 - no vica-versa.
-  (make-histogram-metric-values 0 0.0 0.0 (vec (repeat (count thresholds) 0.0))))
+  ;; TODO: we should not create this value; time=0?
+  (make-histogram-metric-values 0 0.0 0 (vec (repeat (count thresholds) 0))))
 
 (s/fdef update-histogram-values
   :args (s/cat :histogram-metric-values ::histogram-metric-values
-               :thresholds ::metric-types/thresholds
+               :thresholds       ::metric-types/thresholds
                :metric-value     ::metric-types/metric-value
                :last-update-time-ms ::metric-types/metric-last-update-time-ms)
   :ret ::histogram-metric-values)
@@ -67,10 +68,10 @@
   (-> (or histogram-metric-values (make-empty-histogram-metric-values thresholds))
       (histogram-metric-values-last-update-time-ms last-update-time-ms)
       (lens/overhaul histogram-metric-values-sum-value + value)
-      (lens/overhaul histogram-metric-values-count-value + 1.0) ;; counts are doubles?
+      (lens/overhaul histogram-metric-values-count-value inc)
       (lens/overhaul histogram-metric-values-bucket-values
                      #(mapv (fn [threshold bucket-value]
                               (if (<= value threshold)
-                                (+ bucket-value 1.0)
+                                (inc bucket-value)
                                 bucket-value))
                             thresholds %))))

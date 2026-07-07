@@ -14,6 +14,7 @@
 (s/def ::metric-type #{:gauge :counter :histogram})
 
 (s/def ::metric-labels (s/map-of keyword? any?))
+;; Note: input can by any number; storage is usually as a double.
 (s/def ::metric-value  (s/and number? #(not (Double/isNaN %))))
 (s/def ::metric-last-update-time-ms nat-int?)
 

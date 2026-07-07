@@ -99,16 +99,16 @@
                           last-update-time-ms)
       (make-metric-sample (str basename "_count")
                           labels
-                          count
+                          (double count)
                           last-update-time-ms)
       (make-metric-sample (str basename "_bucket")
                           (assoc labels :le "+Inf")
-                          count
+                          (double count)
                           last-update-time-ms)]
      (mapcat (fn [threshold bucket]
                [(make-metric-sample (str basename "_bucket")
                                     (assoc labels :le (str threshold))
-                                    bucket
+                                    (double bucket)
                                     last-update-time-ms)])
              thresholds buckets))))
 

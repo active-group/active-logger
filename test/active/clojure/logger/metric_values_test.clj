@@ -67,7 +67,7 @@
           value2 11.0
           time-ms 1]
       ;; TODO: why is the count and the bucket counts doubles? I don't think they should be.
-      (t/is (= (histogram/make-histogram-metric-values (inc time-ms) (+ value1 value2) 2.0 [0.0 2.0])
+      (t/is (= (histogram/make-histogram-metric-values (inc time-ms) (+ value1 value2) 2 [0 2])
                (m/get-stored-values-snapshot (-> nil
                                                  (m/update-or-make-stored-values metric labels value1 time-ms)
                                                  (m/update-or-make-stored-values metric labels value2 (inc time-ms)))
