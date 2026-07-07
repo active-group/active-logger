@@ -61,6 +61,16 @@
                   ref-v)
               (ref (apply f nil args))))))
 
+(defn- commute-values [values-map labels f & args]
+  ;; use this if the order of updates does not (really) matter
+  (update values-map
+          labels
+          (fn [ref-v]
+            (if ref-v
+              (do (apply commute ref-v f args)
+                  ref-v)
+              (ref (apply f nil args))))))
+
 (defn- set-values [values-map labels v]
   (update values-map
           labels
