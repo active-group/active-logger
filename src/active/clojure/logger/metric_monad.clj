@@ -1,5 +1,5 @@
 (ns active.clojure.logger.metric-monad
-  "Monadic commands to access the metric machinery."
+  "Monadic commands to access the global metric store."
   (:require [active.clojure.record :refer [define-record-type]]
             [active.clojure.monad :as monad]
 
@@ -9,8 +9,6 @@
             [active.clojure.logger.time :as time]
 
             [clojure.spec.alpha :as s]))
-
-;; COMMANDS on raw metrics
 
 (define-record-type ^{:doc "Monadic command for recording a metric."}
   RecordMetric
@@ -121,9 +119,7 @@
   :args (s/cat :metric ::metric-types/metric
                :labels ::metric-types/metric-labels
                :value  ::metric-types/metric-value
-               :optional (s/? (s/cat :last-update (s/nilable ::metric-types/metric-last-update-time-ms))))
-  ;; TODO: Return is wrong; actually monad coll-of ::metric-sample
-  :ret  (s/coll-of ::metric-samples/metric-sample))
+               :optional (s/? (s/cat :last-update (s/nilable ::metric-types/metric-last-update-time-ms)))))
 (defn record-and-get
   [metric labels value & [last-update]]
   (monad/monadic

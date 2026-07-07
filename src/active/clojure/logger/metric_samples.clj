@@ -3,6 +3,9 @@
   (:require [active.clojure.record :refer [define-record-type]]
 
             [active.clojure.logger.metric-types :as metric-types]
+            [active.clojure.logger.metric-values :as metric-values]
+            [active.clojure.logger.metric-singular-value :as singular]
+            [active.clojure.logger.metric-histogram-value :as histogram]
             [clojure.spec.alpha :as s]
             [clojure.spec.gen.alpha :as sgen]))
 
@@ -64,3 +67,73 @@
 (defn make-metric-sample-set
   [name type help samples]
   (really-make-metric-sample-set name type help samples))
+
+;; ------------------------------------------------------------
+
+(s/fdef singular->metric-samples
+  :args (s/cat :metric-value ::singular/metric-value
+               :name         ::metric-types/metric-name
+               :labels       ::metric-types/metric-labels)
+  :ret (s/coll-of ::metric-sample))
+(defn- singular->metric-samples [metric-value name labels]
+  [(make-metric-sample name
+                       labels
+                       (singular/metric-value-value               metric-value)
+                       (singular/metric-value-last-update-time-ms metric-value))])
+
+(s/fdef histogram->metric-samples
+  :args (s/cat :histogram-metric-values ::histogram/histogram-metric-values
+               :basename                ::metric-types/metric-name
+               :thresholds              ::metric-types/thresholds
+               :labels                  ::metric-types/metric-labels)
+  :ret (s/coll-of ::metric-sample))
+(defn- histogram->metric-samples [histogram-metric-values basename thresholds labels]
+  (let [last-update-time-ms (histogram/histogram-metric-values-last-update-time-ms histogram-metric-values)
+        sum (histogram/histogram-metric-values-sum-value histogram-metric-values)
+        count (histogram/histogram-metric-values-count-value histogram-metric-values)
+        buckets (histogram/histogram-metric-values-bucket-values histogram-metric-values)]
+    (concat
+     [(make-metric-sample (str basename "_sum")
+                          labels
+                          sum
+                          last-update-time-ms)
+      (make-metric-sample (str basename "_count")
+                          labels
+                          count
+                          last-update-time-ms)
+      (make-metric-sample (str basename "_bucket")
+                          (assoc labels :le "+Inf")
+                          count
+                          last-update-time-ms)]
+     (mapcat (fn [threshold bucket]
+               [(make-metric-sample (str basename "_bucket")
+                                    (assoc labels :le (str threshold))
+                                    bucket
+                                    last-update-time-ms)])
+             thresholds buckets))))
+
+;; -----------------------------------------------------------------
+
+(s/fdef snapshot->metric-samples
+  :args (s/cat :metric        ::metric-types/metric
+               :snapshot      ::metric-values/snapshot
+               :metric-labels ::metric-types/metric-labels)
+  :ret (s/coll-of ::metric-sample))
+(defn snapshot->metric-samples
+  [metric snapshot metric-labels]
+  (cond
+    (singular/metric-value? snapshot)
+    (singular->metric-samples snapshot (metric-types/metric-name metric) metric-labels)
+    (histogram/histogram-metric-values? snapshot)
+    (histogram->metric-samples snapshot (metric-types/metric-name metric) (metric-types/histogram-metric-thresholds metric) metric-labels)))
+
+(s/fdef stored-value-snapshots->all-metric-samples
+  :args (s/cat :metric        ::metric-types/metric
+               :all-snapshots (s/map-of ::metric-types/metric-labels ::metric-values/snapshot))
+  :ret (s/coll-of ::metric-sample))
+(defn all-snapshots->all-metric-samples
+  [metric all-snapshots]
+  (mapcat (fn [[labels value]]
+            (snapshot->metric-samples metric value labels))
+          all-snapshots))
+

@@ -1,6 +1,8 @@
 (ns active.clojure.logger.metric-samples-test
   (:require [active.clojure.logger.metric-samples :as metric-samples]
             [active.clojure.logger.metric-types :as metric-types]
+            [active.clojure.logger.metric-histogram-value :as histogram]
+            [active.clojure.logger.metric-singular-value :as singular]
             
             [clojure.test :as t]
 
@@ -54,3 +56,45 @@
                        (t/is (= help        (metric-samples/metric-sample-set-help        example-metric-sample-set)))
                        (t/is (= samples     (metric-samples/metric-sample-set-samples     example-metric-sample-set)))))))))
 
+
+(t/deftest t-all-snapshots->all-metric-samples
+  (t/testing "Getting all metric-samples from stored values works for all kind of metrics."
+    (let [metric-name "foo"
+          gauge-metric (metric-types/make-gauge-metric metric-name "bar")
+          counter-metric (metric-types/make-counter-metric metric-name "bar")
+          threshold1 0.0
+          threshold2 100.0
+          histogram-metric (metric-types/make-histogram-metric metric-name "bar" [threshold1 threshold2])
+          labels {:a "baz"}
+          value1 42.0
+          value2 20.0
+          time-ms 11
+          count1 5
+          count2 3]
+      
+      (t/is (= (metric-samples/all-snapshots->all-metric-samples gauge-metric {labels (singular/make-metric-value value1 time-ms)})
+               [(metric-samples/make-metric-sample metric-name labels value1 time-ms)]))
+      (t/is (= (metric-samples/all-snapshots->all-metric-samples counter-metric {labels (singular/make-metric-value value2 time-ms)})
+               [(metric-samples/make-metric-sample metric-name labels value2 time-ms)]))
+      (t/is (= (metric-samples/all-snapshots->all-metric-samples histogram-metric
+                                                                 {labels (histogram/make-histogram-metric-values time-ms value1 (+ count1 count2) [count1 count2])})
+               [(metric-samples/make-metric-sample (str metric-name "_sum")
+                                                   labels
+                                                   value1
+                                                   time-ms)
+                (metric-samples/make-metric-sample (str metric-name "_count")
+                                                   labels
+                                                   (+ count1 count2)
+                                                   time-ms)
+                (metric-samples/make-metric-sample (str metric-name "_bucket")
+                                                   (assoc labels :le "+Inf")
+                                                   (+ count1 count2)
+                                                   time-ms)
+                (metric-samples/make-metric-sample (str metric-name "_bucket")
+                                                   (assoc labels :le (str threshold1))
+                                                   count1
+                                                   time-ms)
+                (metric-samples/make-metric-sample (str metric-name "_bucket")
+                                                   (assoc labels :le (str threshold2))
+                                                   count2
+                                                   time-ms)])))))

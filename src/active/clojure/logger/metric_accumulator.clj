@@ -8,31 +8,22 @@
 
             [clojure.spec.alpha :as s]))
 
-;; TODO: Can we improve the type of the metric-store?
 (s/def ::metric-store (partial instance? clojure.lang.Atom))
 
 (s/fdef fresh-metric-store
   :ret ::metric-store)
 (defn ^:no-doc fresh-metric-store
   []
-  (atom (metric-store/fresh-metric-store-map)))
+  (atom (metric-store/fresh-metric-store)))
 
 (defonce metric-store (fresh-metric-store))
-
-(s/fdef set-global-metric-store!
-  :args (s/cat :fresh-metric-store-map ::metric-store/metric-store-map)
-  :ret nil)
-(defn ^:deprecated set-global-metric-store!
-  [fresh-metric-store-map]
-  (reset! metric-store fresh-metric-store-map)
-  nil)
 
 (s/fdef reset-global-metric-store!
   :args (s/cat)
   :ret nil)
 (defn reset-global-metric-store!
   []
-  (reset! metric-store (metric-store/fresh-metric-store-map))
+  (reset! metric-store (metric-store/fresh-metric-store))
   nil)
 
 ;; -----------------------------------------------------------------
@@ -67,7 +58,9 @@
   ([metric labels]
    (get-metric-samples! metric-store metric labels))
   ([a-metric-store metric labels]
-   (metric-store/get-metric-samples @a-metric-store metric labels)))
+   (if-let [snapshot (metric-store/get-metric-snapshot @a-metric-store metric labels)]
+     (metric-samples/snapshot->metric-samples metric snapshot labels)
+     [])))
 
 (s/fdef get-all-metric-sample-sets!
   :args (s/cat :optional (s/? (s/cat :a-metric-store ::metric-store)))
@@ -78,7 +71,13 @@
   ([]
    (get-all-metric-sample-sets! metric-store))
   ([a-metric-store]
-   (metric-store/get-all-metric-sample-sets @a-metric-store)))
+   (map (fn [[metric snapshots]]
+          (metric-samples/make-metric-sample-set
+           (metric-types/metric-name metric)
+           (metric-types/metric-type metric)
+           (metric-types/metric-help metric)
+           (metric-samples/all-snapshots->all-metric-samples metric snapshots)))
+        (metric-store/get-all-snapshots @a-metric-store))))
 
 (s/fdef prune-stale-metrics!
   :args (s/cat :optional (s/? (s/cat :a-metric-store ::metric-store))
@@ -122,6 +121,7 @@
                :optional-2 (s/? (s/cat :last-update (s/nilable ::metric-types/metric-last-update-time-ms))))
   :ret  (s/coll-of ::metric-samples/metric-sample))
 (defn record-and-get!
+  "Records a metric and returns a recent sample, which may or not reflect the metric just recorded."
   ([metric labels value]
    (record-and-get! metric-store metric labels value nil))
   ([metric labels value last-update]
