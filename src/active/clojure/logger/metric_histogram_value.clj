@@ -46,15 +46,6 @@
   [last-update-time-ms sum-value count-value bucket-values]
   (really-make-histogram-metric-values last-update-time-ms (double sum-value) count-value bucket-values))
 
-(s/fdef make-empty-histogram-metric-values
-  :args (s/cat :thresholds ::metric-types/thresholds)
-  :ret ::histogram-metric-values)
-(defn- make-empty-histogram-metric-values
-  "Creates an empty histogram."
-  [thresholds]
-  ;; TODO: we should not create this value; time=0?
-  (make-histogram-metric-values 0 0.0 0 (vec (repeat (count thresholds) 0))))
-
 (s/fdef update-histogram-values
   :args (s/cat :histogram-metric-values ::histogram-metric-values
                :thresholds       ::metric-types/thresholds
@@ -64,14 +55,22 @@
 (defn update-histogram-metric-values
   "Adds a value to a given histogram."
   [histogram-metric-values thresholds value last-update-time-ms]
-  ;; OPT: construct a new record only once.
-  (-> (or histogram-metric-values (make-empty-histogram-metric-values thresholds))
-      (histogram-metric-values-last-update-time-ms last-update-time-ms)
-      (lens/overhaul histogram-metric-values-sum-value + value)
-      (lens/overhaul histogram-metric-values-count-value inc)
-      (lens/overhaul histogram-metric-values-bucket-values
-                     #(mapv (fn [threshold bucket-value]
-                              (if (<= value threshold)
-                                (inc bucket-value)
-                                bucket-value))
-                            thresholds %))))
+  (if histogram-metric-values
+    (make-histogram-metric-values last-update-time-ms
+                                  (+ (histogram-metric-values-sum-value histogram-metric-values)
+                                     value)
+                                  (inc (histogram-metric-values-count-value histogram-metric-values))
+                                  (mapv (fn [threshold bucket-value]
+                                          (if (<= value threshold)
+                                            (inc bucket-value)
+                                            bucket-value))
+                                        thresholds
+                                        (histogram-metric-values-bucket-values histogram-metric-values)))
+    (make-histogram-metric-values last-update-time-ms
+                                  value
+                                  1
+                                  (mapv (fn [threshold]
+                                          (if (<= value threshold)
+                                            1
+                                            0))
+                                        thresholds))))
