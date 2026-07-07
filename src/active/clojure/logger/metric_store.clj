@@ -41,6 +41,7 @@
                :time-ms      ::metric-types/metric-last-update-time-ms)
   :ret ::metric-store)
 (defn record-metric
+  "Record a new value for the given metric. Must be called inside a transaction."
   [metric-store metric labels value time-ms]
   (lens/overhaul metric-store metric-store-map
                  #(update % metric metric-values/update-or-make-stored-values metric labels value time-ms)))

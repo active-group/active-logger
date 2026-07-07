@@ -8,13 +8,13 @@
 
             [clojure.spec.alpha :as s]))
 
-(s/def ::metric-store (partial instance? clojure.lang.Atom))
+(s/def ::metric-store (partial instance? clojure.lang.Ref))
 
 (s/fdef fresh-metric-store
   :ret ::metric-store)
 (defn ^:no-doc fresh-metric-store
   []
-  (atom (metric-store/fresh-metric-store)))
+  (ref (metric-store/fresh-metric-store)))
 
 (defonce metric-store (fresh-metric-store))
 
@@ -23,7 +23,7 @@
   :ret nil)
 (defn reset-global-metric-store!
   []
-  (reset! metric-store (metric-store/fresh-metric-store))
+  (dosync (ref-set metric-store (metric-store/fresh-metric-store)))
   nil)
 
 ;; -----------------------------------------------------------------
@@ -42,7 +42,7 @@
   ([metric labels value-value last-update]
    (record-metric! metric-store metric labels value-value last-update))
   ([a-metric-store metric labels value-value last-update]
-   (swap! a-metric-store metric-store/record-metric metric labels value-value (or last-update (time/get-milli-time!)))
+   (dosync (alter a-metric-store metric-store/record-metric metric labels value-value (or last-update (time/get-milli-time!))))
    nil))
 
 (declare metric-name)
@@ -90,9 +90,9 @@
   ([time-ms]
    (prune-stale-metrics! metric-store time-ms))
   ([a-metric-store time-ms]
-   (swap! a-metric-store
-          (fn [old-metric-store]
-            (metric-store/prune-stale-metrics old-metric-store time-ms)))
+   (dosync (alter a-metric-store
+                  (fn [old-metric-store]
+                    (metric-store/prune-stale-metrics old-metric-store time-ms))))
    nil))
 
 (defn start-prune-stale-metrics-thread!

@@ -21,22 +21,22 @@
 (t/deftest t-update-or-make-stored-values
   ;; Note: might be unstable for histogram metrics - maybe because of certain combinartions of thresholds and values.
   (t/testing "Making a fresh stored-values stores something for the given labels, but not others."
-      (t/is (quickcheck
-             (property [metric (spec ::metric-types/metric)
-                        labels (spec ::metric-types/metric-labels)
-                        value (spec ::metric-types/metric-value)
-                        time-ms (spec ::metric-types/metric-last-update-time-ms)]
-                       (let [stored-values (m/update-or-make-stored-values nil metric labels value time-ms)]
-                         (and (not (empty? (m/get-stored-values-snapshot stored-values labels)))
-                              (contains? (m/get-all-stored-values-snapshot stored-values) labels))))))
-      (t/is (quickcheck
-             (property [metric (spec ::metric-types/metric)
-                        labelss (spec (s/coll-of ::metric-types/metric-labels :distinct true :count 2))
-                        value (spec ::metric-types/metric-value)
-                        time-ms (spec ::metric-types/metric-last-update-time-ms)]
-                       (let [[labels other-labels] labelss
-                             stored-values (m/update-or-make-stored-values nil metric labels value time-ms)]
-                         (empty? (m/get-stored-values-snapshot stored-values other-labels)))))))
+    (t/is (quickcheck
+           (property [metric (spec ::metric-types/metric)
+                      labels (spec ::metric-types/metric-labels)
+                      value (spec ::metric-types/metric-value)
+                      time-ms (spec ::metric-types/metric-last-update-time-ms)]
+                     (let [stored-values (dosync (m/update-or-make-stored-values nil metric labels value time-ms))]
+                       (and (not (empty? (m/get-stored-values-snapshot stored-values labels)))
+                            (contains? (m/get-all-stored-values-snapshot stored-values) labels))))))
+    (t/is (quickcheck
+           (property [metric (spec ::metric-types/metric)
+                      labelss (spec (s/coll-of ::metric-types/metric-labels :distinct true :count 2))
+                      value (spec ::metric-types/metric-value)
+                      time-ms (spec ::metric-types/metric-last-update-time-ms)]
+                     (let [[labels other-labels] labelss
+                           stored-values (dosync (m/update-or-make-stored-values nil metric labels value time-ms))]
+                       (empty? (m/get-stored-values-snapshot stored-values other-labels)))))))
   
   (t/testing "update-or-make-stored-values stores correct counter values"
     (let [metric (metric-types/make-counter-metric "foo" "bar")
@@ -45,9 +45,9 @@
           value2  11.0
           time-ms 1]
       (t/is (= (singular/make-metric-value (+ value1 value2) (inc time-ms))
-               (m/get-stored-values-snapshot (-> nil
-                                                 (m/update-or-make-stored-values metric labels value1 time-ms)
-                                                 (m/update-or-make-stored-values metric labels value2 (inc time-ms)))
+               (m/get-stored-values-snapshot (dosync (-> nil
+                                                         (m/update-or-make-stored-values metric labels value1 time-ms)
+                                                         (m/update-or-make-stored-values metric labels value2 (inc time-ms))))
                                              labels)))))
   (t/testing "update-or-make-stored-values stores correct gauge values"
     (let [metric (metric-types/make-gauge-metric "foo" "bar")
@@ -55,9 +55,9 @@
           value  42.0
           time-ms 1]
       (t/is (= (singular/make-metric-value value (inc time-ms))
-               (m/get-stored-values-snapshot (-> nil
-                                                 (m/update-or-make-stored-values metric labels -1.0 time-ms)
-                                                 (m/update-or-make-stored-values metric labels value (inc time-ms)))
+               (m/get-stored-values-snapshot (dosync (-> nil
+                                                         (m/update-or-make-stored-values metric labels -1.0 time-ms)
+                                                         (m/update-or-make-stored-values metric labels value (inc time-ms))))
                                              labels)))))
   (t/testing "update-or-make-stored-values stores correct histogram values"
     ;; Note: more thorough tests in metric-histogram-values-test
@@ -68,9 +68,9 @@
           time-ms 1]
       ;; TODO: why is the count and the bucket counts doubles? I don't think they should be.
       (t/is (= (histogram/make-histogram-metric-values (inc time-ms) (+ value1 value2) 2 [0 2])
-               (m/get-stored-values-snapshot (-> nil
-                                                 (m/update-or-make-stored-values metric labels value1 time-ms)
-                                                 (m/update-or-make-stored-values metric labels value2 (inc time-ms)))
+               (m/get-stored-values-snapshot (dosync (-> nil
+                                                         (m/update-or-make-stored-values metric labels value1 time-ms)
+                                                         (m/update-or-make-stored-values metric labels value2 (inc time-ms))))
                                              labels))))))
 
 (t/deftest t-prune-stale-stored-values
@@ -81,9 +81,9 @@
                          labels2 {:bar "baz"}
                          
                          value 42.0
-                         stored-values (-> nil
-                                           (m/update-or-make-stored-values metric labels1 value time-ms)
-                                           (m/update-or-make-stored-values metric labels2 value (inc time-ms)))
+                         stored-values (dosync (-> nil
+                                                   (m/update-or-make-stored-values metric labels1 value time-ms)
+                                                   (m/update-or-make-stored-values metric labels2 value (inc time-ms))))
                          pruned (-> nil
                                     (m/update-or-make-stored-values metric labels2 value (inc time-ms)))]
 

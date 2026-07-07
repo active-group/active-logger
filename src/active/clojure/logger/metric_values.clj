@@ -17,14 +17,8 @@
 
 ;; Maps from labels to value hold the current state of the metric
 
-
-;; (s/def ::metric-value-value (s/and number? #(not (Double/isNaN %))))
-;; (s/def ::metric-value-value-double (s/and double? #(not (Double/isNaN %))))
-
-;; (s/def ::metric-value-last-update-time-ms nat-int?)
-
 (define-record-type ^:private StoredValues
-  (make-stored-values map) ;; a map from labels to singular or histogram values
+  (make-stored-values map) ;; a map from labels to a ref of singular or histogram values
   stored-values?
   [map stored-values-map])
 
@@ -58,6 +52,24 @@
 
 ;; -----------------------------------------------------------------
 
+(defn- update-values [values-map labels f & args]
+  (update values-map
+          labels
+          (fn [ref-v]
+            (if ref-v
+              (do (apply alter ref-v f args)
+                  ref-v)
+              (ref (apply f nil args))))))
+
+(defn- set-values [values-map labels v]
+  (update values-map
+          labels
+          (fn [ref-v]
+            (if ref-v
+              (do (ref-set ref-v v)
+                  ref-v)
+              (ref v)))))
+
 (s/fdef inc-singular-values
   :args (s/cat :stored-values   ::stored-values
                :metric-labels   ::metric-types/metric-labels
@@ -65,19 +77,19 @@
                :last-update-time-ms ::metric-types/metric-last-update-time-ms)
   :ret ::stored-values)
 (defn- inc-singular-values
-  "Incrementsa `SingularMetric`."
+  "Increments the value for a counter metric. Must be called inside a transaction."
   [stored-values metric-labels metric-value last-update-time-ms]
   (lens/overhaul stored-values
                  stored-values-map
                  (fn [labels-values-map]
-                   (update labels-values-map
-                           metric-labels
-                           (fn [v]
-                             (singular/inc-metric-value (if (singular/metric-value? v)
-                                                          v
-                                                          ;; metric changed type? cannot happen via toplevel though. Or new labels.
-                                                          nil)
-                                                        metric-value last-update-time-ms))))))
+                   (update-values labels-values-map
+                                  metric-labels
+                                  (fn [v]
+                                    (singular/inc-metric-value (if (singular/metric-value? v)
+                                                                 v
+                                                                 ;; new labels, or metric changed type? cannot happen via toplevel though.
+                                                                 nil)
+                                                               metric-value last-update-time-ms))))))
 
 (s/fdef set-singular-values
   :args (s/cat :stored-values   ::stored-values
@@ -86,14 +98,14 @@
                :last-update-time-ms ::metric-types/metric-last-update-time-ms)
   :ret ::stored-values)
 (defn- set-singular-values
-  "Sets a `SingularMetric`."
+  "Sets the value of a gauge of set-counter? counter metric. Must be called inside a transaction."
   [stored-values metric-labels metric-value last-update-time-ms]
   (lens/overhaul stored-values
                  stored-values-map
                  (fn [labels-values-map]
-                   (assoc labels-values-map
-                          metric-labels
-                          (singular/make-metric-value metric-value last-update-time-ms)))))
+                   (set-values labels-values-map
+                               metric-labels
+                               (singular/make-metric-value metric-value last-update-time-ms)))))
 
 (s/fdef update-histogram-values
   :args (s/cat :stored-values    ::stored-values
@@ -103,19 +115,19 @@
                :time-ms          ::metric-types/metric-last-update-time-ms)
   :ret ::stored-values)
 (defn- update-histogram-values
-  "Updates a `HistogramMetric`."
+  "Updates the value of a histogram metric. Must be called inside a transaction."
   [stored-values thresholds metric-labels metric-value time-ms]
   (lens/overhaul stored-values
                  stored-values-map
                  (fn [labels-values-map]
-                   (update labels-values-map metric-labels
-                           (fn [v]
-                             (histogram/update-histogram-metric-values
-                              (if (histogram/histogram-metric-values? v)
-                                v
-                                ;; new labels, or change of metric type
-                                nil)
-                              thresholds metric-value time-ms))))))
+                   (update-values labels-values-map metric-labels
+                                  (fn [v]
+                                    (histogram/update-histogram-metric-values
+                                     (if (histogram/histogram-metric-values? v)
+                                       v
+                                       ;; new labels, or change of metric type
+                                       nil)
+                                     thresholds metric-value time-ms))))))
 
 ;; -----------------------------------------------------------------
 
@@ -143,6 +155,7 @@
                :update-time-ms ::metric-types/metric-last-update-time-ms)
   :ret ::stored-values)
 (defn update-or-make-stored-values
+  "Updates or creates a value suitable for the given metric. Must be called inside a transaction."
   [maybe-stored-values metric labels value last-update-time-ms]
   ;; Note: updated thresholds in a histogram metric are ignored.
   (update-stored-values (or maybe-stored-values
@@ -154,12 +167,14 @@
                :time-ms       ::metric-types/metric-last-update-time-ms)
   :ret ::stored-values)
 (defn prune-stale-stored-values
+  "Removes values no updated in since the given time."
   [stored-values time-ms]
   (lens/overhaul stored-values
                  stored-values-map
                  (fn [m]
+                   ;; OPT: transient?
                    (reduce-kv (fn [res labels values]
-                                (if (stale-values? values time-ms)
+                                (if (stale-values? @values time-ms)
                                   res
                                   (assoc res labels values)))
                               {}
@@ -180,18 +195,17 @@
                :labels ::metric-types/metric-labels)
   :ret (s/or :some ::snapshot :none nil?))
 (defn get-stored-values-snapshot
-  "Returns a singular or histogram value for the given labels, or nil.
-
-  For tests only."
+  "Returns a singular or histogram value for the given labels, or nil."
   [stored-values labels]
-  (get (stored-values-map stored-values) labels))
+  (when-let [a (get (stored-values-map stored-values) labels)]
+    @a))
 
 (s/fdef get-all-stored-values-snapshot
   :args (s/cat :stored-values ::stored-values)
   :ret (s/map-of ::metric-types/metric-labels ::snapshot))
 (defn get-all-stored-values-snapshot
-  "Returns a map from labels to snapshots of the values (singular or histogram).
-
-  For tests only."
+  "Returns a map from labels to snapshots of the values (singular or histogram)."
   [stored-values]
-  (stored-values-map stored-values))
+  (into {} (map (fn [[labels values]]
+                  [labels @values])
+                (stored-values-map stored-values))))
