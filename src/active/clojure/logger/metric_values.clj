@@ -140,27 +140,24 @@
 
 ;; -----------------------------------------------------------------
 
-(define-record-type ^{:doc "Stored Histogram values, i.e. a threshold and a map from labels to HistogramMetricValues."}
+(define-record-type ^{:private true :doc "Stored Histogram values, i.e. a threshold and a map from labels to HistogramMetricValues."}
   HistogramValues
   ^:private really-make-histogram-values
   histogram-values?
-  [thresholds histogram-values-thresholds
-   map histogram-values-map])
+  [map histogram-values-map])
 
 (s/def ::histogram-values
   (s/spec
    (partial instance? HistogramValues)
    :gen (fn []
-          (sgen/fmap (fn [[histogram-values-thresholds histogram-values-map]]
-                       (really-make-histogram-values histogram-values-thresholds histogram-values-map))
-                     (s/gen (s/tuple ::metric-types/thresholds ::labels-histogram-metric-value-map))))))
+          (sgen/fmap really-make-histogram-values
+                     (s/gen ::labels-histogram-metric-value-map)))))
 
 (s/fdef make-histogram-values
-  :args (s/cat :thresholds ::metric-types/thresholds)
   :ret ::histogram-values)
 (defn- make-histogram-values
-  [thresholds]
-  (really-make-histogram-values thresholds empty-values-map))
+  []
+  (really-make-histogram-values empty-values-map))
 
 (s/fdef update-histogram-values-map
   :args (s/cat :histogram-values-map ::labels-histogram-metric-value-map
@@ -176,17 +173,17 @@
 
 (s/fdef update-histogram-values
   :args (s/cat :histogram-values ::histogram-values
+               :thresholds       ::metric-types/thresholds
                :metric-labels    ::metric-types/metric-labels
                :metric-value     ::metric-types/metric-value
                :time-ms          ::metric-types/metric-last-update-time-ms)
   :ret ::histogram-values)
 (defn- update-histogram-values
   "Updates a `HistogramMetric`."
-  [histogram-values metric-labels metric-value time-ms]
-  (let [thresholds          (histogram-values-thresholds histogram-values)]
-    (-> histogram-values
-        (lens/overhaul histogram-values-map
-                       update-histogram-values-map thresholds metric-labels metric-value time-ms))))
+  [histogram-values thresholds metric-labels metric-value time-ms]
+  (-> histogram-values
+      (lens/overhaul histogram-values-map
+                     update-histogram-values-map thresholds metric-labels metric-value time-ms)))
 
 (s/fdef prune-stale-histogram-metric-value
   :args (s/cat :histogram-values-map ::labels-histogram-metric-value-map
@@ -236,7 +233,7 @@
     (metric-types/counter-metric?   metric) (if (metric-types/counter-metric-set-value? metric)
                                               (set-singular-values stored-values labels value last-update-time-ms)
                                               (inc-singular-values stored-values labels value last-update-time-ms))
-    (metric-types/histogram-metric? metric) (update-histogram-values stored-values labels value last-update-time-ms)))
+    (metric-types/histogram-metric? metric) (update-histogram-values stored-values (metric-types/histogram-metric-thresholds metric) labels value last-update-time-ms)))
 
 (s/fdef make-empty-stored-values
   :args (s/cat :metric        ::metric-types/metric)
@@ -246,7 +243,7 @@
   (cond
     (metric-types/gauge-metric?     metric) empty-singular-values
     (metric-types/counter-metric?   metric) empty-singular-values
-    (metric-types/histogram-metric? metric) (make-histogram-values (metric-types/histogram-metric-thresholds metric))))
+    (metric-types/histogram-metric? metric) (make-histogram-values)))
 
 (s/fdef update-or-make-stored-values
   :args (s/cat :maybe-stored-values (s/nilable ::stored-values)
