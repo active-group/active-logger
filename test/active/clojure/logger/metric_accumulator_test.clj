@@ -7,6 +7,7 @@
             [active.clojure.record :as r]
             
             [clojure.test :as t]
+            [clojure.math :as math]
 
             [clojure.spec.alpha :as s]
             [clojure.spec.gen.alpha :as sgen]
@@ -83,6 +84,49 @@
 
                        (= (m/get-all-metric-sample-sets! store)
                           (m/get-all-metric-sample-sets! other))))))))
+
+;; -----------------------------------------------
+
+(defn- concurrently! [values f]
+  (doall (pmap f values)))
+
+(def random-ints (repeatedly (comp int #(* 1000 %) math/random)))
+
+(t/deftest t-concurrency-test
+  ;; Note: for gauge metrics, there are no guarantees, other than 'the stored value corresponds to one of recorded values'
+
+  (t/testing "For counter metrics, all values are counted"
+    ;; Note: because of small differences in floating point ops depending on the order; we use small random integers; which should reduce the problem.
+    (let [store (m/fresh-metric-store)
+          counter-metric (metric-types/make-counter-metric "foo" "")
+          labels {:bar "baz"}
+          time-ms 12
+          values (take 10000 random-ints)]
+      (concurrently! values
+                     #(m/record-metric! store counter-metric labels % time-ms))
+      (let [other (m/fresh-metric-store)]
+        (m/record-metric! other counter-metric labels (reduce + values) time-ms)
+
+        ;; recording many concurrently, is (approximately) the same as recording the sum once.
+        (t/is (= (m/get-metric-samples! other counter-metric labels)
+                 (m/get-metric-samples! store counter-metric labels))))))
+
+  (t/testing "For histogram metrics, the final value has the correct count and sum"
+    (let [store (m/fresh-metric-store)
+          histogram-metric (metric-types/make-histogram-metric "foo" "" [0 100])
+          labels {:bar "baz"}
+          time-ms 12
+          values (take 10000 random-ints)]
+      (concurrently! values
+                     #(m/record-metric! store histogram-metric labels % time-ms))
+      (let [samples (m/get-metric-samples! store histogram-metric labels)]
+        (t/is (= (double (count values))
+                 (metric-samples/metric-sample-value (first (filter #(= "foo_count" (metric-samples/metric-sample-name %))
+                                                                    samples)))))
+        (t/is (= (double (reduce + values))
+                 (metric-samples/metric-sample-value (first (filter #(= "foo_sum" (metric-samples/metric-sample-name %))
+                                                                    samples))))))))
+  )
 
 ;; -----------------------------------------------
 
