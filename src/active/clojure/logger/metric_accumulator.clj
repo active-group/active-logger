@@ -28,6 +28,14 @@
 
 ;; -----------------------------------------------------------------
 
+;; small reflection api (for backwards compatibility)
+
+(def metric-name metric-types/metric-name)
+(def metric-type metric-types/metric-type)
+(def metric-help metric-types/metric-help)
+
+;; -----------------------------------------------------------------
+
 (s/fdef record-metric!
   :args (s/cat :optional-1  (s/? (s/cat :a-metric-store ::metric-store))
                :metric      ::metric-types/metric
