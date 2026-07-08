@@ -46,6 +46,12 @@
   (lens/overhaul metric-store metric-store-map
                  #(update % metric metric-values/update-or-make-stored-values metric labels value time-ms)))
 
+(defn maybe-record-metric!
+  "Record a new value for the given metric and labels, if it is already in the store. Returns falsy otherwise. Must be called inside a transaction."
+  [metric-store metric labels value time-ms]
+  (when-let [values (get (metric-store-map metric-store) metric)]
+    (metric-values/maybe-update-stored-values! values metric labels value time-ms)))
+
 (s/fdef prune-stale-metrics
   :args (s/cat :metric-store ::metric-store
                :time-ms ::metric-types/metric-last-update-time-ms)

@@ -42,7 +42,13 @@
   ([metric labels value-value last-update]
    (record-metric! metric-store metric labels value-value last-update))
   ([a-metric-store metric labels value-value last-update]
-   (dosync (alter a-metric-store metric-store/record-metric metric labels value-value (or last-update (time/get-milli-time!))))
+   (let [time-ms (or last-update (time/get-milli-time!))]
+     (dosync
+      (let [metric-store (ensure a-metric-store)]
+        ;; Note: most of the time (and likely when performance matters), we already have the metric and the labels in the maps;
+        ;; so we can make a direct alter on the values ref inside, without writing the same map back.
+        (when-not (metric-store/maybe-record-metric! metric-store metric labels value-value time-ms)
+          (ref-set a-metric-store (metric-store/record-metric metric-store metric labels value-value time-ms))))))
    nil))
 
 (declare metric-name)

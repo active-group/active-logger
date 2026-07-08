@@ -172,6 +172,22 @@
                             (make-empty-stored-values))
                         metric labels value last-update-time-ms))
 
+(defn maybe-update-stored-values!
+  "Update an existing value, or return falsy otherwise. Must be called inside a transaction."
+  [maybe-stored-values metric labels value last-update-time-ms]
+  (when maybe-stored-values
+    (when-let [values (get (stored-values-map maybe-stored-values) labels)]
+      (cond
+        (metric-types/gauge-metric?     metric) (ref-set values (singular/make-metric-value value last-update-time-ms))
+        (metric-types/counter-metric?   metric) (if (metric-types/counter-metric-set-value? metric)
+                                                  (ref-set values (singular/make-metric-value value last-update-time-ms))
+                                                  (let [v (ensure values)]
+                                                    (when (singular/metric-value? v)
+                                                      (ref-set values (singular/inc-metric-value v value last-update-time-ms)))))
+        (metric-types/histogram-metric? metric) (let [v (ensure values)]
+                                                  (when (histogram/histogram-metric-values? v)
+                                                    (ref-set values (histogram/update-histogram-metric-values v (metric-types/histogram-metric-thresholds metric) value last-update-time-ms))))))))
+
 (s/fdef prune-stale-stored-values
   :args (s/cat :stored-values ::stored-values
                :time-ms       ::metric-types/metric-last-update-time-ms)
