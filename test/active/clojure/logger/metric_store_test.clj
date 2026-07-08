@@ -38,11 +38,11 @@
                       time-ms (spec ::metric-types/metric-last-update-time-ms)]
                      (let [store (m/fresh-metric-store)
                            [labels1 labels2] labelss]
-                       (= (-> store
-                              (m/record-metric metric labels2 value (inc time-ms))
-                              (m/get-all-snapshots))
-                          (-> store
-                              (m/record-metric metric labels1 value time-ms)
-                              (m/record-metric metric labels2 value (inc time-ms))
-                              (m/prune-stale-metrics (inc time-ms))
-                              (m/get-all-snapshots)))))))))
+                       (dosync (= (-> store
+                                      (m/record-metric metric labels2 value (inc time-ms))
+                                      (m/get-all-snapshots))
+                                  (-> store
+                                      (m/record-metric metric labels1 value time-ms)
+                                      (m/record-metric metric labels2 value (inc time-ms))
+                                      (m/prune-stale-metrics (inc time-ms))
+                                      (m/get-all-snapshots))))))))))

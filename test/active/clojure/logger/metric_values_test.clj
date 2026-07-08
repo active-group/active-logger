@@ -89,5 +89,5 @@
 
                      (= (-> pruned
                             (m/get-all-stored-values-snapshot))
-                        (-> (m/prune-stale-stored-values stored-values (inc time-ms))
+                        (-> (dosync (m/prune-stale-stored-values stored-values (inc time-ms)))
                             (m/get-all-stored-values-snapshot))))))))

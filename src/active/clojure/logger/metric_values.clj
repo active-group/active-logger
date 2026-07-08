@@ -177,14 +177,14 @@
                :time-ms       ::metric-types/metric-last-update-time-ms)
   :ret ::stored-values)
 (defn prune-stale-stored-values
-  "Removes values no updated in since the given time."
+  "Removes values no updated in since the given time. Must be called inside a transaction."
   [stored-values time-ms]
   (lens/overhaul stored-values
                  stored-values-map
                  (fn [m]
                    ;; OPT: transient?
                    (reduce-kv (fn [res labels values]
-                                (if (stale-values? @values time-ms)
+                                (if (stale-values? (ensure values) time-ms)
                                   res
                                   (assoc res labels values)))
                               {}

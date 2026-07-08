@@ -50,7 +50,9 @@
   :args (s/cat :metric-store ::metric-store
                :time-ms ::metric-types/metric-last-update-time-ms)
   :ret ::metric-store)
-(defn prune-stale-metrics [metric-store time-ms]
+(defn prune-stale-metrics
+  "Remove data for metrics not updated since 'time-ms'. Must be called inside a transaction."
+  [metric-store time-ms]
   (lens/overhaul metric-store
                  metric-store-map
                  (fn [metric-store]
