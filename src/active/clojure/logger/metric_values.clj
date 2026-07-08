@@ -193,14 +193,18 @@
                :time-ms       ::metric-types/metric-last-update-time-ms)
   :ret ::stored-values)
 (defn prune-stale-stored-values
-  "Removes values no updated in since the given time. Must be called inside a transaction."
+  "Removes values not updated since the given time. Must be called inside a transaction."
   [stored-values time-ms]
   (lens/overhaul stored-values
                  stored-values-map
                  (fn [m]
                    ;; OPT: transient?
                    (reduce-kv (fn [res labels values]
-                                (if (stale-values? (ensure values) time-ms)
+                                ;; Note: only ensure stale values; others are then free to change during the pruning (making it less likely to fail the transaction)
+                                ;; This is not a big problem, because non-stale value are supposed to only become even never (if timestamps are correct),
+                                ;; or else it will be pruned next time; which is not too bad.
+                                (if (and (stale-values? @values time-ms)
+                                         (stale-values? (ensure values) time-ms))
                                   res
                                   (assoc res labels values)))
                               {}
