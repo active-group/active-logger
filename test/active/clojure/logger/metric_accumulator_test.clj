@@ -103,7 +103,11 @@
           time-ms 12
           values (take 10000 random-ints)]
       (concurrently! values
-                     #(m/record-metric! store counter-metric labels % time-ms))
+                     (fn [v]
+                       (m/record-metric! store counter-metric labels v time-ms)
+                       ;; also do some pruning, to test that it doesn't destroy anything (should not prune anything here) 
+                       (when (= 0 (mod v 100))
+                         (m/prune-stale-metrics! store 1))))
       (let [other (m/fresh-metric-store)]
         (m/record-metric! other counter-metric labels (reduce + values) time-ms)
 
@@ -118,11 +122,17 @@
           time-ms 12
           values (take 10000 random-ints)]
       (concurrently! values
-                     #(m/record-metric! store histogram-metric labels % time-ms))
+                     (fn [v]
+                       (m/record-metric! store histogram-metric labels v time-ms)
+                       ;; also do some pruning, to test that it doesn't destroy anything (should not prune anything here) 
+                       (when (= 0 (mod v 100))
+                         (m/prune-stale-metrics! store 1))))
       (let [samples (m/get-metric-samples! store histogram-metric labels)]
+        ;; the recorded count is the number of values
         (t/is (= (double (count values))
                  (metric-samples/metric-sample-value (first (filter #(= "foo_count" (metric-samples/metric-sample-name %))
                                                                     samples)))))
+        ;; the recorded sum if the sum of values.
         (t/is (= (double (reduce + values))
                  (metric-samples/metric-sample-value (first (filter #(= "foo_sum" (metric-samples/metric-sample-name %))
                                                                     samples))))))))
