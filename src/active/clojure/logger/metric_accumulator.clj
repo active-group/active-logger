@@ -6,6 +6,8 @@
             [active.clojure.logger.metric-samples :as metric-samples]
             [active.clojure.logger.metric-types :as metric-types]
 
+            [active.clojure.logger.event :as event]
+
             [clojure.spec.alpha :as s]))
 
 (s/def ::metric-store (partial instance? clojure.lang.Ref))
@@ -121,7 +123,13 @@
              (loop []
                (let [now (time/get-milli-time!)
                      earlier (- now stale-milliseconds)]
+                 ;; Note: this has the small potential to become slow or even life-lock, if the time
+                 ;; between two metric recodings is never larger than the time needed for one attempt at commiting the pruning transaction;
+                 ;; But in metric_values, we only ensure values that are currently old;
+                 ;; so this should only happen if new metrics or new labels come in so fast all the time, which should never be the case.
+                 (event/log-event! :debug "Start pruning stale metrics.")
                  (prune-stale-metrics! earlier)
+                 (event/log-event! :debug "Done pruning stale metrics.")
                  (Thread/sleep ^long every-milliseconds)
                  (recur)))))
       (.setDaemon true)
