@@ -10,6 +10,11 @@ java.util.logging (JUL), and Apache Commons Logging (JCL).
 
 * Breaking changes
 
+** Breaking changes in version 0.17.0:
+
+- The api of ~active.clojure.logger.metric-accumulator~ has been
+  greatly reduced. Much was moved and marked as 'internal' now.
+
 ** Breaking changes in version 0.15.0:
 
 - Prometheus metrics do no longer render the timestamp of their last sample.
