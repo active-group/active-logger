@@ -128,6 +128,27 @@
                                                                     samples))))))))
   )
 
+(t/deftest benchmark-test
+  ;; STM alter: 10370.946458 msecs
+  ;; STM commute: 11235.082209 msecs
+  ;; Atom: 10165.2525 msecs
+  ;; STM maybe: 1290.463166 msecs - 1400
+  (time
+   (let [store (m/fresh-metric-store)
+         metric1 (metric-types/make-histogram-metric "foo" "" [0 50 80 90 100])
+         metric2 (metric-types/make-counter-metric "bar" "")
+         metric3 (metric-types/make-gauge-metric "baz" "")
+         metric4 (metric-types/make-counter-metric "bla" "")
+         metric5 (metric-types/make-histogram-metric "blub" "" [0 500])
+           
+         labels {:bar "baz"}
+         time-ms 12
+         values (map vector
+                     (apply concat (repeat [metric1 metric2 metric3 metric4 metric5]))
+                     (take 100000 random-ints))]
+     (concurrently! values
+                    #(m/record-metric! store (first %) labels (second %) time-ms)))))
+
 ;; -----------------------------------------------
 
 (t/deftest t-use-counter-like-gauge
