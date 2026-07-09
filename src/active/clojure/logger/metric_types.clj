@@ -70,8 +70,7 @@
   :ret ::counter-metric)
 (defn make-counter-metric
   [metric-name metric-help & [set-value?]]
-  ;; FIXME: set-value?=false and set-value?=nil would be different metrics; that's too surprising.
-  (really-make-counter-metric metric-name metric-help set-value?))
+  (really-make-counter-metric metric-name metric-help (boolean set-value?)))
 
 ;; 3. Histograms
 
