@@ -11,7 +11,8 @@
             [active.clojure.logger.metric-types :as metric-types]
 
             [clojure.spec.alpha :as s]
-            [clojure.spec.gen.alpha :as sgen]))
+            [clojure.spec.gen.alpha :as sgen])
+  (:refer-clojure :exclude [replace]))
 
 ;; -----------------------------------------------------------------
 
@@ -52,94 +53,24 @@
 
 ;; -----------------------------------------------------------------
 
-(defn- update-values [values-map labels f & args]
-  (update values-map
-          labels
-          (fn [ref-v]
-            (if ref-v
-              (do (apply alter ref-v f args)
-                  ref-v)
-              (ref (apply f nil args))))))
+(defn- make-values [metric value last-update-time-ms]
+  (cond
+    (metric-types/gauge-metric?     metric) (ref (singular/make-metric-value value last-update-time-ms))
+    (metric-types/counter-metric?   metric) (ref (singular/make-metric-value value last-update-time-ms))
+    (metric-types/histogram-metric? metric) (ref (histogram/fresh-histogram-metric-values (metric-types/histogram-metric-thresholds metric) value last-update-time-ms))))
 
-(defn- commute-values [values-map labels f & args]
-  ;; use this if the order of updates does not (really) matter
-  (update values-map
-          labels
-          (fn [ref-v]
-            (if ref-v
-              (do (apply commute ref-v f args)
-                  ref-v)
-              (ref (apply f nil args))))))
+(defn- replace [a_ b]
+  b)
 
-(defn- set-values [values-map labels v]
-  (update values-map
-          labels
-          (fn [ref-v]
-            (if ref-v
-              (do (ref-set ref-v v)
-                  ref-v)
-              (ref v)))))
-
-(s/fdef inc-singular-values
-  :args (s/cat :stored-values   ::stored-values
-               :metric-labels   ::metric-types/metric-labels
-               :metric-value    ::metric-types/metric-value
-               :last-update-time-ms ::metric-types/metric-last-update-time-ms)
-  :ret ::stored-values)
-(defn- inc-singular-values
-  "Increments the value for a counter metric. Must be called inside a transaction."
-  [stored-values metric-labels metric-value last-update-time-ms]
-  (lens/overhaul stored-values
-                 stored-values-map
-                 (fn [labels-values-map]
-                   (update-values labels-values-map
-                                  metric-labels
-                                  (fn [v]
-                                    (singular/inc-metric-value (if (singular/metric-value? v)
-                                                                 v
-                                                                 ;; new labels, or metric changed type? cannot happen via toplevel though.
-                                                                 nil)
-                                                               metric-value last-update-time-ms))))))
-
-(s/fdef set-singular-values
-  :args (s/cat :stored-values   ::stored-values
-               :metric-labels   ::metric-types/metric-labels
-               :metric-value    ::metric-types/metric-value
-               :last-update-time-ms ::metric-types/metric-last-update-time-ms)
-  :ret ::stored-values)
-(defn- set-singular-values
-  "Sets the value of a gauge of set-counter? counter metric. Must be called inside a transaction."
-  [stored-values metric-labels metric-value last-update-time-ms]
-  (lens/overhaul stored-values
-                 stored-values-map
-                 (fn [labels-values-map]
-                   (set-values labels-values-map
-                               metric-labels
-                               (singular/make-metric-value metric-value last-update-time-ms)))))
-
-(s/fdef update-histogram-values
-  :args (s/cat :stored-values    ::stored-values
-               :thresholds       ::metric-types/thresholds
-               :metric-labels    ::metric-types/metric-labels
-               :metric-value     ::metric-types/metric-value
-               :time-ms          ::metric-types/metric-last-update-time-ms)
-  :ret ::stored-values)
-(defn- update-histogram-values
-  "Updates the value of a histogram metric. Must be called inside a transaction."
-  [stored-values thresholds metric-labels metric-value time-ms]
-  (lens/overhaul stored-values
-                 stored-values-map
-                 (fn [labels-values-map]
-                   (update-values labels-values-map metric-labels
-                                  (fn [v]
-                                    (histogram/update-histogram-metric-values
-                                     (if (histogram/histogram-metric-values? v)
-                                       v
-                                       ;; new labels, or change of metric type
-                                       nil)
-                                     thresholds metric-value time-ms))))))
-
-;; -----------------------------------------------------------------
+(defn- update-values! [metric values value last-update-time-ms]
+  ;; Note: values must be of the corrent type for the given metric. Changing is is not supported.
+  ;; Note: returns the new 'in transaction value', which could be used to optimize/change 'record-and-get'.
+  (cond
+    (metric-types/gauge-metric?     metric) (commute values replace (singular/make-metric-value value last-update-time-ms))
+    (metric-types/counter-metric?   metric) (if (metric-types/counter-metric-set-value? metric)
+                                              (commute values replace (singular/make-metric-value value last-update-time-ms))
+                                              (commute values singular/inc-metric-value value last-update-time-ms))
+    (metric-types/histogram-metric? metric) (commute values histogram/update-histogram-metric-values (metric-types/histogram-metric-thresholds metric) value last-update-time-ms)))
 
 (s/fdef update-stored-values
   :args (s/cat :stored-values ::stored-values
@@ -150,12 +81,15 @@
   :ret ::stored-values)
 (defn- update-stored-values
   [stored-values metric labels value last-update-time-ms]
-  (cond
-    (metric-types/gauge-metric?     metric) (set-singular-values stored-values labels value last-update-time-ms)
-    (metric-types/counter-metric?   metric) (if (metric-types/counter-metric-set-value? metric)
-                                              (set-singular-values stored-values labels value last-update-time-ms)
-                                              (inc-singular-values stored-values labels value last-update-time-ms))
-    (metric-types/histogram-metric? metric) (update-histogram-values stored-values (metric-types/histogram-metric-thresholds metric) labels value last-update-time-ms)))
+  ;; Note: if we have 'values' it must be of the corrent type; changing the metric is not supported (and not possible toplevel)
+  (let [labels-values-map (stored-values-map stored-values)]
+    (if-let [values (get labels-values-map labels)]
+      (do (update-values! metric values value last-update-time-ms)
+          stored-values)
+      (lens/shove stored-values
+                  stored-values-map
+                  (assoc labels-values-map labels
+                         (make-values metric value last-update-time-ms))))))
 
 (s/fdef update-or-make-stored-values
   :args (s/cat :maybe-stored-values (s/nilable ::stored-values)
@@ -177,16 +111,7 @@
   [maybe-stored-values metric labels value last-update-time-ms]
   (when maybe-stored-values
     (when-let [values (get (stored-values-map maybe-stored-values) labels)]
-      (cond
-        (metric-types/gauge-metric?     metric) (ref-set values (singular/make-metric-value value last-update-time-ms))
-        (metric-types/counter-metric?   metric) (if (metric-types/counter-metric-set-value? metric)
-                                                  (ref-set values (singular/make-metric-value value last-update-time-ms))
-                                                  (let [v (ensure values)]
-                                                    (when (singular/metric-value? v)
-                                                      (ref-set values (singular/inc-metric-value v value last-update-time-ms)))))
-        (metric-types/histogram-metric? metric) (let [v (ensure values)]
-                                                  (when (histogram/histogram-metric-values? v)
-                                                    (ref-set values (histogram/update-histogram-metric-values v (metric-types/histogram-metric-thresholds metric) value last-update-time-ms))))))))
+      (update-values! metric values value last-update-time-ms))))
 
 (s/fdef prune-stale-stored-values
   :args (s/cat :stored-values ::stored-values

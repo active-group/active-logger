@@ -55,8 +55,7 @@
 (defn update-histogram-metric-values
   "Adds a value to a given histogram."
   [histogram-metric-values thresholds value last-update-time-ms]
-  (if histogram-metric-values
-    (make-histogram-metric-values last-update-time-ms
+  (make-histogram-metric-values last-update-time-ms
                                   (+ (histogram-metric-values-sum-value histogram-metric-values)
                                      value)
                                   (inc (histogram-metric-values-count-value histogram-metric-values))
@@ -65,12 +64,21 @@
                                             (inc bucket-value)
                                             bucket-value))
                                         thresholds
-                                        (histogram-metric-values-bucket-values histogram-metric-values)))
-    (make-histogram-metric-values last-update-time-ms
-                                  value
-                                  1
-                                  (mapv (fn [threshold]
-                                          (if (<= value threshold)
-                                            1
-                                            0))
-                                        thresholds))))
+                                        (histogram-metric-values-bucket-values histogram-metric-values))))
+
+(s/fdef fresh-histogram-metric-values
+  :args (s/cat :thresholds       ::metric-types/thresholds
+               :metric-value     ::metric-types/metric-value
+               :last-update-time-ms ::metric-types/metric-last-update-time-ms)
+  :ret ::histogram-metric-values)
+(defn fresh-histogram-metric-values
+  "Create a fresh histogram from a recorded value."
+  [thresholds value last-update-time-ms]
+  (make-histogram-metric-values last-update-time-ms
+                                value
+                                1
+                                (mapv (fn [threshold]
+                                        (if (<= value threshold)
+                                          1
+                                          0))
+                                      thresholds)))

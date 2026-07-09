@@ -22,8 +22,7 @@
 (t/deftest t-inc-metric-value
   (t/testing "Increment of metric-values works."
     (t/is (quickcheck
-           (property [metric-value (spec (s/or :none nil?
-                                               :some ::m/metric-value))
+           (property [metric-value (spec ::m/metric-value)
                       value (spec ::m/metric-value-value-double)
                       update-time (spec ::metric-types/metric-last-update-time-ms)]
                      (= (m/make-metric-value (+ value (if metric-value (m/metric-value-value metric-value) 0)) update-time)

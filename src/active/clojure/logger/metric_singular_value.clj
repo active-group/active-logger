@@ -42,14 +42,12 @@
   (really-make-metric-value (double value) update-time-ms))
 
 (s/fdef inc-metric-value
-  :args (s/cat :mv  (s/or :some ::metric-value :none nil?)
+  :args (s/cat :mv  ::metric-value
                :value    ::metric-types/metric-value
                :last-update-time-ms ::metric-types/metric-last-update-time-ms)
   :ret ::metric-value)
 (defn inc-metric-value
-  "Increments an existing value (or nil), to a new singular value."
+  "Increments an existing value, by a new singular value."
   [mv value last-update-time-ms]
-  (make-metric-value (if (nil? mv)
-                       value
-                       (+ (metric-value-value mv) value))
+  (make-metric-value (+ (metric-value-value mv) value)
                      last-update-time-ms))

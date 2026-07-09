@@ -140,9 +140,9 @@
 
 (t/deftest benchmark-test
   ;; STM alter: 10370.946458 msecs
-  ;; STM commute: 11235.082209 msecs
   ;; Atom: 10165.2525 msecs
-  ;; STM maybe: 1290.463166 msecs - 1400
+  ;; STM + maybe: 1290.463166 msecs - 1400
+  ;; STM + commute: 1496.548917 msecs
   (time
    (let [store (m/fresh-metric-store)
          metric1 (metric-types/make-histogram-metric "foo" "" [0 50 80 90 100])
