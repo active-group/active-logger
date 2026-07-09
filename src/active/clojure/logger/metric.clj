@@ -8,14 +8,20 @@
 
 (defn log-metric!-internal
   [namespace metric labels value & [mp]]
-  (let [metric-samples (metric-accumulator/record-and-get! metric labels value)]
-    (metric-emitter/emit-metrics! metric-samples mp namespace)))
+  (if (metric-emitter/is-emitting?!)
+    (let [metric-samples (metric-accumulator/record-and-get! metric labels value)]
+      (metric-emitter/emit-metrics! metric-samples mp namespace))
+    (metric-accumulator/record-metric! metric labels value)))
 
 (defn log-metric-internal
   [namespace metric labels value & [mp]]
   (monad/monadic
-    [metric-samples (metric-monad/record-and-get metric labels value)]
-    (metric-emitter/emit-metrics metric-samples mp namespace)))
+   [emitting? (metric-emitter/is-emitting?)]
+   (if emitting?
+     (monad/monadic
+      [metric-samples (metric-monad/record-and-get metric labels value)]
+      (metric-emitter/emit-metrics metric-samples mp namespace))
+     (metric-monad/record-metric metric labels value))))
 
 (def make-gauge-metric metric-types/make-gauge-metric)
 (def make-counter-metric metric-types/make-counter-metric)

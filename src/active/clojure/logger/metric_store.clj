@@ -19,11 +19,7 @@
 
 (s/def ::metric-store
   (s/spec
-   metric-store?
-   #_#_:gen (fn []
-          (sgen/fmap make-metric-store
-                     ;; FIXME: metric and stored-values should match; it's not arbitrary.
-                     (s/gen (s/map-of ::metric-types/metric ::metric-values/stored-values))))))
+   metric-store?))
 
 (s/fdef fresh-metric-store
   :ret ::metric-store)

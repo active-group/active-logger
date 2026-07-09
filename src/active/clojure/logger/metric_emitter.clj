@@ -52,6 +52,10 @@
   with the log context that's already active, if present."}
    map emit-metric-map])
 
+(define-record-type ^:private IsEmittingCmd
+  (make-is-emitting-cmd) is-emitting-cmd?
+  [])
+
 (defn emit-metric-to-events!
   [namespace level metric-name metric-labels metric-value mp]
   (internal/log-event!-internal "metric"
@@ -64,6 +68,12 @@
 (defn emit-metric-to-riemann!
   [config metric-name metric-value mp]
   (riemann-config/send-event-to-riemann! config "metric" mp {:label metric-name :metric metric-value}))
+
+(defn is-emitting?!
+  ([]
+   (is-emitting?! @metrics-config))
+  ([scconf]
+   (not= :no-push scconf)))
 
 (defn emit-metric-sample!-internal
   ([namespace metric-sample context-map]
@@ -86,6 +96,9 @@
   (doseq [metric-sample metric-samples]
     (emit-metric-sample!-internal scconf namespace metric-sample context-map))))
 
+(let [cmd (make-is-emitting-cmd)]
+  (defn is-emitting? []
+    cmd))
 
 ;;;; Interpreter
 
@@ -98,6 +111,9 @@
                                     (emit-metric-sample m)
                                     (emit-metric-map m))
       [nil mstate])
+
+    (is-emitting-cmd? m)
+    [(is-emitting?!) mstate]
 
     :else
     monad/unknown-command))
