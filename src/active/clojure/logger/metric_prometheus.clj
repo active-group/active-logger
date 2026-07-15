@@ -15,11 +15,15 @@
            " " (util/render-value (metric-samples/metric-sample-value metric-sample))))))
 
 (defn- render-metric-type
-  [metric-type]
-  (case metric-type
-    :gauge "gauge"
-    :counter "counter"
-    :histogram "histogram"))
+  [set-name metric-type]
+  (str "# TYPE " set-name " "
+       (case metric-type
+         :gauge "gauge"
+         :counter "counter"
+         :histogram "histogram")))
+
+(defn- render-metric-help [set-name help]
+  (str "# HELP " set-name " " help))
 
 (defn- make-render-metric-set
   [cleanup-non-prometheus-label-characters]
@@ -28,10 +32,8 @@
       (let [set-name (cleanup-non-prometheus-label-characters (metric-samples/metric-sample-set-name metric-sample-set))]
         (string/join "\n"
                      (concat
-                      [(str "# HELP " set-name " "
-                            (metric-samples/metric-sample-set-help metric-sample-set))
-                       (str "# TYPE " set-name " "
-                            (render-metric-type (metric-samples/metric-sample-set-type metric-sample-set)))]
+                      [(render-metric-help set-name (metric-samples/metric-sample-set-help metric-sample-set))
+                       (render-metric-type set-name (metric-samples/metric-sample-set-type metric-sample-set))]
                       (mapv render-metric-sample (metric-samples/metric-sample-set-samples metric-sample-set))))))))
 
 (defn render-metric-sets

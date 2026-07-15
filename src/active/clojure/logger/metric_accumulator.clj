@@ -78,6 +78,16 @@
      (metric-samples/snapshot->metric-samples metric snapshot labels)
      [])))
 
+(defn ^:no-doc all-snapshots->all-metric-sample-sets
+  [all-snapshots]
+  (map (fn [[metric snapshots]]
+          (metric-samples/make-metric-sample-set
+           (metric-types/metric-name metric)
+           (metric-types/metric-type metric)
+           (metric-types/metric-help metric)
+           (metric-samples/all-snapshots->all-metric-samples metric snapshots)))
+        all-snapshots))
+
 (s/fdef get-all-metric-sample-sets!
   :args (s/cat :optional (s/? (s/cat :a-metric-store ::metric-store)))
   :ret (s/coll-of (s/coll-of ::metric-samples/metric-sample-set)))
@@ -87,13 +97,7 @@
   ([]
    (get-all-metric-sample-sets! metric-store))
   ([a-metric-store]
-   (map (fn [[metric snapshots]]
-          (metric-samples/make-metric-sample-set
-           (metric-types/metric-name metric)
-           (metric-types/metric-type metric)
-           (metric-types/metric-help metric)
-           (metric-samples/all-snapshots->all-metric-samples metric snapshots)))
-        (metric-store/get-all-snapshots @a-metric-store))))
+   (all-snapshots->all-metric-sample-sets (metric-store/get-all-snapshots @a-metric-store))))
 
 (s/fdef prune-stale-metrics!
   :args (s/cat :optional (s/? (s/cat :a-metric-store ::metric-store))
