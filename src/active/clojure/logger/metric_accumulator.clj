@@ -106,10 +106,28 @@
   ([time-ms]
    (prune-stale-metrics! metric-store time-ms))
   ([a-metric-store time-ms]
-   (dosync (alter a-metric-store
-                  (fn [old-metric-store]
-                    (metric-store/prune-stale-metrics old-metric-store time-ms))))
-   nil))
+   ;; find candidates outside transactions first
+   (doseq [[metric labels last-update-time-ms] (metric-store/find-stale-metrics @a-metric-store time-ms)]
+     ;; then remove one candidate after the other, re-checking the timestamp (does nothing if timestamp changed in the meantime)
+     (dosync
+      (let [metric-store (ensure a-metric-store)]
+        (when-let [new-store (metric-store/maybe-remove-metric metric-store metric labels last-update-time-ms)]
+          (ref-set a-metric-store new-store)))))
+   ;; Note: this scheme makes pruning slower of course, but the intention is to cause less contention on the metric-store.
+   ;; Maybe it would be even better to check if there are just any first; but then remove all in one go.
+   ))
+
+(defn ^:no-doc run-prune-stale-metrics-once! [metric-store earlier-time-ms]
+  (let [[n-metrics n-labels] (metric-store/get-metrics-and-labels-count @metric-store)]
+    (event/log-event! :debug (str "Start pruning stale metrics, from a store of " n-metrics " metrics with " n-labels " labels.")))
+  ;; Seen 'Transaction failed after reaching retry limit' in the wild; cannot reproduce how, though.
+  (try
+    (prune-stale-metrics! metric-store earlier-time-ms)
+    (event/log-event! :debug "Done pruning stale metrics.")
+    (catch Exception e
+      ;; Note: might have pruned a few event if an exception is thrown.
+      (event/log-exception-event :warn "Error in pruning stale metrics thread. Will try again after timeout."
+                                 e))))
 
 (defn start-prune-stale-metrics-thread!
   "Start a thread that prunes stale metrics older than `stale-seconds` seconds
@@ -123,13 +141,7 @@
              (loop []
                (let [now (time/get-milli-time!)
                      earlier (- now stale-milliseconds)]
-                 ;; Note: this has the small potential to become slow or even life-lock, if the time
-                 ;; between two metric recodings is never larger than the time needed for one attempt at commiting the pruning transaction;
-                 ;; But in metric_values, we only ensure values that are currently old;
-                 ;; so this should only happen if new metrics or new labels come in so fast all the time, which should never be the case.
-                 (event/log-event! :debug "Start pruning stale metrics.")
-                 (prune-stale-metrics! earlier)
-                 (event/log-event! :debug "Done pruning stale metrics.")
+                 (run-prune-stale-metrics-once! metric-store earlier)
                  (Thread/sleep ^long every-milliseconds)
                  (recur)))))
       (.setDaemon true)

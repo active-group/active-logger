@@ -48,23 +48,45 @@
   (when-let [values (get (metric-store-map metric-store) metric)]
     (metric-values/maybe-update-stored-values! values metric labels value time-ms)))
 
-(s/fdef prune-stale-metrics
+(s/fdef find-stale-metrics
   :args (s/cat :metric-store ::metric-store
-               :time-ms ::metric-types/metric-last-update-time-ms)
-  :ret ::metric-store)
-(defn prune-stale-metrics
-  "Remove data for metrics not updated since 'time-ms'. Must be called inside a transaction."
+               :time-ms       ::metric-types/metric-last-update-time-ms)
+  :ret (s/coll-of (s/tuple ::metric-types/metric ::metric-types/metric-labels ::metric-types/metric-last-update-time-ms)))
+(defn find-stale-metrics
+  "Returns a list of [metric labels last-update-time-ms] tuples, which were not updated since the given time-ms"
   [metric-store time-ms]
-  (lens/overhaul metric-store
-                 metric-store-map
-                 (fn [metric-store]
-                   (reduce-kv (fn [new-metric-store metric stored-values]
-                                (let [new-stored-values (metric-values/prune-stale-stored-values stored-values time-ms)]
-                                  (if (metric-values/empty-stored-values? new-stored-values)
-                                    new-metric-store
-                                    (assoc new-metric-store metric new-stored-values))))
-                              (empty metric-store)
-                              metric-store))))
+  (mapcat (fn [[metric stored-values]]
+            (map (fn [[labels time-ms]]
+                   [metric labels time-ms])
+                 (metric-values/find-stale-labels stored-values time-ms)))
+          (metric-store-map metric-store)))
+
+(s/fdef maybe-remove-metric
+  :args (s/cat :metric-store ::metric-store
+               :metric       ::metric-types/metric
+               :labels       ::metric-types/metric-labels
+               :check-time-ms ::metric-types/metric-last-update-time-ms)
+  :ret (s/or :some ::metric-store :none nil?))
+(defn maybe-remove-metric
+  "Remove the given metric from the store, if it's last update-time equals the given check-time. Return nil otherwise. Must be called inside a transaction."
+  [metric-store metric labels check-time-ms]
+  (when-let [stored-values (get (metric-store-map metric-store) metric)]
+    (when-let [new-stored-values (metric-values/maybe-remove-values stored-values labels check-time-ms)]
+      (cond
+        (metric-values/empty-stored-values? new-stored-values)
+        (lens/overhaul metric-store
+                       metric-store-map
+                       dissoc metric)
+
+        :else (lens/overhaul metric-store
+                             metric-store-map
+                             assoc metric new-stored-values)))))
+
+(defn get-metrics-and-labels-count
+  [metric-store]
+  (let [m (metric-store-map metric-store)]
+    [(count m)
+     (reduce + 0 (map metric-values/get-labels-count (vals m)))]))
 
 ;; -----------------------------------------------------------------
 

@@ -39,17 +39,19 @@
   [last-update-time-ms time-ms]
   (< last-update-time-ms time-ms))
 
-
-(defn- stale-values? [values time-ms]
+(defn- last-update-time-ms [values]
   (cond
     (singular/metric-value? values)
-    (stale? (singular/metric-value-last-update-time-ms values) time-ms)
+    (singular/metric-value-last-update-time-ms values)
 
     (histogram/histogram-metric-values? values)
-    (stale? (histogram/histogram-metric-values-last-update-time-ms values) time-ms)
+    (histogram/histogram-metric-values-last-update-time-ms values)
 
     :else
     (assert false values)))
+
+(defn- stale-values? [values time-ms]
+  (stale? (last-update-time-ms values) time-ms))
 
 ;; -----------------------------------------------------------------
 
@@ -113,27 +115,36 @@
     (when-let [values (get (stored-values-map maybe-stored-values) labels)]
       (update-values! metric values value last-update-time-ms))))
 
-(s/fdef prune-stale-stored-values
+(s/fdef maybe-remove-values
+  :args (s/cat :stored-values ::stored-values
+               :labels        ::metric-types/metric-labels
+               :time-ms       ::metric-types/metric-last-update-time-ms)
+  :ret (s/or :some ::stored-values :none nil?))
+(defn maybe-remove-values
+  "Removes the entry for 'labels' from the map, if and ensuring it's last-update-time
+  equals the given one. Returns nil otherwise. Must be called inside a transaction."
+  [stored-values labels time-ms]
+  (let [m (stored-values-map stored-values)]
+    (when-let [values (get m labels)]
+      (when (and (= time-ms (last-update-time-ms @values))
+                 (= time-ms (last-update-time-ms (ensure values))))
+        (lens/shove stored-values stored-values-map
+                    (dissoc m labels))))))
+
+(s/fdef find-stale-labels
   :args (s/cat :stored-values ::stored-values
                :time-ms       ::metric-types/metric-last-update-time-ms)
-  :ret ::stored-values)
-(defn prune-stale-stored-values
-  "Removes values not updated since the given time. Must be called inside a transaction."
+  :ret (s/coll-of (s/tuple ::metric-types/metric-labels ::metric-types/metric-last-update-time-ms)))
+(defn find-stale-labels
+  "Returns a list of [labels last-update-time-ms] tuples, which were not updated since the given time-ms."
   [stored-values time-ms]
-  (lens/overhaul stored-values
-                 stored-values-map
-                 (fn [m]
-                   ;; OPT: transient?
-                   (reduce-kv (fn [res labels values]
-                                ;; Note: only ensure stale values; others are then free to change during the pruning (making it less likely to fail the transaction)
-                                ;; This is not a big problem, because non-stale value are supposed to only become even never (if timestamps are correct),
-                                ;; or else it will be pruned next time; which is not too bad.
-                                (if (and (stale-values? @values time-ms)
-                                         (stale-values? (ensure values) time-ms))
-                                  res
-                                  (assoc res labels values)))
-                              {}
-                              m))))
+  (->> (stored-values-map stored-values)
+       (filter #(stale-values? @(second %) time-ms))
+       (map (fn [[labels values]]
+              [labels (last-update-time-ms @values)]))))
+
+(defn get-labels-count [stored-values]
+  (count (stored-values-map stored-values)))
 
 (s/fdef empty-stored-values?
   :args (s/cat :stored-values ::stored-values)

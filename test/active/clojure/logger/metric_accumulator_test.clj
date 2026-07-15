@@ -3,6 +3,7 @@
             [active.clojure.logger.metric-store :as metric-store]
             [active.clojure.logger.metric-types :as metric-types]
             [active.clojure.logger.metric-samples :as metric-samples]
+            [active.clojure.logger.test :as logger-test]
 
             [active.clojure.record :as r]
             
@@ -84,6 +85,20 @@
 
                        (= (m/get-all-metric-sample-sets! store)
                           (m/get-all-metric-sample-sets! other))))))))
+
+(t/deftest t-run-prune-stale-metrics-once!
+  ;; this is what the background thread does repeatedly
+  (let [store (m/fresh-metric-store)
+        time-ms 100]
+    (m/record-metric! store (metric-types/make-counter-metric "" "") {} 42 time-ms)
+    (logger-test/log-ignore-test-fixture
+     (fn []
+       ;; just to see that it doesn't crash...
+       (t/is (nil?
+              (try (m/run-prune-stale-metrics-once! store (dec time-ms))
+                   nil
+                   (catch Exception e
+                     e))))))))
 
 ;; -----------------------------------------------
 

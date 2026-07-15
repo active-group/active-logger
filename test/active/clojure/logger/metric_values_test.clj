@@ -72,21 +72,35 @@
                                                          (m/update-or-make-stored-values metric labels value2 (inc time-ms))))
                                              labels))))))
 
-(t/deftest t-prune-stale-stored-values
-  (t/is (quickcheck
-         (property [metric (spec ::metric-types/metric)
-                    time-ms (spec ::metric-types/metric-last-update-time-ms)]
-                   (let [labels1 {:foo "bar"}
-                         labels2 {:bar "baz"}
+(t/deftest t-pruning-values
+  (t/testing "find-stale-labels lists stale entries"
+    (t/is (quickcheck
+           (property [metric (spec ::metric-types/metric)
+                      time-ms (spec ::metric-types/metric-last-update-time-ms)]
+                     (let [labels1 {:foo "bar"}
+                           labels2 {:bar "baz"}
                          
-                         value 42.0
-                         stored-values (dosync (-> nil
-                                                   (m/update-or-make-stored-values metric labels1 value time-ms)
-                                                   (m/update-or-make-stored-values metric labels2 value (inc time-ms))))
-                         pruned (-> nil
-                                    (m/update-or-make-stored-values metric labels2 value (inc time-ms)))]
+                           value 42.0
+                           stored-values (dosync (-> nil
+                                                     (m/update-or-make-stored-values metric labels1 value time-ms)
+                                                     (m/update-or-make-stored-values metric labels2 value (inc time-ms))))
+                           pruned (-> nil
+                                      (m/update-or-make-stored-values metric labels2 value (inc time-ms)))]
+                       (= [[labels1 time-ms]]
+                          (m/find-stale-labels stored-values (inc time-ms))))))))
 
-                     (= (-> pruned
-                            (m/get-all-stored-values-snapshot))
-                        (-> (dosync (m/prune-stale-stored-values stored-values (inc time-ms)))
-                            (m/get-all-stored-values-snapshot))))))))
+  (t/testing "maybe-remove-values removes matching entries"
+    (t/is (quickcheck
+           (property [metric (spec ::metric-types/metric)
+                      labels (spec ::metric-types/metric-labels)
+                      time-ms (spec ::metric-types/metric-last-update-time-ms)]
+                     (let [stored-values (dosync (m/update-or-make-stored-values nil metric labels 42.0 time-ms))]
+                       (m/empty-stored-values? (dosync (m/maybe-remove-values stored-values labels time-ms))))))))
+
+  (t/testing "maybe-remove-values does not remove other entries"
+    (t/is (quickcheck
+           (property [metric (spec ::metric-types/metric)
+                      labels (spec ::metric-types/metric-labels)
+                      time-ms (spec ::metric-types/metric-last-update-time-ms)]
+                     (let [stored-values (dosync (m/update-or-make-stored-values nil metric labels 42.0 time-ms))]
+                       (nil? (dosync (m/maybe-remove-values stored-values labels (inc time-ms))))))))))
