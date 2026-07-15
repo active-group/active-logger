@@ -1,9 +1,9 @@
-(defproject de.active-group/active-logger "0.17.1"
+(defproject de.active-group/active-logger "0.17.2"
   :description "Active Logger: Utilities and DSL for logging on top of Timbre."
   :url "http://github.com/active-group/active-logger"
   :license {:name "EPL-2.0 OR GPL-2.0-or-later WITH Classpath-exception-2.0"
             :url  "https://www.eclipse.org/legal/epl-2.0/"}
-  :dependencies [[org.clojure/clojure "1.11.0" :scope "provided"]
+  :dependencies [[org.clojure/clojure "1.12.5" :scope "provided"]
                  [com.fzakaria/slf4j-timbre "0.4.1"]
                  [com.taoensso/timbre "6.6.1"]
                  [de.active-group/active-clojure "0.40.0"]
