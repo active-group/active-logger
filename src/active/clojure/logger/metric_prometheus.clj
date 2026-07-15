@@ -70,9 +70,22 @@
      #(metric-accumulator/record-metric! duration {:slice "render"} %)
      (render-metric-sets sorted-metric-sets))))
 
+(def ^:private number-of-concurrent-requests
+  (metric-types/make-gauge-metric "active_clojure_logger_metric_prometheus_concurrent_requests"
+                                  "Number of concurrent metrics requests."))
+
+(let [n (atom 0)]
+  (defn- record-concurrency [f]
+    (swap! n inc)
+    ;; should always be 1, if prometheus doesn't go rogue (or someone else calls it too)
+    (try
+      (metric-accumulator/record-metric! number-of-concurrent-requests {} @n)
+      (f)
+      (finally (swap! n dec)))))
+
 (defn wrap-prometheus-metrics-ring-handler
   [handler]
   (fn [req]
     (if (re-matches #"^/metrics" (:uri req))
-      {:status 200 :headers {"Content-Type" "text/plain"} :body (render-metrics!)}
+      {:status 200 :headers {"Content-Type" "text/plain"} :body (record-concurrency #(render-metrics!))}
       (handler req))))
