@@ -63,7 +63,10 @@
                                 level
                                 (merge mp {:label metric-name :metric metric-value})
                                 (delay
-                                  [(str "Metric " (metric-prometheus/cleanup-non-prometheus-label-characters metric-name) (metric-prometheus/render-labels metric-labels) " " metric-value)])))
+                                  ;; TODO: why does this use prometheus functions? If that really needed that they look exactly like that?
+                                  (let [cleanup-non-prometheus-label-characters (metric-prometheus/make-cleanup-non-prometheus-label-characters)
+                                        render-labels (metric-prometheus/make-render-labels cleanup-non-prometheus-label-characters)]
+                                    [(str "Metric " (cleanup-non-prometheus-label-characters metric-name) (render-labels metric-labels) " " metric-value)]))))
 
 (defn emit-metric-to-riemann!
   [config metric-name metric-value mp]

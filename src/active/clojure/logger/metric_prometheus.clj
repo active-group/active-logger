@@ -6,34 +6,40 @@
             [active.clojure.logger.metric-prometheus-util :as util]
             [clojure.string :as string]))
 
-(defn render-metric-sample
-  [metric-sample]
-  (str (util/cleanup-non-prometheus-label-characters (metric-samples/metric-sample-name metric-sample))
-       (util/render-labels (metric-samples/metric-sample-labels metric-sample))
-       " " (util/render-value (metric-samples/metric-sample-value metric-sample))))
+(defn- make-render-metric-sample
+  [cleanup-non-prometheus-label-characters]
+  (let [render-labels (util/make-render-labels cleanup-non-prometheus-label-characters)]
+    (fn [metric-sample]
+      (str (cleanup-non-prometheus-label-characters (metric-samples/metric-sample-name metric-sample))
+           (render-labels (metric-samples/metric-sample-labels metric-sample))
+           " " (util/render-value (metric-samples/metric-sample-value metric-sample))))))
 
-(defn render-metric-type
+(defn- render-metric-type
   [metric-type]
   (case metric-type
     :gauge "gauge"
     :counter "counter"
     :histogram "histogram"))
 
-(defn render-metric-set
-  [metric-sample-set]
-  (let [set-name (util/cleanup-non-prometheus-label-characters (metric-samples/metric-sample-set-name metric-sample-set))]
-    (string/join "\n"
-                 (concat
-                  [(str "# HELP " set-name " "
-                        (metric-samples/metric-sample-set-help metric-sample-set))
-                   (str "# TYPE " set-name " "
-                        (render-metric-type (metric-samples/metric-sample-set-type metric-sample-set)))]
-                  (mapv render-metric-sample (metric-samples/metric-sample-set-samples metric-sample-set))))))
+(defn- make-render-metric-set
+  [cleanup-non-prometheus-label-characters]
+  (let [render-metric-sample (make-render-metric-sample cleanup-non-prometheus-label-characters)]
+    (fn [metric-sample-set]
+      (let [set-name (cleanup-non-prometheus-label-characters (metric-samples/metric-sample-set-name metric-sample-set))]
+        (string/join "\n"
+                     (concat
+                      [(str "# HELP " set-name " "
+                            (metric-samples/metric-sample-set-help metric-sample-set))
+                       (str "# TYPE " set-name " "
+                            (render-metric-type (metric-samples/metric-sample-set-type metric-sample-set)))]
+                      (mapv render-metric-sample (metric-samples/metric-sample-set-samples metric-sample-set))))))))
 
 (defn render-metric-sets
   [ms]
-  (string/join "\n"
-               (mapv render-metric-set ms)))
+  ;; Note: the 'make-fn..*' schenanigans is used to make/enable memoization for this run, without growing memory infinitely.
+  (let [render-metric-set (make-render-metric-set (util/make-cleanup-non-prometheus-label-characters))]
+    (string/join "\n"
+                 (mapv render-metric-set ms))))
 
 (def ^:private number-of-calls
   (metric-types/make-counter-metric "active_clojure_logger_metric_prometheus_render_metrics_total"
