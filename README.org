@@ -449,7 +449,7 @@ Therefore, you need to handle each such scenario differently.  Refer
 to the Jetty example below to get an idea on how such problems might
 be fixed.
 ** Jetty
-[[https://www.eclipse.org/jetty/][Jetty]] is one example of a bad player.  It will, as soon as any of it's
+[[https://www.eclipse.org/jetty/][Jetty]] before version 12 is one example of a bad player.  It will, as soon as any of it's
 namespaces are included, emit an 'announcement' message that will be
 printed to stdout as soon as your =ns=-declaration is evaluated:
 
