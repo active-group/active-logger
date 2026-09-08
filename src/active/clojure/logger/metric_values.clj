@@ -59,9 +59,14 @@
   (cond
     (metric-types/gauge-metric?     metric) (ref (singular/make-metric-value value last-update-time-ms))
     (metric-types/counter-metric?   metric) (ref (singular/make-metric-value value last-update-time-ms))
-    (metric-types/histogram-metric? metric) (ref (histogram/fresh-histogram-metric-values (metric-types/histogram-metric-thresholds metric) value last-update-time-ms))))
+    (metric-types/histogram-metric? metric) (ref (if (metric-types/histogram-value-increase? value)
+                                                   (histogram/fresh-histogram-metric-values (metric-types/histogram-metric-thresholds metric)
+                                                                                            (metric-types/histogram-value-increase-value value)
+                                                                                            (metric-types/histogram-value-increase-increase value)
+                                                                                            last-update-time-ms)
+                                                   (histogram/fresh-histogram-metric-values (metric-types/histogram-metric-thresholds metric) value 1 last-update-time-ms)))))
 
-(defn- replace [a_ b]
+(defn- replace [_a b]
   b)
 
 (defn- update-values! [metric values value last-update-time-ms]

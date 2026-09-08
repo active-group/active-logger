@@ -5,7 +5,6 @@
 
             [active.clojure.logger.metric-accumulator :as metric-accumulator]
             [active.clojure.logger.metric-types :as metric-types]
-            [active.clojure.logger.metric-samples :as metric-samples]
             [active.clojure.logger.time :as time]
 
             [clojure.spec.alpha :as s]))
