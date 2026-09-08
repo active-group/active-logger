@@ -24,10 +24,15 @@
    (partial instance? RecordMetric)))
 
 (s/fdef record-metric
-  :args (s/cat :metric ::metric-types/metric
-               :labels ::metric-types/metric-labels
-               :value  ::metric-types/metric-value
-               :optional (s/? (s/cat :last-update (s/nilable ::metric-types/metric-last-update-time-ms))))
+  :args (s/and
+         (s/cat :metric         ::metric-types/metric
+                :labels         ::metric-types/metric-labels
+                :value          (s/or :value ::metric-types/metric-value :value-increase ::metric-types/histogram-value-increase)
+                :last-update    (s/? (s/nilable ::metric-types/metric-last-update-time-ms)))
+         (fn [{[_ metric] :metric [value-kind _] :value}]
+           (if (= ::metric-types/histogram-value-increase value-kind)
+             (s/valid? ::metric-types/histogram-metric metric)
+             (s/valid? ::metric-types/metric metric))))
   :ret ::record-metric)
 (defn record-metric
   [metric labels value & [last-update]]

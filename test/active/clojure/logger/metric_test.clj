@@ -33,8 +33,8 @@
 
 (t/deftest t-log-metric!-internal
   (m/log-metric!-internal (str *ns*) (m/make-gauge-metric "name" "help") {:label "a"} 23 {:context "b"})
-    (test-utils/is-metric-set-stored? "name" :gauge "help")
-    (test-utils/is-metric-stored? "name" {:label "a"} 23.0))
+  (test-utils/is-metric-set-stored? "name" :gauge "help")
+  (test-utils/is-metric-stored? "name" {:label "a"} 23.0))
 
 (t/deftest t-log-metric-internal
   (let [result (mock-run-monad
@@ -60,7 +60,6 @@
   (m/log-metric! (m/make-gauge-metric "name" "help") {:label "a"} 23 {:context "b"} (str *ns*))
   (test-utils/is-metric-set-stored? "name" :gauge "help")
   (test-utils/is-metric-stored? "name" {:label "a"} 23.0))
-
 
 (t/deftest t-log-metric-2
   (let [result (mock-run-monad
@@ -469,3 +468,139 @@
     (test-utils/is-metric-stored? "name_sum" {:label "a"} 23.0 result)
     (test-utils/is-metric-stored? "name_count" {:label "a"} 1.0 result)
     (test-utils/is-metric-stored? "name_bucket" {:le "+Inf" :label "a"} 1.0 result)))
+
+(t/deftest t-inc-histogram-metric!-2
+  (m/inc-histogram-metric! "name" 23 42)
+  (test-utils/is-metric-set-stored? "name" :histogram "name")
+  (test-utils/is-metric-stored? "name_sum" {} 966.0)
+  (test-utils/is-metric-stored? "name_count" {} 42.0)
+  (test-utils/is-metric-stored? "name_bucket" {:le "+Inf"} 42.0))
+
+(t/deftest t-inc-histogram-metric!-3
+  (m/inc-histogram-metric! "name" [20] 23 42)
+  (test-utils/is-metric-set-stored? "name" :histogram "name")
+  (test-utils/is-metric-stored? "name_sum" {} 966.0)
+  (test-utils/is-metric-stored? "name_count" {} 42.0)
+  (test-utils/is-metric-stored? "name_bucket" {:le "20"} 0.0)
+  (test-utils/is-metric-stored? "name_bucket" {:le "+Inf"} 42.0))
+
+(t/deftest t-inc-histogram-metric!-4
+  (m/inc-histogram-metric! "name" [20] {:label "a"} 23 42)
+  (test-utils/is-metric-set-stored? "name" :histogram "name")
+  (test-utils/is-metric-stored? "name_sum" {:label "a"} 966.0)
+  (test-utils/is-metric-stored? "name_count" {:label "a"} 42.0)
+  (test-utils/is-metric-stored? "name_bucket" {:le "20" :label "a"} 0.0)
+  (test-utils/is-metric-stored? "name_bucket" {:le "+Inf" :label "a"} 42.0))
+
+(t/deftest t-inc-histogram-metric!-5
+  (m/inc-histogram-metric! "name" [20] {:label "a"} "help" 23 42)
+  (test-utils/is-metric-set-stored? "name" :histogram "help")
+  (test-utils/is-metric-stored? "name_sum" {:label "a"} 966.0)
+  (test-utils/is-metric-stored? "name_count" {:label "a"} 42.0)
+  (test-utils/is-metric-stored? "name_bucket" {:le "20" :label "a"} 0.0)
+  (test-utils/is-metric-stored? "name_bucket" {:le "+Inf" :label "a"} 42.0))
+
+(t/deftest t-inc-histogram-metric!-6
+  (m/inc-histogram-metric! "name" [20] {:label "a"} "help" 23 42 {:context "b"})
+  (test-utils/is-metric-set-stored? "name" :histogram "help")
+  (test-utils/is-metric-stored? "name_sum" {:label "a"} 966.0)
+  (test-utils/is-metric-stored? "name_count" {:label "a"} 42.0)
+  (test-utils/is-metric-stored? "name_bucket" {:le "20" :label "a"} 0.0)
+  (test-utils/is-metric-stored? "name_bucket" {:le "+Inf" :label "a"} 42.0))
+
+(t/deftest t-inc-histogram-metric!-7
+  (m/inc-histogram-metric! "name" [20] {:label "a"} "help" 23 42 {:context "b"} (str *ns*))
+  (test-utils/is-metric-set-stored? "name" :histogram "help")
+  (test-utils/is-metric-stored? "name_sum" {:label "a"} 966.0)
+  (test-utils/is-metric-stored? "name_count" {:label "a"} 42.0)
+  (test-utils/is-metric-stored? "name_bucket" {:le "20" :label "a"} 0.0)
+  (test-utils/is-metric-stored? "name_bucket" {:le "+Inf" :label "a"} 42.0))
+
+(t/deftest t-inc-histogram-metric-2
+  (let [result (mock-run-monad
+                m/monad-command-config
+                []
+                (monad/monadic
+                 (m/inc-histogram-metric "name" [] 23 42)
+                 (metric-monad/get-all-metric-sample-sets)))]
+    (test-utils/is-metric-set-stored? "name" :histogram "name" result)
+    (test-utils/is-metric-stored? "name_sum" {} 966.0 result)
+    (test-utils/is-metric-stored? "name_count" {} 42.0 result)
+    (test-utils/is-metric-stored? "name_bucket" {:le "+Inf"} 42.0 result)))
+
+(t/deftest t-inc-histogram-metric-3
+  (let [result (mock-run-monad
+                m/monad-command-config
+                []
+                (monad/monadic
+                 (m/inc-histogram-metric "name" [20] 23 42)
+                 (metric-monad/get-all-metric-sample-sets)))]
+    (test-utils/is-metric-set-stored? "name" :histogram "name" result)
+    (test-utils/is-metric-stored? "name_sum" {} 966.0 result)
+    (test-utils/is-metric-stored? "name_count" {} 42.0 result)
+    (test-utils/is-metric-stored? "name_bucket" {:le "20"} 0.0 result)
+    (test-utils/is-metric-stored? "name_bucket" {:le "+Inf"} 42.0 result)))
+
+(t/deftest t-inc-histogram-metric-4
+  (let [result (mock-run-monad
+                m/monad-command-config
+                []
+                (monad/monadic
+                 (m/inc-histogram-metric "name" [20] {:label "a"} 23 42)
+                 (metric-monad/get-all-metric-sample-sets)))]
+    (test-utils/is-metric-set-stored? "name" :histogram "name" result)
+    (test-utils/is-metric-stored? "name_sum" {:label "a"} 966.0 result)
+    (test-utils/is-metric-stored? "name_count" {:label "a"} 42.0 result)
+    (test-utils/is-metric-stored? "name_bucket" {:le "20" :label "a"} 0.0 result)
+    (test-utils/is-metric-stored? "name_bucket" {:le "+Inf" :label "a"} 42.0 result)))
+
+(t/deftest t-inc-histogram-metric-5
+  (let [result (mock-run-monad
+                m/monad-command-config
+                []
+                (monad/monadic
+                 (m/inc-histogram-metric "name" [20] {:label "a"} "help" 23 42)
+                 (metric-monad/get-all-metric-sample-sets)))]
+    (test-utils/is-metric-set-stored? "name" :histogram "help" result)
+    (test-utils/is-metric-stored? "name_sum" {:label "a"} 966.0 result)
+    (test-utils/is-metric-stored? "name_count" {:label "a"} 42.0 result)
+    (test-utils/is-metric-stored? "name_bucket" {:le "20" :label "a"} 0.0 result)
+    (test-utils/is-metric-stored? "name_bucket" {:le "+Inf" :label "a"} 42.0 result)))
+
+(t/deftest t-inc-histogram-metric-6
+  (let [result (mock-run-monad
+                m/monad-command-config
+                []
+                (monad/monadic
+                 (m/inc-histogram-metric "name" [20] {:label "a"} "help" 23 42 {:context "b"})
+                 (metric-monad/get-all-metric-sample-sets)))]
+    (test-utils/is-metric-set-stored? "name" :histogram "help" result)
+    (test-utils/is-metric-stored? "name_sum" {:label "a"} 966.0 result)
+    (test-utils/is-metric-stored? "name_count" {:label "a"} 42.0 result)
+    (test-utils/is-metric-stored? "name_bucket" {:le "20" :label "a"} 0.0 result)
+    (test-utils/is-metric-stored? "name_bucket" {:le "+Inf" :label "a"} 42.0 result)))
+
+(t/deftest t-inc-histogram-metric-7
+  (let [result (mock-run-monad
+                m/monad-command-config
+                []
+                (monad/monadic
+                 (m/inc-histogram-metric "name" [20] {:label "a"} "help" 23 42 {:context "b"} (str *ns*))
+                 (metric-monad/get-all-metric-sample-sets)))]
+    (test-utils/is-metric-set-stored? "name" :histogram "help" result)
+    (test-utils/is-metric-stored? "name_sum" {:label "a"} 966.0 result)
+    (test-utils/is-metric-stored? "name_count" {:label "a"} 42.0 result)
+    (test-utils/is-metric-stored? "name_bucket" {:le "20" :label "a"} 0.0 result)
+    (test-utils/is-metric-stored? "name_bucket" {:le "+Inf" :label "a"} 42.0 result)))
+
+(t/deftest t-inc-histogram-metric-no-buckets
+  (let [result (mock-run-monad
+                m/monad-command-config
+                []
+                (monad/monadic
+                 (m/inc-histogram-metric "name" [] {:label "a"} "help" 23 42 {:context "b"} (str *ns*))
+                 (metric-monad/get-all-metric-sample-sets)))]
+    (test-utils/is-metric-set-stored? "name" :histogram "help" result)
+    (test-utils/is-metric-stored? "name_sum" {:label "a"} 966.0 result)
+    (test-utils/is-metric-stored? "name_count" {:label "a"} 42.0 result)
+    (test-utils/is-metric-stored? "name_bucket" {:le "+Inf" :label "a"} 42.0 result)))

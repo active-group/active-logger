@@ -22,7 +22,7 @@
 
 (s/fdef reset-global-metric-store!
   :args (s/cat)
-  :ret nil)
+  :ret nil?)
 (defn reset-global-metric-store!
   []
   (dosync (ref-set metric-store (metric-store/fresh-metric-store)))
@@ -39,12 +39,17 @@
 ;; -----------------------------------------------------------------
 
 (s/fdef record-metric!
-  :args (s/cat :optional-1  (s/? (s/cat :a-metric-store ::metric-store))
-               :metric      ::metric-types/metric
-               :labels      ::metric-types/metric-labels
-               :value-value ::metric-types/metric-value
-               :optional-2  (s/? (s/cat :last-update (s/nilable ::metric-types/metric-last-update-time-ms))))
-  :ret nil)
+  :args (s/and
+         (s/cat :a-metric-store (s/? ::metric-store)
+                :metric         ::metric-types/metric
+                :labels         ::metric-types/metric-labels
+                :value          (s/or :value ::metric-types/metric-value :value-increase ::metric-types/histogram-value-increase)
+                :last-update    (s/? (s/nilable ::metric-types/metric-last-update-time-ms)))
+         (fn [{[_ metric] :metric [value-kind _] :value}]
+           (if (= ::metric-types/histogram-value-increase value-kind)
+             (s/valid? ::metric-types/histogram-metric metric)
+             (s/valid? ::metric-types/metric metric))))
+  :ret nil?)
 (defn record-metric!
   "Record a metric."
   ([metric labels value-value]
@@ -102,7 +107,7 @@
 (s/fdef prune-stale-metrics!
   :args (s/cat :optional (s/? (s/cat :a-metric-store ::metric-store))
                :time-ms        ::metric-types/metric-last-update-time-ms)
-  :ret nil)
+  :ret nil?)
 (defn prune-stale-metrics!
   "Prune all metrics in the `a-metric-store` that are older than `time-ms`. That is,
   the last update time in ms of the metric value is smaller than `time-ms`.

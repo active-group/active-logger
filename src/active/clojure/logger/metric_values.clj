@@ -72,14 +72,24 @@
     (metric-types/counter-metric?   metric) (if (metric-types/counter-metric-set-value? metric)
                                               (commute values replace (singular/make-metric-value value last-update-time-ms))
                                               (commute values singular/inc-metric-value value last-update-time-ms))
-    (metric-types/histogram-metric? metric) (commute values histogram/update-histogram-metric-values (metric-types/histogram-metric-thresholds metric) value last-update-time-ms)))
+    (metric-types/histogram-metric? metric) (if (metric-types/histogram-value-increase? value)
+                                              (commute values histogram/update-histogram-metric-values (metric-types/histogram-metric-thresholds metric)
+                                                       (metric-types/histogram-value-increase-value value)
+                                                       (metric-types/histogram-value-increase-increase value)
+                                                       last-update-time-ms)
+                                              (commute values histogram/update-histogram-metric-values (metric-types/histogram-metric-thresholds metric) value 1 last-update-time-ms))))
 
 (s/fdef update-stored-values
-  :args (s/cat :stored-values ::stored-values
-               :metric        ::metric-types/metric
-               :labels ::metric-types/metric-labels
-               :value  ::metric-types/metric-value
-               :last-update-time-ms ::metric-types/metric-last-update-time-ms)
+  :args (s/and
+         (s/cat :stored-values ::stored-values
+                :metric        ::metric-types/metric
+                :labels ::metric-types/metric-labels
+                :value  (s/or :value ::metric-types/metric-value :value-increase ::metric-types/histogram-value-increase)
+                :last-update-time-ms ::metric-types/metric-last-update-time-ms)
+         (fn [{[_ metric] :metric [value-kind _] :value}]
+           (if (= ::metric-types/histogram-value-increase value-kind)
+             (s/valid? ::metric-types/histogram-metric metric)
+             (s/valid? ::metric-types/metric metric))))
   :ret ::stored-values)
 (defn- update-stored-values
   [stored-values metric labels value last-update-time-ms]
@@ -94,11 +104,16 @@
                          (make-values metric value last-update-time-ms))))))
 
 (s/fdef update-or-make-stored-values
-  :args (s/cat :maybe-stored-values (s/nilable ::stored-values)
-               :metric ::metric-types/metric
-               :labels ::metric-types/metric-labels
-               :value ::metric-types/metric-value
-               :update-time-ms ::metric-types/metric-last-update-time-ms)
+  :args (s/and
+         (s/cat :maybe-stored-values (s/nilable ::stored-values)
+                :metric ::metric-types/metric
+                :labels ::metric-types/metric-labels
+                :value (s/or :value ::metric-types/metric-value :value-increase ::metric-types/histogram-value-increase)
+                :update-time-ms ::metric-types/metric-last-update-time-ms)
+         (fn [{[_ metric] :metric [value-kind _] :value}]
+           (if (= ::metric-types/histogram-value-increase value-kind)
+             (s/valid? ::metric-types/histogram-metric metric)
+             (s/valid? ::metric-types/metric metric))))
   :ret ::stored-values)
 (defn update-or-make-stored-values
   "Updates or creates a value suitable for the given metric. Must be called inside a transaction."

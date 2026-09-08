@@ -102,6 +102,29 @@
   [metric-name metric-help thresholds]
   (really-make-histogram-metric metric-name metric-help thresholds))
 
+(define-record-type ^{:doc "Histogram value with increase"}
+  HistogramValueIncrease
+  ^:private really-make-histogram-value-increase
+  histogram-value-increase?
+  [value    histogram-value-increase-value
+   increase histogram-value-increase-increase])
+
+(s/def ::histogram-value-increase
+  (s/spec
+   (partial instance? HistogramValueIncrease)
+   :gen (fn []
+          (sgen/fmap (fn [[value increase]]
+                       (really-make-histogram-value-increase value increase))
+                     (s/gen (s/tuple ::metric-value ::metric-value))))))
+
+(s/fdef make-histogram-value-increase
+  :args (s/cat :value ::metric-value
+               :increase ::metric-value)
+  :ret ::histogram-value-increase)
+(defn make-histogram-value-increase
+  [value increase]
+  (really-make-histogram-value-increase value increase))
+
 ;; -----------------------------------------------------------------
 
 (s/fdef metric-type

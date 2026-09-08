@@ -30,11 +30,16 @@
 ;; -----------------------------------------------------------------
 
 (s/fdef record-metric
-  :args (s/cat :metric-store ::metric-store
-               :metric       ::metric-types/metric
-               :labels       ::metric-types/metric-labels
-               :value        ::metric-types/metric-value
-               :time-ms      ::metric-types/metric-last-update-time-ms)
+  :args (s/and
+         (s/cat :metric-store ::metric-store
+                :metric       ::metric-types/metric
+                :labels       ::metric-types/metric-labels
+                :value        (s/or :value ::metric-types/metric-value :value-increase ::metric-types/histogram-value-increase)
+                :time-ms      ::metric-types/metric-last-update-time-ms)
+         (fn [{[_ metric] :metric [value-kind _] :value}]
+           (if (= ::metric-types/histogram-value-increase value-kind)
+             (s/valid? ::metric-types/histogram-metric metric)
+             (s/valid? ::metric-types/metric metric))))
   :ret ::metric-store)
 (defn record-metric
   "Record a new value for the given metric. Must be called inside a transaction."

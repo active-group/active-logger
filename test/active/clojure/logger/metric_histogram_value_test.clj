@@ -18,12 +18,17 @@
       (t/is (= 42          (m/histogram-metric-values-count-value example-metric-value)))
       (t/is (= [11 12]     (m/histogram-metric-values-bucket-values example-metric-value))))))
 
-
 (t/deftest t-update-histogram-metric-values
   (t/is (= (m/make-histogram-metric-values 100 20 43 [11 13])
            (m/update-histogram-metric-values (m/make-histogram-metric-values 1 5 42 [11 12])
                                              [10 20]
-                                             15
+                                             15 1
+                                             100)))
+
+  (t/is (= (m/make-histogram-metric-values 100 155 52 [11 22])
+           (m/update-histogram-metric-values (m/make-histogram-metric-values 1 5 42 [11 12])
+                                             [10 20]
+                                             15 10
                                              100)))
 
   (t/testing "every new value has an effect, and not only the timestamp"
@@ -31,5 +36,4 @@
            (property [value (spec ::metric-types/metric-value)]
                      (let [base (m/make-histogram-metric-values 11 5 42 [11 12.0])]
                        (not= base
-                             (m/update-histogram-metric-values base [0 100] value 11)))))))
-  )
+                             (m/update-histogram-metric-values base [0 100] value 1 11))))))))

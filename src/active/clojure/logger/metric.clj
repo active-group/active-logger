@@ -147,5 +147,33 @@
   ([?name ?thresholds ?labels ?help ?value ?mp ?ns]
    `(log-metric (metric-types/make-histogram-metric ~?name ~?help ~?thresholds) ~?labels ~?value ~?mp ~?ns)))
 
+(defmacro inc-histogram-metric!
+  ([?name ?value ?increase]
+   `(inc-histogram-metric! ~?name [] {} ~?name ~?value ~?increase nil ~(str *ns*)))
+  ([?name ?thresholds ?value ?increase]
+   `(inc-histogram-metric! ~?name ~?thresholds {} ~?name ~?value ~?increase nil ~(str *ns*)))
+  ([?name ?thresholds ?labels ?value ?increase]
+   `(inc-histogram-metric! ~?name ~?thresholds ~?labels ~?name ~?value ~?increase nil ~(str *ns*)))
+  ([?name ?thresholds ?labels ?help ?value ?increase]
+   `(inc-histogram-metric! ~?name ~?thresholds ~?labels ~?help ~?value ~?increase nil ~(str *ns*)))
+  ([?name ?thresholds ?labels ?help ?value  ?increase ?mp]
+   `(inc-histogram-metric! ~?name ~?thresholds ~?labels ~?help ~?value ~?increase ~?mp ~(str *ns*)))
+  ([?name ?thresholds ?labels ?help ?value ?increase ?mp ?ns]
+   `(log-metric! (metric-types/make-histogram-metric ~?name ~?help ~?thresholds) ~?labels (metric-types/make-histogram-value-increase ~?value ~?increase) ~?mp ~?ns)))
+
+(defmacro inc-histogram-metric
+  ([?name ?value ?increase]
+   `(inc-histogram-metric ~?name [] {} ~?name ~?value ~?increase nil ~(str *ns*)))
+  ([?name ?thresholds ?value ?increase]
+   `(inc-histogram-metric ~?name ~?thresholds {} ~?name ~?value ~?increase nil ~(str *ns*)))
+  ([?name ?thresholds ?labels ?value  ?increase]
+   `(inc-histogram-metric ~?name ~?thresholds ~?labels ~?name ~?value ~?increase nil ~(str *ns*)))
+  ([?name ?thresholds ?labels ?help ?value ?increase]
+   `(inc-histogram-metric ~?name ~?thresholds ~?labels ~?help ~?value ~?increase nil ~(str *ns*)))
+  ([?name ?thresholds ?labels ?help ?value ?increase ?mp]
+   `(inc-histogram-metric ~?name ~?thresholds ~?labels ~?help ~?value ~?increase ~?mp ~(str *ns*)))
+  ([?name ?thresholds ?labels ?help ?value ?increase ?mp ?ns]
+   `(log-metric (metric-types/make-histogram-metric ~?name ~?help ~?thresholds) ~?labels (metric-types/make-histogram-value-increase ~?value ~?increase) ~?mp ~?ns)))
+
 (def monad-command-config
   (monad/combine-monad-command-configs metric-monad/monad-command-config metric-emitter/log-metrics-command-config))
