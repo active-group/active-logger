@@ -1,14 +1,12 @@
 (ns active.clojure.logger.state-change
   "Facilities for logging state changes."
-  (:require [riemann.client :as riemann]
-            [taoensso.timbre :as timbre]
+  (:require [taoensso.timbre :as timbre]
 
             [active.clojure.config :as config]
             [active.clojure.logger.riemann :as riemann-config]
             [active.clojure.logger.internal :as internal]
             [active.clojure.monad :as monad]
             [active.clojure.record :refer [define-record-type]]))
-
 
 ;;;; Configuration
 
@@ -38,7 +36,6 @@
     :events :events
     :riemann (riemann-config/make-riemann-config riemann-config)))
 
-
 ;;;; Data definition and DSL
 
 (define-record-type LogStateChange
@@ -53,7 +50,7 @@
    ttl log-state-change-ttl
    ^{:doc "Map with more data or `nil`. The context is a map that is merged
   with the log context that's already active, if present."}
-    map log-state-change-map])
+   map log-state-change-map])
 
 ;;; Actions
 
@@ -103,7 +100,6 @@
    `(make-log-state-change ~(str *ns*) ~?state ~?ttl nil))
   ([?state ?ttl ?mp]
    `(make-log-state-change ~(str *ns*) ~?state ~?ttl ~?mp)))
-
 
 ;;;; Interpreter
 

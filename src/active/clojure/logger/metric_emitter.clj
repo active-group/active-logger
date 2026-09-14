@@ -96,8 +96,8 @@
 (defn emit-metric-samples!-internal
   [namespace metric-samples context-map]
   (let [scconf @metrics-config]
-  (doseq [metric-sample metric-samples]
-    (emit-metric-sample!-internal scconf namespace metric-sample context-map))))
+    (doseq [metric-sample metric-samples]
+      (emit-metric-sample!-internal scconf namespace metric-sample context-map))))
 
 (let [cmd (make-is-emitting-cmd)]
   (defn is-emitting? []
@@ -130,7 +130,7 @@
   ([?metric-sample ?mp]
    `(emit-metric! ~?metric-sample ~?mp ~(str *ns*)))
   ([?metric-sample ?mp ?ns]
-   `(emit-metrics! ~(str *ns*) [~?metric-sample] ~?mp)))
+   `(emit-metrics! ~?ns [~?metric-sample] ~?mp)))
 
 (defmacro emit-metrics!
   ([?metric-samples]

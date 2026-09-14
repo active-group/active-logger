@@ -3,7 +3,6 @@
 
   Stores a histogram of metric values, together with a last udpate time."
   (:require [active.clojure.record :refer [define-record-type]]
-            [active.clojure.lens :as lens]
             [active.clojure.logger.metric-types :as metric-types]
 
             [clojure.spec.alpha :as s]
@@ -18,7 +17,6 @@
    count-value histogram-metric-values-count-value
    bucket-values histogram-metric-values-bucket-values])
 
-(s/def ::metric-value-double (s/and double? #(not (Double/isNaN %))))
 (s/def ::bucket-values (s/coll-of nat-int?))
 
 (s/def ::histogram-metric-values

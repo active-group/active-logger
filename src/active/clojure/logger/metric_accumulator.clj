@@ -66,8 +66,6 @@
           (ref-set a-metric-store (metric-store/record-metric metric-store metric labels value-value time-ms))))))
    nil))
 
-(declare metric-name)
-
 (s/fdef get-metric-samples!
   :args (s/cat :optional (s/? (s/cat :a-metric-store ::metric-store))
                :metric         ::metric-types/metric
@@ -86,12 +84,12 @@
 (defn ^:no-doc all-snapshots->all-metric-sample-sets
   [all-snapshots]
   (map (fn [[metric snapshots]]
-          (metric-samples/make-metric-sample-set
-           (metric-types/metric-name metric)
-           (metric-types/metric-type metric)
-           (metric-types/metric-help metric)
-           (metric-samples/all-snapshots->all-metric-samples metric snapshots)))
-        all-snapshots))
+         (metric-samples/make-metric-sample-set
+          (metric-types/metric-name metric)
+          (metric-types/metric-type metric)
+          (metric-types/metric-help metric)
+          (metric-samples/all-snapshots->all-metric-samples metric snapshots)))
+       all-snapshots))
 
 (s/fdef get-all-metric-sample-sets!
   :args (s/cat :optional (s/? (s/cat :a-metric-store ::metric-store)))
