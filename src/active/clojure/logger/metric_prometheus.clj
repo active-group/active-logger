@@ -32,20 +32,66 @@
 (defn- make-render-metric-set
   [cleanup-non-prometheus-label-characters]
   (let [render-metric-sample (make-render-metric-sample cleanup-non-prometheus-label-characters)]
-    (fn [metric-sample-set]
+    (fn [metric-sample-set sample-counter]
       (let [set-name (cleanup-non-prometheus-label-characters (metric-samples/metric-sample-set-name metric-sample-set))]
         (cons
          (render-metric-help set-name (metric-samples/metric-sample-set-help metric-sample-set))
          (cons
           (render-metric-type set-name (metric-samples/metric-sample-set-type metric-sample-set))
-          (map render-metric-sample (metric-samples/metric-sample-set-samples metric-sample-set))))))))
+          (map (fn [sample]
+                 (vswap! sample-counter inc)
+                 (render-metric-sample sample))
+               (metric-samples/metric-sample-set-samples metric-sample-set))))))))
 
-(defn render-metric-sets
+(defn- render-metric-sets-seq*
   "Returns a lazy sequence of lines."
-  [ms]
+  [ms set-counter sample-counter]
   ;; Note: the 'make-fn..*' schenanigans is used to make/enable memoization for this run, without growing memory infinitely.
   (let [render-metric-set (make-render-metric-set (util/make-cleanup-non-prometheus-label-characters))]
-    (mapcat render-metric-set ms)))
+    (mapcat (fn [set]
+              (vswap! set-counter inc)
+              (render-metric-set set sample-counter))
+            ms)))
+
+(defn ^:no-doc render-metric-sets-seq
+  "Returns a lazy sequence of lines."
+  [ms]
+  (render-metric-sets-seq* ms (volatile! 0) (volatile! 0)))
+
+(defn render-metric-sets
+  [ms]
+  (string/join "\n" (render-metric-sets-seq ms)))
+
+(defn- render-metrics-seq!*
+  ([set-counter sample-counter]
+   (render-metrics-seq!* (metric-accumulator/get-all-metric-sample-sets!)
+                         set-counter sample-counter))
+  ([metric-sets set-counter sample-counter]
+   (render-metric-sets-seq* metric-sets set-counter sample-counter)))
+
+(defn ^:no-doc render-metrics-seq!
+  "Returns a lazy sequence of lines."
+  ([]
+   (render-metrics-seq!* (volatile! 0) (volatile! 0)))
+  ([metric-sets]
+   (render-metrics-seq!* metric-sets (volatile! 0) (volatile! 0))))
+
+(defn render-metrics!
+  ([]
+   (string/join "\n" (render-metrics-seq!)))
+  ([metric-sets]
+   (string/join "\n" (render-metrics-seq! metric-sets))))
+
+(defn- piped-input-stream
+  [f]
+  (let [input  (PipedInputStream.)
+        output (PipedOutputStream.)]
+    (.connect input output)
+    (future
+      (try
+        (f output)
+        (finally (.close output))))
+    input))
 
 (def ^:private number-of-calls
   (metric-types/make-counter-metric "active_clojure_logger_metric_prometheus_render_metrics_total"
@@ -63,44 +109,20 @@
   (metric-types/make-gauge-metric "active_clojure_logger_metric_prometheus_metric_samples_total"
                                   "Total number stored metric samples."))
 
-(defn render-metrics!
-  "Returns a lazy sequence of lines."
-  ([]
-   (render-metrics! (timed-metrics/log-time-metric!
-                     #(metric-accumulator/record-metric! duration {:slice "get"} %)
-                     (metric-accumulator/get-all-metric-sample-sets!))))
-  ([metric-sets]
-   (metric-accumulator/record-metric! number-of-calls {} 1)
-   (let [sorted-metric-sets (timed-metrics/log-time-metric!
-                             #(metric-accumulator/record-metric! duration {:slice "sort"} %)
-                             (sort-by metric-samples/metric-sample-set-name metric-sets))]
-     (timed-metrics/log-time-metric!
-      #(metric-accumulator/record-metric! duration {:slice "count"} %)
-      (do
-        (metric-accumulator/record-metric! number-of-sets {} (count sorted-metric-sets))
-        (metric-accumulator/record-metric! number-of-samples {}
-                                           (reduce + 0 (map #(count (metric-samples/metric-sample-set-samples %)) sorted-metric-sets)))))
-     (timed-metrics/log-time-metric!
-      #(metric-accumulator/record-metric! duration {:slice "render"} %)
-      (render-metric-sets sorted-metric-sets)))))
-
-(defn- piped-input-stream
-  [f]
-  (let [input  (PipedInputStream.)
-        output (PipedOutputStream.)]
-    (.connect input output)
-    (future
-      (try
-        (f output)
-        (finally (.close output))))
-    input))
-
 (defn- render-metrics-body! []
-  (piped-input-stream (fn [ostream]
-                        (with-open [^Writer w (io/writer ostream)]
-                          (doseq [l (render-metrics!)]
-                            (.write w l)
-                            (.write w "\n"))))))
+  (metric-accumulator/record-metric! number-of-calls {} 1)
+  (piped-input-stream
+   (fn [ostream]
+     (with-open [^Writer w (io/writer ostream)]
+       (let [set-counter (volatile! 0)
+             sample-counter (volatile! 0)]
+         (timed-metrics/log-time-metric!
+          #(metric-accumulator/record-metric! duration {:slice "render"} %)
+          (doseq [l (render-metrics-seq! set-counter sample-counter)]
+            (.write w l)
+            (.write w "\n")))
+         (metric-accumulator/record-metric! number-of-sets {} @set-counter)
+         (metric-accumulator/record-metric! number-of-samples {} @sample-counter))))))
 
 (defn current-metrics-ring-response
   "Returns a ring response with the current metric values."

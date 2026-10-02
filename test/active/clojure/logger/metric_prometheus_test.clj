@@ -17,16 +17,16 @@
             "name_count{label=\"a\"} 1.0"
             "name_bucket{label=\"a\",le=\"+Inf\"} 1.0"
             "name_bucket{label=\"a\",le=\"20\"} 0.0"]
-           (m/render-metric-sets [(metric-samples/make-metric-sample-set "name with blanks" :counter "help"
-                                                                         [(metric-samples/make-metric-sample "name with blanks" {:label-with*dashes "a"} 23 0)])
-                                  (metric-samples/make-metric-sample-set "name" :histogram "help"
-                                                                         [(metric-samples/make-metric-sample "name_sum" {:label "a"} 23 0)
-                                                                          (metric-samples/make-metric-sample "name_count" {:label "a"} 1 0)
-                                                                          (metric-samples/make-metric-sample "name_bucket" {:label "a" :le "+Inf"} 1 0)
-                                                                          (metric-samples/make-metric-sample "name_bucket" {:label "a" :le "20"} 0 0)])]))))
+           (m/render-metric-sets-seq [(metric-samples/make-metric-sample-set "name with blanks" :counter "help"
+                                                                             [(metric-samples/make-metric-sample "name with blanks" {:label-with*dashes "a"} 23 0)])
+                                      (metric-samples/make-metric-sample-set "name" :histogram "help"
+                                                                             [(metric-samples/make-metric-sample "name_sum" {:label "a"} 23 0)
+                                                                              (metric-samples/make-metric-sample "name_count" {:label "a"} 1 0)
+                                                                              (metric-samples/make-metric-sample "name_bucket" {:label "a" :le "+Inf"} 1 0)
+                                                                              (metric-samples/make-metric-sample "name_bucket" {:label "a" :le "20"} 0 0)])]))))
 
 (t/deftest t-render-metrics!
-  (t/is (= [] (m/render-metrics! []))))
+  (t/is (= [] (m/render-metrics-seq! []))))
 
 (t/deftest t-wrap-prometheus-metrics-ring-handler
   (t/is (= "ELSE"
@@ -38,34 +38,34 @@
   (t/is (= ["# HELP name_with_blanks help"
             "# TYPE name_with_blanks counter"
             "name_with_blanks{label_with_dashes=\"a\"} 1.0E24"]
-           (m/render-metric-sets [(metric-samples/make-metric-sample-set
-                                   "name with blanks"
-                                   :counter
-                                   "help"
-                                   [(metric-samples/make-metric-sample
-                                     "name with blanks"
-                                     {:label-with*dashes "a"}
-                                     ;; MetricValue converts all values to double
-                                     (double 999999999999999999999999)
-                                     0)])]))))
+           (m/render-metric-sets-seq [(metric-samples/make-metric-sample-set
+                                       "name with blanks"
+                                       :counter
+                                       "help"
+                                       [(metric-samples/make-metric-sample
+                                         "name with blanks"
+                                         {:label-with*dashes "a"}
+                                         ;; MetricValue converts all values to double
+                                         (double 999999999999999999999999)
+                                         0)])]))))
 
 (t/deftest t-render-longs
   (t/is (= ["# HELP name_with_blanks help"
             "# TYPE name_with_blanks counter"
             "name_with_blanks{label_with_dashes=\"a\"} 9.0E18"]
-           (m/render-metric-sets [(metric-samples/make-metric-sample-set
-                                   "name with blanks"
-                                   :counter
-                                   "help"
-                                   [(metric-samples/make-metric-sample
-                                     "name with blanks"
-                                     {:label-with*dashes "a"}
-                                     ;; MetricValue converts all values to double
-                                     (double 8999999999999999991)
-                                     0)])]))))
+           (m/render-metric-sets-seq [(metric-samples/make-metric-sample-set
+                                       "name with blanks"
+                                       :counter
+                                       "help"
+                                       [(metric-samples/make-metric-sample
+                                         "name with blanks"
+                                         {:label-with*dashes "a"}
+                                         ;; MetricValue converts all values to double
+                                         (double 8999999999999999991)
+                                         0)])]))))
 
 (t/deftest benchmark-test
-  ;; plain mapping/string.join: 840 msecs; lazy-seq: 940 msecs
+  ;; plain mapping/string.join: 840 msecs; lazy-seq: 880 msecs
   ;; Note: weird how it's a bit slower with lazy sequences; but it might be worth it to create less memory pressure.
   (let [nmetrics 20000
         nlabels 10
@@ -90,5 +90,5 @@
             (metric-accumulator/record-metric! metric {:label l} 982374.0 209384039)))))
 
     (time
-     (t/is (= 506640 (count (m/render-metrics!)))))))
+     (t/is (= 506640 (count (m/render-metrics-seq!)))))))
 
