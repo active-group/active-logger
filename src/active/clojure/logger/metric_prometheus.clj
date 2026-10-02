@@ -118,7 +118,7 @@
              sample-counter (volatile! 0)]
          (timed-metrics/log-time-metric!
           #(metric-accumulator/record-metric! duration {:slice "render"} %)
-          (doseq [l (render-metrics-seq! set-counter sample-counter)]
+          (doseq [l (render-metrics-seq!* set-counter sample-counter)]
             (.write w l)
             (.write w "\n")))
          (metric-accumulator/record-metric! number-of-sets {} @set-counter)
