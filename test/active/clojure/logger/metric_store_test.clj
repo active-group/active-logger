@@ -24,10 +24,10 @@
                       value (spec ::metric-types/metric-value)
                       time-ms (spec ::metric-types/metric-last-update-time-ms)]
                      (let [store (m/fresh-metric-store)]
-                       (not= (m/get-all-snapshots store)
+                       (not= (m/get-all-snapshots-seq store)
                              (-> store
                                  (m/record-metric metric labels value time-ms)
-                                 (m/get-all-snapshots)))))))))
+                                 (m/get-all-snapshots-seq)))))))))
 
 (t/deftest t-store-pruning
   (t/testing "find-stale-metrics finds stale metrics"
@@ -48,7 +48,7 @@
           labels {:label 1}
           store (dosync (-> (m/fresh-metric-store)
                             (m/record-metric m1 labels 0.0 0)))]
-      (t/is (empty? (m/get-all-snapshots (dosync (m/maybe-remove-metric store m1 labels 0))))
+      (t/is (empty? (m/get-all-snapshots-seq (dosync (m/maybe-remove-metric store m1 labels 0))))
             "removed if timestamps match")
       (t/is (nil? (dosync (m/maybe-remove-metric store m1 labels 1)))
             "not removed if not match")

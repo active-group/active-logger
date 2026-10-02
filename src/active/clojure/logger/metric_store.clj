@@ -113,15 +113,15 @@
 (defn get-all-metric-snapshots
   [metric-store metric]
   (if-let [stored-value (get (metric-store-map metric-store) metric)]
-    (metric-values/get-all-stored-values-snapshot stored-value)
+    (into {} (metric-values/get-all-stored-values-snapshot-seq stored-value))
     {}))
 
-(s/fdef get-all-snapshots
+(s/fdef get-all-snapshots-seq
   :args (s/cat :metric-store ::metric-store)
-  :ret (s/map-of ::metric-types/metric (s/map-of ::metric-types/metric-labels ::metric-values/snapshot)))
-(defn get-all-snapshots
+  :ret (s/coll-of (s/cat :metric ::metric-types/metric
+                         :snapshots (s/map-of ::metric-types/metric-labels ::metric-values/snapshot))))
+(defn get-all-snapshots-seq
   [metric-store]
-  (into {}
-        (map (fn [[metric stored-value]]
-               [metric (metric-values/get-all-stored-values-snapshot stored-value)])
-             (metric-store-map metric-store))))
+  (map (fn [[metric stored-value]]
+         [metric (metric-values/get-all-stored-values-snapshot-seq stored-value)])
+       (metric-store-map metric-store)))

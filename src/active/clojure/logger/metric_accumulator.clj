@@ -100,7 +100,7 @@
   ([]
    (get-all-metric-sample-sets! metric-store))
   ([a-metric-store]
-   (all-snapshots->all-metric-sample-sets (metric-store/get-all-snapshots @a-metric-store))))
+   (all-snapshots->all-metric-sample-sets (metric-store/get-all-snapshots-seq @a-metric-store))))
 
 (s/fdef prune-stale-metrics!
   :args (s/cat :optional (s/? (s/cat :a-metric-store ::metric-store))

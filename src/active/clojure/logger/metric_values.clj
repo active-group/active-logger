@@ -186,12 +186,13 @@
   (when-let [a (get (stored-values-map stored-values) labels)]
     @a))
 
-(s/fdef get-all-stored-values-snapshot
+(s/fdef get-all-stored-values-snapshot-seq
   :args (s/cat :stored-values ::stored-values)
-  :ret (s/map-of ::metric-types/metric-labels ::snapshot))
-(defn get-all-stored-values-snapshot
-  "Returns a map from labels to snapshots of the values (singular or histogram)."
+  :ret (s/coll-of (s/cat :labels ::metric-types/metric-labels
+                         :snapshot ::snapshot)))
+(defn get-all-stored-values-snapshot-seq
+  "Returns a seq of labels and snapshots of the values (singular or histogram)."
   [stored-values]
-  (into {} (map (fn [[labels values]]
-                  [labels @values])
-                (stored-values-map stored-values))))
+  (map (fn [[labels values]]
+         [labels @values])
+       (stored-values-map stored-values)))

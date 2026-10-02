@@ -8,7 +8,15 @@
             [clojure.test :as t]))
 
 (t/deftest t-render-metric-sets
-  (t/is (= "# HELP name_with_blanks help\n# TYPE name_with_blanks counter\nname_with_blanks{label_with_dashes=\"a\"} 23.0\n# HELP name help\n# TYPE name histogram\nname_sum{label=\"a\"} 23.0\nname_count{label=\"a\"} 1.0\nname_bucket{label=\"a\",le=\"+Inf\"} 1.0\nname_bucket{label=\"a\",le=\"20\"} 0.0"
+  (t/is (= ["# HELP name_with_blanks help"
+            "# TYPE name_with_blanks counter"
+            "name_with_blanks{label_with_dashes=\"a\"} 23.0"
+            "# HELP name help"
+            "# TYPE name histogram"
+            "name_sum{label=\"a\"} 23.0"
+            "name_count{label=\"a\"} 1.0"
+            "name_bucket{label=\"a\",le=\"+Inf\"} 1.0"
+            "name_bucket{label=\"a\",le=\"20\"} 0.0"]
            (m/render-metric-sets [(metric-samples/make-metric-sample-set "name with blanks" :counter "help"
                                                                          [(metric-samples/make-metric-sample "name with blanks" {:label-with*dashes "a"} 23 0)])
                                   (metric-samples/make-metric-sample-set "name" :histogram "help"
@@ -18,7 +26,7 @@
                                                                           (metric-samples/make-metric-sample "name_bucket" {:label "a" :le "20"} 0 0)])]))))
 
 (t/deftest t-render-metrics!
-  (t/is (= "" (m/render-metrics! []))))
+  (t/is (= [] (m/render-metrics! []))))
 
 (t/deftest t-wrap-prometheus-metrics-ring-handler
   (t/is (= "ELSE"
@@ -27,7 +35,9 @@
               (:body ((m/wrap-prometheus-metrics-ring-handler (constantly "ELSE")) {:uri "/metrics"})))))
 
 (t/deftest t-render-big-ints
-  (t/is (= "# HELP name_with_blanks help\n# TYPE name_with_blanks counter\nname_with_blanks{label_with_dashes=\"a\"} 1.0E24"
+  (t/is (= ["# HELP name_with_blanks help"
+            "# TYPE name_with_blanks counter"
+            "name_with_blanks{label_with_dashes=\"a\"} 1.0E24"]
            (m/render-metric-sets [(metric-samples/make-metric-sample-set
                                    "name with blanks"
                                    :counter
@@ -40,7 +50,9 @@
                                      0)])]))))
 
 (t/deftest t-render-longs
-  (t/is (= "# HELP name_with_blanks help\n# TYPE name_with_blanks counter\nname_with_blanks{label_with_dashes=\"a\"} 9.0E18"
+  (t/is (= ["# HELP name_with_blanks help"
+            "# TYPE name_with_blanks counter"
+            "name_with_blanks{label_with_dashes=\"a\"} 9.0E18"]
            (m/render-metric-sets [(metric-samples/make-metric-sample-set
                                    "name with blanks"
                                    :counter
@@ -53,7 +65,8 @@
                                      0)])]))))
 
 (t/deftest benchmark-test
-  ;; plain mapping/string.join: 839.101083 msecs
+  ;; plain mapping/string.join: 840 msecs; lazy-seq: 940 msecs
+  ;; Note: weird how it's a bit slower with lazy sequences; but it might be worth it to create less memory pressure.
   (let [nmetrics 20000
         nlabels 10
         thresholds [5.0 10.0 50.0 80.0 99.0]
@@ -77,5 +90,5 @@
             (metric-accumulator/record-metric! metric {:label l} 982374.0 209384039)))))
 
     (time
-     (let [s (m/render-metrics!)]
-       (t/is (string? s))))))
+     (t/is (= 506640 (count (m/render-metrics!)))))))
+

@@ -28,7 +28,7 @@
                       time-ms (spec ::metric-types/metric-last-update-time-ms)]
                      (let [stored-values (dosync (m/update-or-make-stored-values nil metric labels value time-ms))]
                        (and (not (empty? (m/get-stored-values-snapshot stored-values labels)))
-                            (contains? (m/get-all-stored-values-snapshot stored-values) labels))))))
+                            (contains? (into {} (m/get-all-stored-values-snapshot-seq stored-values)) labels))))))
     (t/is (quickcheck
            (property [metric (spec ::metric-types/metric)
                       labelss (spec (s/coll-of ::metric-types/metric-labels :distinct true :count 2))
