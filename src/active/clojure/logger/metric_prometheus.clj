@@ -60,40 +60,28 @@
                                   "Total number stored metric samples."))
 
 (defn render-metrics!
-  [& [metric-sets]]
-  (metric-accumulator/record-metric! number-of-calls {} 1)
-  (let [all-metric-sets (timed-metrics/log-time-metric!
-                         #(metric-accumulator/record-metric! duration {:slice "get"} %)
-                         (or metric-sets (metric-accumulator/get-all-metric-sample-sets!)))
-        sorted-metric-sets (timed-metrics/log-time-metric!
-                            #(metric-accumulator/record-metric! duration {:slice "sort"} %)
-                            (sort-by metric-samples/metric-sample-set-name all-metric-sets))]
-    (timed-metrics/log-time-metric!
-     #(metric-accumulator/record-metric! duration {:slice "count"} %)
-     (do
-       (metric-accumulator/record-metric! number-of-sets {} (count sorted-metric-sets))
-       (metric-accumulator/record-metric! number-of-samples {}
-                                          (reduce + 0 (map #(count (metric-samples/metric-sample-set-samples %)) sorted-metric-sets)))))
-    (timed-metrics/log-time-metric!
-     #(metric-accumulator/record-metric! duration {:slice "render"} %)
-     (render-metric-sets sorted-metric-sets))))
-
-(def ^:private number-of-concurrent-requests
-  (metric-types/make-gauge-metric "active_clojure_logger_metric_prometheus_concurrent_requests"
-                                  "Number of concurrent metrics requests."))
-
-(let [n (atom 0)]
-  (defn- record-concurrency [f]
-    (swap! n inc)
-    ;; should always be 1, if prometheus doesn't go rogue (or someone else calls it too)
-    (try
-      (metric-accumulator/record-metric! number-of-concurrent-requests {} @n)
-      (f)
-      (finally (swap! n dec)))))
+  ([]
+   (render-metrics! (timed-metrics/log-time-metric!
+                     #(metric-accumulator/record-metric! duration {:slice "get"} %)
+                     (metric-accumulator/get-all-metric-sample-sets!))))
+  ([metric-sets]
+   (metric-accumulator/record-metric! number-of-calls {} 1)
+   (let [sorted-metric-sets (timed-metrics/log-time-metric!
+                             #(metric-accumulator/record-metric! duration {:slice "sort"} %)
+                             (sort-by metric-samples/metric-sample-set-name metric-sets))]
+     (timed-metrics/log-time-metric!
+      #(metric-accumulator/record-metric! duration {:slice "count"} %)
+      (do
+        (metric-accumulator/record-metric! number-of-sets {} (count sorted-metric-sets))
+        (metric-accumulator/record-metric! number-of-samples {}
+                                           (reduce + 0 (map #(count (metric-samples/metric-sample-set-samples %)) sorted-metric-sets)))))
+     (timed-metrics/log-time-metric!
+      #(metric-accumulator/record-metric! duration {:slice "render"} %)
+      (render-metric-sets sorted-metric-sets)))))
 
 (defn wrap-prometheus-metrics-ring-handler
   [handler]
   (fn [req]
     (if (re-matches #"^/metrics" (:uri req))
-      {:status 200 :headers {"Content-Type" "text/plain"} :body (record-concurrency #(render-metrics!))}
+      {:status 200 :headers {"Content-Type" "text/plain"} :body (render-metrics!)}
       (handler req))))
